@@ -37,6 +37,10 @@ struct HomeView: View {
                     NavigationLink(destination: PThreadsView()) {
                         Label("POSIX Threads (pthreads)", systemImage: "cpu")
                     }
+
+                    NavigationLink(destination: CombineView()) {
+                        Label("Combine", systemImage: "dot.radiowaves.left.and.right")
+                    }
                 }
             }
             .navigationTitle("Concurrency PoC")
