@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/Svitlana_Korostelova/**)",
+      "Bash(env)",
+      "Bash(wc:*)",
+      "Bash(python3 -m py_compile /Users/Svitlana_Korostelova/A3preparationPOC/.claude/skills/md-to-html-archive/scripts/generate.py)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "Bash(head -100 \"/Users/Svitlana_Korostelova/A3preparationPOC/Knowledge Base/Private & Shared-4/Architecture & Design \\(High-level\\) fe5363de54c047fc8073ede87f644a8d.md\")"
+    ]
+  }
+}

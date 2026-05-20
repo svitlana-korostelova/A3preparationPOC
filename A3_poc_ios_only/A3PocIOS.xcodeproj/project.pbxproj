@@ -98,8 +98,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
-				TargetAttributes = {
-				};
 			};
 			buildConfigurationList = 2E94D2036C6CC841295E3796 /* Build configuration list for PBXProject "A3PocIOS" */;
 			developmentRegion = en;

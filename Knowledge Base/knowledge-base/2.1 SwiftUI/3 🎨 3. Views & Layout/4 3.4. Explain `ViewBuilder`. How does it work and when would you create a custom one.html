@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>**3.4. Explain `ViewBuilder`. How does it work and when would you create a custom one?**</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.codehilite .hll{background-color:#ffffcc}
+.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
+.codehilite .err{color:#a61717;background-color:#e3d2d2}
+.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
+.codehilite .kp{color:#d73a49}
+.codehilite .o,.codehilite .ow{color:#005cc5}
+.codehilite .nb{color:#005cc5}
+.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
+.codehilite .nf{color:#6f42c1}
+.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
+.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
+.codehilite .na{color:#22863a}
+.codehilite .nt{color:#22863a}
+.codehilite .nv{color:#e36209}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.1 SwiftUI</a> › <a href="index.html">**🎨  3. Views &amp; Layout**</a></nav>
+<main>
+<h1>**3.4. Explain `ViewBuilder`. How does it work and when would you create a custom one?**</h1>
+<ul>
+<li>
+<p><strong><code>ViewBuilder</code></strong> is a SwiftUI-specific <strong>result builder</strong> attribute that allows you to write closures containing multiple SwiftUI views, which are then combined into a single view hierarchy. It lets you list multiple views inside containers or custom view initializers without explicit grouping.</p>
+<p><strong>How does <code>ViewBuilder</code> work?</strong></p>
+<ul>
+<li><strong>Transforms multiple statements:</strong> When you use <strong><code>@ViewBuilder</code></strong>, Swift automatically combines multiple view statements into a single return value, handling the type complexity for you.</li>
+<li><strong>Supports control flow:</strong> You can use <strong><code>if</code></strong>, <strong><code>else</code></strong>, and <strong><code>switch</code></strong>statements inside a <strong><code>@ViewBuilder</code></strong> closure, and it will handle the conditional view composition.</li>
+<li><strong>Type erasure:</strong> It wraps different view types into a single type (like <strong><code>TupleView</code></strong>, <strong><code>Group</code></strong>, or <strong><code>EmptyView</code></strong>).</li>
+</ul>
+<p><strong>Where is <code>ViewBuilder</code> used?</strong></p>
+<table>
+<thead>
+<tr>
+<th><strong>Use Case</strong></th>
+<th><strong>How <code>@ViewBuilder</code> Helps</strong></th>
+<th><strong>Example</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>View body</td>
+<td>Allows multiple views in body closure</td>
+<td>`var body: some View</td>
+</tr>
+<tr>
+<td>Note:var body: @ViewBuilder some View { ... } - implicitly`</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Custom containers</td>
+<td>Accepts multiple children in custom views</td>
+<td><code>struct MyStack&lt;Content: View&gt;: View { init(@ViewBuilder content: () &gt; Content) { ... } var body: some View { ... }}</code></td>
+</tr>
+<tr>
+<td>Modifiers/labels</td>
+<td>Enables flexible, multi-view closures</td>
+<td><code>Button(action: { ... }) { Image(systemName: "star") Text("Favorite") ...}</code></td>
+</tr>
+<tr>
+<td>Conditional logic</td>
+<td>Handles <strong><code>if</code></strong>/<strong><code>else</code></strong>/<strong><code>switch</code></strong> in view closures</td>
+<td><code>VStack { Text("Always") if isLoggedIn { Text("Welcome!") } else { Text("Please log in") } ...}</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>How does it work under the hood?</strong></p>
+<p>The compiler transforms the closure into calls to static methods like <strong><code>buildBlock</code></strong>, <strong><code>buildIf</code></strong>, and <strong><code>buildEither</code></strong> defined in the <strong><code>ViewBuilder</code></strong> struct.</p>
+<p>For example, this code:</p>
+<p><code>swift
+VStack {
+    Text("A")
+    if condition {
+        Text("B")
+    }
+    Text("C")
+}</code></p>
+<p>Is transformed (under the hood) into something like:</p>
+<p><code>swift
+ViewBuilder.**buildBlock**(
+    Text("A"),
+    ViewBuilder.**buildIf**(condition ? Text("B") : nil),
+    Text("C")
+)</code></p>
+<table>
+<thead>
+<tr>
+<th><strong>Where used</strong></th>
+<th><strong>What it does</strong></th>
+<th><strong>Example usage</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Before <strong><code>var</code></strong></td>
+<td>Multiple views in a property</td>
+<td><strong><code>@ViewBuilder var ...</code></strong></td>
+</tr>
+<tr>
+<td>Before <strong><code>func</code></strong></td>
+<td>Multiple views in a function</td>
+<td><strong><code>@ViewBuilder func ...</code></strong></td>
+</tr>
+<tr>
+<td>Before closure param</td>
+<td>Multiple views in closure parameter</td>
+<td><strong><code>init(@ViewBuilder ...)</code></strong></td>
+</tr>
+</tbody>
+</table>
+</li>
+</ul>
+</main>
+</body>
+</html>

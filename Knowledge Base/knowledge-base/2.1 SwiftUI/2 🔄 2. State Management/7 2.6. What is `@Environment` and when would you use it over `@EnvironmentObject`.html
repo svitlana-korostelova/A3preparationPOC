@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>**2.6. What is `@Environment` and when would you use it over `@EnvironmentObject`?**</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.codehilite .hll{background-color:#ffffcc}
+.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
+.codehilite .err{color:#a61717;background-color:#e3d2d2}
+.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
+.codehilite .kp{color:#d73a49}
+.codehilite .o,.codehilite .ow{color:#005cc5}
+.codehilite .nb{color:#005cc5}
+.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
+.codehilite .nf{color:#6f42c1}
+.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
+.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
+.codehilite .na{color:#22863a}
+.codehilite .nt{color:#22863a}
+.codehilite .nv{color:#e36209}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.1 SwiftUI</a> › <a href="index.html">**🔄  2. State Management**</a></nav>
+<main>
+<h1>**2.6. What is `@Environment` and when would you use it over `@EnvironmentObject`?**</h1>
+<p><strong>@Environment vs @EnvironmentObject</strong></p>
+<ul>
+<li><strong>@Environment</strong> is used to access values from the SwiftUI environment, such as system settings (color scheme, locale, accessibility, etc.) or custom values injected via <strong><code>.environment()</code></strong>.</li>
+<li><strong>@EnvironmentObject</strong> is for sharing a reference to an observable object (typically app-wide state or models) across many views.</li>
+</ul>
+<p><strong>When to use @Environment:</strong></p>
+<ul>
+<li>Use <strong><code>@Environment</code></strong> for lightweight, read-only values or system-provided settings.</li>
+<li>Use it for custom values that don’t require observable state or change notification.</li>
+<li>Prefer <strong><code>@EnvironmentObject</code></strong> when you need to share and observe changes to a model across multiple views.</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>┌─────────────────────────────────────────────────────────────────┐              |           SwiftUI Environment                                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   @Environment (KeyPath-based)     @EnvironmentObject (Type)    │
+│   ┌─────────────────────────┐      ┌──────────────────────┐     │
+│   │ \.colorScheme           │      │ UserSettings.self    │     │
+│   │ \.locale                │      │ AuthManager.self     │     │
+│   │ \.dismiss               │      │ CartViewModel.self   │     │
+│   │ \.horizontalSizeClass   │      │                      │     │
+│   │ \.customKey (yours)     │      │ (ObservableObject)   │     │
+│   └─────────────────────────┘      └──────────────────────┘     │
+│                                                                 │
+│         Value Types                    Reference Types          │
+│     (struct, enum, Int)                   (class)               │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="kd">import</span><span class="w"> </span><span class="nc">SwiftUI</span>
+
+<span class="kd">struct</span><span class="w"> </span><span class="nc">ExampleView</span><span class="p">:</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="p">@</span><span class="n">Environment</span><span class="p">(</span><span class="err">\</span><span class="p">.</span><span class="n">colorScheme</span><span class="p">)</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">colorScheme</span>
+<span class="w">    </span><span class="p">@</span><span class="n">Environment</span><span class="p">(</span><span class="err">\</span><span class="p">.</span><span class="n">myCustomValue</span><span class="p">)</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">customValue</span>
+
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">body</span><span class="p">:</span><span class="w"> </span><span class="n">some</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">VStack</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Text</span><span class="p">(</span><span class="s">&quot;Color scheme: </span><span class="si">\(</span><span class="n">colorScheme</span><span class="w"> </span><span class="p">==</span><span class="w"> </span><span class="p">.</span><span class="n">dark</span><span class="w"> </span><span class="p">?</span><span class="w"> </span><span class="s">&quot;Dark&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Light&quot;</span><span class="si">)</span><span class="s">&quot;</span><span class="p">)</span>
+<span class="w">            </span><span class="n">Text</span><span class="p">(</span><span class="s">&quot;Custom value: </span><span class="si">\(</span><span class="n">customValue</span><span class="si">)</span><span class="s">&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Custom environment key</span>
+<span class="kd">struct</span><span class="w"> </span><span class="nc">MyCustomValueKey</span><span class="p">:</span><span class="w"> </span><span class="n">EnvironmentKey</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">static</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nv">defaultValue</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;Default&quot;</span>
+<span class="p">}</span>
+<span class="kd">extension</span><span class="w"> </span><span class="nc">EnvironmentValues</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">myCustomValue</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kr">get</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="kc">self</span><span class="p">[</span><span class="n">MyCustomValueKey</span><span class="p">.</span><span class="kc">self</span><span class="p">]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="kr">set</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="kc">self</span><span class="p">[</span><span class="n">MyCustomValueKey</span><span class="p">.</span><span class="kc">self</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">newValue</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">struct</span><span class="w"> </span><span class="nc">ParentView</span><span class="p">:</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">body</span><span class="p">:</span><span class="w"> </span><span class="n">some</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">ExampleView</span><span class="p">()</span>
+<span class="w">            </span><span class="p">.</span><span class="n">environment</span><span class="p">(</span><span class="err">\</span><span class="p">.</span><span class="n">myCustomValue</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Injected Value&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="cm">/**/</span><span class="w">  </span><span class="n">MARK</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">iOS</span><span class="w"> </span><span class="mi">17</span><span class="o">+</span><span class="p">:</span><span class="w"> </span><span class="p">@</span><span class="n">Observable</span><span class="w"> </span><span class="n">Changes</span><span class="w"> </span><span class="n">Everything</span><span class="o">**</span>
+
+<span class="c1">// OLD WAY (iOS 13-16): ObservableObject + @EnvironmentObject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">OldSettings</span><span class="p">:</span><span class="w"> </span><span class="n">ObservableObject</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="p">@</span><span class="n">Published</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">theme</span><span class="p">:</span><span class="w"> </span><span class="n">Theme</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">.</span><span class="n">system</span>
+<span class="w">    </span><span class="p">@</span><span class="n">Published</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">fontSize</span><span class="p">:</span><span class="w"> </span><span class="n">CGFloat</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">16</span>
+<span class="p">}</span>
+
+<span class="kd">struct</span><span class="w"> </span><span class="nc">OldView</span><span class="p">:</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="p">@</span><span class="n">EnvironmentObject</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">settings</span><span class="p">:</span><span class="w"> </span><span class="n">OldSettings</span><span class="w">  </span><span class="c1">// Type-based</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">body</span><span class="p">:</span><span class="w"> </span><span class="n">some</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* ... */</span><span class="w"> </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// NEW WAY (iOS 17+): @Observable + @Environment</span>
+<span class="p">@</span><span class="n">Observable</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">NewSettings</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">theme</span><span class="p">:</span><span class="w"> </span><span class="n">Theme</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">.</span><span class="n">system</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">fontSize</span><span class="p">:</span><span class="w"> </span><span class="n">CGFloat</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">16</span>
+<span class="p">}</span>
+
+<span class="kd">struct</span><span class="w"> </span><span class="nc">NewView</span><span class="p">:</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="p">@</span><span class="n">Environment</span><span class="p">(</span><span class="n">NewSettings</span><span class="p">.</span><span class="kc">self</span><span class="p">)</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">settings</span><span class="w">  </span><span class="c1">// Type in Environment!</span>
+
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">body</span><span class="p">:</span><span class="w"> </span><span class="n">some</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Only re-renders when accessed properties change</span>
+<span class="w">        </span><span class="n">Text</span><span class="p">(</span><span class="s">&quot;Size: </span><span class="si">\(</span><span class="n">settings</span><span class="p">.</span><span class="n">fontSize</span><span class="si">)</span><span class="s">&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Injection also uses .environment now</span>
+<span class="kd">struct</span><span class="w"> </span><span class="nc">ContentView</span><span class="p">:</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="p">@</span><span class="n">State</span><span class="w"> </span><span class="kd">private</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">settings</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">NewSettings</span><span class="p">()</span>
+
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nv">body</span><span class="p">:</span><span class="w"> </span><span class="n">some</span><span class="w"> </span><span class="n">View</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">ChildView</span><span class="p">()</span>
+<span class="w">            </span><span class="p">.</span><span class="n">environment</span><span class="p">(</span><span class="n">settings</span><span class="p">)</span><span class="w">  </span><span class="c1">// Not .environmentObject!</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Environment values in SwiftUI are stored in a special data structure called <strong><code>EnvironmentValues</code></strong>. This structure is maintained by SwiftUI for each view hierarchy and acts like a dictionary, holding key-value pairs for all environment properties (system and custom).</p>
+<hr />
+<p><strong>More Detail:</strong></p>
+<ul>
+<li>Each view in SwiftUI has access to its own <strong><code>EnvironmentValues</code></strong>instance.</li>
+<li>When you use <strong><code>.environment(...)</code></strong> or <strong><code>.environmentObject(...)</code></strong>, SwiftUI updates the environment values for the subtree starting at that view.</li>
+<li>These values are <strong>not global</strong>; they are scoped to the view hierarchy and propagate down to child views.</li>
+<li>When a view accesses an environment value (e.g., <strong><code>@Environment(\.colorScheme)</code></strong>), SwiftUI looks up the value in the current <strong><code>EnvironmentValues</code></strong> for that view.</li>
+</ul>
+</main>
+</body>
+</html>
