@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3.13. Performance &amp; Optimization</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.codehilite .hll{background-color:#ffffcc}
+.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
+.codehilite .err{color:#a61717;background-color:#e3d2d2}
+.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
+.codehilite .kp{color:#d73a49}
+.codehilite .o,.codehilite .ow{color:#005cc5}
+.codehilite .nb{color:#005cc5}
+.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
+.codehilite .nf{color:#6f42c1}
+.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
+.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
+.codehilite .na{color:#22863a}
+.codehilite .nt{color:#22863a}
+.codehilite .nv{color:#e36209}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.1 SwiftUI</a> › <a href="index.html">**🎨  3. Views &amp; Layout**</a></nav>
+<main>
+<h1>3.13. ⚡ Performance &amp; Optimization</h1>
+
+<blockquote>
+<p>✅ <strong>Equatable optimization</strong> → covered in 2.7 (Equatable Conformance)<br>
+✅ <strong>drawingGroup()</strong> → covered in 2.7 (drawingGroup)<br>
+✅ <strong>LazyVStack vs VStack</strong> → covered in 4.1 / 4.2</p>
+</blockquote>
+
+<hr>
+
+<h2>P.1. How does SwiftUI decide when to re-render a view? How does it diff the view hierarchy?</h2>
+
+<p>SwiftUI views are <strong>value types (structs)</strong>. When state changes, SwiftUI creates a new view value and compares it to the previous one using a <strong>virtual view graph</strong> (similar to a virtual DOM).</p>
+
+<h3>Re-render triggers</h3>
+<ul>
+<li><code>@State</code>, <code>@Binding</code>, <code>@ObservedObject</code>, <code>@EnvironmentObject</code> property changes invalidate the view</li>
+<li>SwiftUI calls <code>body</code> again only for views whose <strong>dependencies</strong> changed — not the whole tree</li>
+</ul>
+
+<h3>Diffing mechanism</h3>
+<ul>
+<li>SwiftUI maintains an internal tree of view descriptions</li>
+<li>It compares <strong>view type + value</strong>: if both match, body is skipped; if different, body re-runs and the diff is applied</li>
+<li><code>some View</code> (opaque type) preserves concrete type info at compile time → precise diffing</li>
+<li><code>AnyView</code> erases type → SwiftUI can't diff, tears down and rebuilds the entire subtree</li>
+</ul>
+
+<p><strong>Key insight:</strong> SwiftUI doesn't diff the rendered pixels — it diffs the <strong>view description tree</strong> (structs). If a view's struct value is identical to the previous render, SwiftUI skips the layout and drawing passes for that branch.</p>
+
+<pre><code class="language-swift">// SwiftUI can diff this precisely — knows it's always a Text
+var body: some View { Text(name) }
+
+// SwiftUI can't diff — AnyView loses type info, always rebuilds
+var body: AnyView { AnyView(Text(name)) }
+</code></pre>
+
+<hr>
+
+<h2>P.2. How would you profile and debug SwiftUI performance issues?</h2>
+
+<h3>1. <code>Self._printChanges()</code> (iOS 15+) — first stop</h3>
+<pre><code class="language-swift">var body: some View {
+    let _ = Self._printChanges()
+    // Output: "MyView: @self, _counter changed."
+    Text("Hello")
+}
+</code></pre>
+<p>Logs exactly which dependency caused the re-render.</p>
+
+<h3>2. Instruments — SwiftUI template</h3>
+<ul>
+<li>Open <strong>Instruments → SwiftUI</strong> template</li>
+<li>Tracks: view body evaluations, layout count, render count per view</li>
+<li>Reveals which views re-evaluate too frequently</li>
+</ul>
+
+<h3>3. Instruments — Time Profiler</h3>
+<ul>
+<li>Identifies expensive <code>body</code> computations</li>
+<li>Shows CPU hotspots inside view hierarchy updates</li>
+</ul>
+
+<h3>4. Xcode View Hierarchy Debugger</h3>
+<ul>
+<li>Pause at runtime → Debug View Hierarchy button</li>
+<li>Inspect the actual rendered tree, detect phantom views, misaligned frames</li>
+</ul>
+
+<h3>5. Layout debugging (visual, not perf measurement)</h3>
+<pre><code class="language-swift">someView.border(.red)
+someView.background(Color.red.opacity(0.2))
+</code></pre>
+<p>Shows view frame boundaries. Useful for catching layout bugs (e.g. a view unexpectedly fills all space, forcing extra layout passes) — but does <strong>not</strong> measure render time or body call frequency. Use Instruments for actual perf numbers.</p>
+
+<h3>Workflow</h3>
+<p><code>_printChanges</code> → find over-rendering view → Instruments SwiftUI → confirm body call count → optimize (extract subview / use <code>@Observable</code> / add <code>.equatable()</code>)</p>
+
+<hr>
+
+<h2>P.3. What are the performance implications of <code>@EnvironmentObject</code> vs passing data explicitly?</h2>
+
+<table>
+<thead>
+<tr><th></th><th><code>@EnvironmentObject</code></th><th>Explicit prop</th></tr>
+</thead>
+<tbody>
+<tr><td>Re-render scope</td><td>All views in subtree that subscribe</td><td>Only the view receiving the prop</td></tr>
+<tr><td>Granularity</td><td>Object-level (any <code>@Published</code> change notifies all)</td><td>Value-level (SwiftUI diffs the passed value)</td></tr>
+<tr><td>Coupling</td><td>Implicit / hidden dependency</td><td>Explicit / visible</td></tr>
+<tr><td>Testability</td><td>Harder (must inject in previews/tests)</td><td>Easy</td></tr>
+</tbody>
+</table>
+
+<h3>The problem</h3>
+<pre><code class="language-swift">// ❌ SearchBar typing triggers re-render of ResultsView too
+class AppState: ObservableObject {
+    @Published var searchText = ""   // changes rapidly
+    @Published var results: [Item] = []
+}
+// Every view using @EnvironmentObject var appState re-renders on any change
+</code></pre>
+
+<h3>Solutions</h3>
+<ul>
+<li>Pass only the data a child needs as <code>let</code> or <code>@Binding</code> — SwiftUI diffs the value</li>
+<li>Split into smaller <code>ObservableObject</code>s (see 2.7 "Split ObservableObject")</li>
+<li>iOS 17+: use <code>@Observable</code> — property-level tracking means only views reading a specific property update</li>
+</ul>
+
+<p><strong>Rule of thumb:</strong> Use <code>@EnvironmentObject</code> for truly global, infrequently-changing state (auth, theme). Prefer explicit passing for performance-sensitive or leaf views.</p>
+
+</main>
+</body>
+</html>

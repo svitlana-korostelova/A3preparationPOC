@@ -1,15 +1,10 @@
 import SwiftUI
 
-// MARK: - Home Screen
-// Entry point presenting all concurrency topics.
-// Each row navigates to a dedicated demo scene.
+// MARK: - Concurrency Home Screen
+// Lists all concurrency topics; each row navigates to its demo scene.
 
 struct HomeView: View {
-    
-    
     var body: some View {
-        
-        Text("")
         NavigationStack {
             List {
                 Section(header: Text("Concurrency Topics")) {
@@ -43,7 +38,7 @@ struct HomeView: View {
                     }
                 }
             }
-            .navigationTitle("Concurrency PoC")
+            .navigationTitle("Concurrency")
             .listStyle(.insetGrouped)
         }
     }

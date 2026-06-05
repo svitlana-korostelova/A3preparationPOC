@@ -4,7 +4,17 @@ import SwiftUI
 struct A3PocIOSApp: App {
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            TabView {
+                ArchitectureHomeView()
+                    .tabItem {
+                        Label("Architecture", systemImage: "building.columns")
+                    }
+
+                HomeView()
+                    .tabItem {
+                        Label("Concurrency", systemImage: "arrow.triangle.branch")
+                    }
+            }
         }
     }
 }
