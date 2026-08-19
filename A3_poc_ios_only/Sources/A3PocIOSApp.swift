@@ -14,6 +14,11 @@ struct A3PocIOSApp: App {
                     .tabItem {
                         Label("Concurrency", systemImage: "arrow.triangle.branch")
                     }
+
+                ExamplesHomeView()
+                    .tabItem {
+                        Label("Examples", systemImage: "play.rectangle.on.rectangle")
+                    }
             }
         }
     }
