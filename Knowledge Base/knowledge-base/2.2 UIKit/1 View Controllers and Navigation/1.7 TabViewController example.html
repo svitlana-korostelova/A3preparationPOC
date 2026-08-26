@@ -62,7 +62,54 @@ ul.toc li a{font-size:1.05em}
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">1. View Controllers and Navigation</a></nav>
 <main>
 <h1>1.7. TabViewController example</h1>
-<p>TODO: Ira - add example</p>
+<p><code>UITabBarController</code> is a <strong>container VC</strong> (see 1.6) that manages an array of <code>viewControllers</code>, shows one at a time, and lets the user switch via the tab bar. Each tab is usually a <code>UINavigationController</code> wrapping the actual screen, so pushing works independently per tab.</p>
+<div class="codehilite"><pre><code>final class MainTabBarController: UITabBarController {
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        let home = UINavigationController(rootViewController: HomeViewController())
+        home.tabBarItem = UITabBarItem(title: "Home", image: UIImage(systemName: "house"), tag: 0)
+
+        let search = UINavigationController(rootViewController: SearchViewController())
+        search.tabBarItem = UITabBarItem(title: "Search", image: UIImage(systemName: "magnifyingglass"), tag: 1)
+
+        let profile = UINavigationController(rootViewController: ProfileViewController())
+        profile.tabBarItem = UITabBarItem(title: "Profile", image: UIImage(systemName: "person"), tag: 2)
+
+        viewControllers = [home, search, profile]   // order = tab order
+        selectedIndex = 0
+        delegate = self   // see explanation below
+    }
+}
+</code></pre></div>
+<p><strong>What <code>delegate = self</code> means:</strong> <code>UITabBarController</code> has a <code>weak var delegate: UITabBarControllerDelegate?</code> property — the standard <strong>delegation pattern</strong> used throughout UIKit. By writing <code>delegate = self</code>, <code>MainTabBarController</code> registers <em>itself</em> as the object that should be notified about tab bar events (e.g. "user is about to select this tab", "user did select this tab"). It's exactly the same pattern as <code>tableView.delegate = self</code> or <code>scrollView.delegate = self</code>.</p>
+<ul>
+<li><code>self</code> must conform to <code>UITabBarControllerDelegate</code> (done via the <code>extension MainTabBarController: UITabBarControllerDelegate</code> below) — otherwise it's a compile error.</li>
+<li>The property is <code>weak</code> to avoid a retain cycle (the tab bar controller doesn't own its delegate).</li>
+<li>Without setting <code>delegate</code>, <code>UITabBarController</code> works fine for basic tab switching — the delegate is only needed if you want to <strong>hook into</strong> the switching process: veto a switch (<code>shouldSelect</code>), react after a switch (<code>didSelect</code>), or customize animated transitions between tabs (<code>animationControllerForTransitionFrom:to:</code>).</li>
+</ul>
+<p><strong>Common tasks:</strong></p>
+<div class="codehilite"><pre><code>// switch tab programmatically
+tabBarController?.selectedIndex = 1
+
+// badge on a tab
+tabBarController?.viewControllers?[1].tabBarItem.badgeValue = "3"
+
+// intercept/veto a tab switch
+extension MainTabBarController: UITabBarControllerDelegate {
+    func tabBarController(_ tabBarController: UITabBarController,
+                           shouldSelect viewController: UIViewController) -> Bool {
+        // e.g. block leaving an unsaved form, or require login for a tab
+        return true
+    }
+}
+</code></pre></div>
+<p>Each tab's <code>UINavigationController</code> is set as the root by <code>UITabBarController</code>, which is why <code>viewWillAppear</code>/<code>viewDidDisappear</code> fire correctly on the visible tab's top VC — same containment mechanism as 1.6.</p>
+<p><strong>Common Interview Questions</strong></p>
+<p><strong>Q: Why wrap each tab's root VC in its own <code>UINavigationController</code>?</strong> A: So each tab keeps its own independent push/pop navigation stack — switching tabs and back preserves where you were in each stack.</p>
+<p><strong>Q: How do you badge a tab or add a "More" overflow?</strong> A: <code>tabBarItem.badgeValue</code> for badges; if you have more than 5 tabs, <code>UITabBarController</code> automatically adds a "More" tab that lists the rest.</p>
+<p><strong>Q: How would you build this in SwiftUI instead?</strong> A: <code>TabView { ... .tabItem { ... } }</code> — conceptually the same container pattern, just declarative.</p>
 </main>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>2.3. What is transformation matrix? TODO: Ira</title>
+<title>2.3. What is transformation matrix?</title>
 <style>
 body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
@@ -61,8 +61,70 @@ ul.toc li a{font-size:1.05em}
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2. Views</a></nav>
 <main>
-<h1>2.3. What is transformation matrix? TODO: Ira</h1>
-<p>notes:</p>
+<h1>2.3. What is transformation matrix?</h1>
+<p><strong>Core idea:</strong> A transformation matrix encodes geometric operations (translate, scale, rotate, skew, perspective) as a single matrix that's applied to a view/layer's coordinate space when rendering. It changes <strong>where/how content is drawn on screen</strong> without touching <code>frame</code>/<code>bounds</code>/Auto Layout — the layout system still thinks the view is at its original frame; only the <em>presentation</em> is transformed.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>CGAffineTransform</code></th>
+<th><code>CATransform3D</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lives on</td>
+<td><code>UIView.transform</code></td>
+<td><code>CALayer.transform</code></td>
+</tr>
+<tr>
+<td>Dimensions</td>
+<td>2D (3×3 matrix, last column implicit <code>0 0 1</code>)</td>
+<td>3D (4×4 matrix) — supports <code>z</code> translation, rotation around x/y, perspective</td>
+</tr>
+<tr>
+<td>Common ops</td>
+<td>translate, scale, rotate, skew</td>
+<td>all of the above + 3D rotation, perspective (<code>m34</code>)</td>
+</tr>
+<tr>
+<td>Applied around</td>
+<td><code>view.center</code> / layer's <code>anchorPoint</code></td>
+<td>layer's <code>anchorPoint</code></td>
+</tr>
+<tr>
+<td>Interop</td>
+<td colspan="2"><code>CATransform3DMakeAffineTransform</code> / <code>CATransform3DGetAffineTransform</code> convert between them</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><code>// CGAffineTransform — 2D, on UIView
+view.transform = .identity
+view.transform = CGAffineTransform(translationX: 50, y: 0)
+view.transform = view.transform.scaledBy(x: 1.2, y: 1.2)          // combine
+view.transform = view.transform.rotated(by: .pi / 4)
+
+UIView.animate(withDuration: 0.3) {
+    view.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
+}
+
+// CATransform3D — 3D, on CALayer, e.g. flip/perspective card animation
+var transform = CATransform3DIdentity
+transform.m34 = -1 / 500                 // perspective (further = smaller)
+transform = CATransform3DRotate(transform, .pi / 4, 0, 1, 0)  // rotate around Y axis
+view.layer.transform = transform
+</code></pre></div>
+<p><strong>Matrix form (affine, 2D):</strong></p>
+<div class="codehilite"><pre><code>| a  b  0 |      x' = a*x + c*y + tx
+| c  d  0 |  →   y' = b*x + d*y + ty
+| tx ty 1 |
+</code></pre></div>
+<p><code>a,d</code> = scale, <code>b,c</code> = rotation/skew, <code>tx,ty</code> = translation — this is exactly why compound transforms (scale + rotate + translate) can be combined by matrix multiplication instead of applying steps separately.</p>
+<p><strong>Common Interview Questions</strong></p>
+<p><strong>Q: Does changing <code>transform</code> update <code>frame</code>/constraints?</strong> A: No — <code>frame</code> becomes derived/undefined when a non-identity transform is applied (Apple docs warn against reading <code>frame</code> on a transformed view); Auto Layout still lays out based on <code>bounds</code>/<code>center</code> as if untransformed, then the transform is applied on top at render time.</p>
+<p><strong>Q: Why use <code>transform</code> instead of animating <code>frame</code>?</strong> A: <code>transform</code> is GPU-accelerated (pure matrix math on the render layer) and doesn't retrigger layout; animating <code>frame</code>/constraints can be more expensive and can fight Auto Layout.</p>
+<p><strong>Q: How do you reset a transform?</strong> A: Set it back to <code>.identity</code> (<code>CGAffineTransform.identity</code> / <code>CATransform3DIdentity</code>) — never try to "undo" by hand-inverting unless you specifically need the inverse matrix (<code>CGAffineTransform.inverted()</code>).</p>
+<p><strong>Q: 2D vs 3D — when do you need <code>CATransform3D</code>?</strong> A: When you need depth (<code>z</code> translation/rotation) or perspective, e.g. flip transitions, card-flip animations, parallax — plain <code>CGAffineTransform</code> can't represent perspective or out-of-plane rotation.</p>
 </main>
 </body>
 </html>

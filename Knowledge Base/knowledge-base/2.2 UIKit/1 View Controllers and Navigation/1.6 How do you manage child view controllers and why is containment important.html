@@ -62,7 +62,76 @@ ul.toc li a{font-size:1.05em}
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">1. View Controllers and Navigation</a></nav>
 <main>
 <h1>1.6. How do you manage child view controllers and why is containment important?</h1>
-<p>TODO: Ira - fill in</p>
+<p><strong>Containment</strong> = embedding one view controller's view inside another (<code>UINavigationController</code>, <code>UITabBarController</code>, custom containers) while keeping each VC's own lifecycle, layout, and view hierarchy self-contained and independently reusable.</p>
+<p><strong>Why it matters:</strong> without proper containment, if you just do <code>addSubview(childVC.view)</code> without the containment calls, the child never gets <code>viewWillAppear</code>/<code>viewDidAppear</code>, rotation and trait-collection changes aren't forwarded, and UIKit doesn't know who "owns" the child — leading to lifecycle bugs, wrong safe-area/status-bar behavior, and memory-management ambiguity.</p>
+<p><strong>The 4 required steps to add a child:</strong></p>
+<div class="codehilite"><pre><code>func add(_ child: UIViewController, to container: UIView) {
+    addChild(child)                       // 1. establish parent-child relationship
+    container.addSubview(child.view)      // 2. insert child's view into hierarchy
+    child.view.frame = container.bounds   // 3. layout (or Auto Layout constraints)
+    child.didMove(toParent: self)         // 4. tell child the move completed
+}
+
+func remove(_ child: UIViewController) {
+    child.willMove(toParent: nil)         // 1. about to be removed
+    child.view.removeFromSuperview()      // 2. remove view
+    child.removeFromParent()              // 3. break parent-child relationship
+}
+</code></pre></div>
+<ul>
+<li><code>addChild(_:)</code> / <code>removeFromParent()</code> manage the <strong>VC hierarchy</strong> (<code>parent</code>/<code>children</code>) — this is what forwards <code>viewWillAppear</code>, <code>viewDidAppear</code>, rotation, trait collection changes, and status bar/appearance queries to the child.</li>
+<li><code>willMove(toParent:)</code> / <code>didMove(toParent:)</code> are lifecycle hooks the child can override to know when it's being attached/detached — <strong>always call <code>didMove(toParent:)</code> after adding</strong> and <strong><code>willMove(toParent: nil)</code> before removing</strong>, otherwise appearance callbacks won't fire correctly.</li>
+</ul>
+<p><strong>Why containment is important</strong></p>
+<table>
+<thead>
+<tr>
+<th>Without containment (<code>addSubview</code> only)</th>
+<th>With proper containment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>viewWillAppear</code>/<code>viewDidAppear</code> never called on child</td>
+<td>Lifecycle events correctly forwarded</td>
+</tr>
+<tr>
+<td>Rotation/trait collection changes not propagated</td>
+<td><code>willTransition(to:with:)</code> forwarded automatically</td>
+</tr>
+<tr>
+<td>UIKit doesn't know the "owning" VC → ambiguous responder chain, status bar, <code>additionalSafeAreaInsets</code></td>
+<td>Child is a first-class part of the VC tree</td>
+</tr>
+<tr>
+<td>Child VC leaks or behaves like a plain view</td>
+<td>Clean modular, reusable, independently testable screens</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Real-world example:</strong> a custom paged/segmented container (like a mini <code>UIPageViewController</code>) that swaps children when a segment changes:</p>
+<div class="codehilite"><pre><code>final class ContainerViewController: UIViewController {
+    private var current: UIViewController?
+
+    func display(_ vc: UIViewController) {
+        if let current {
+            current.willMove(toParent: nil)
+            current.view.removeFromSuperview()
+            current.removeFromParent()
+        }
+        addChild(vc)
+        vc.view.frame = view.bounds
+        view.addSubview(vc.view)
+        vc.didMove(toParent: self)
+        current = vc
+    }
+}
+</code></pre></div>
+<p><code>UINavigationController</code> and <code>UITabBarController</code> do exactly this under the hood — that's why pushing/switching tabs correctly fires <code>viewWillAppear</code>/<code>viewDidDisappear</code> on the right VCs.</p>
+<p><strong>Common Interview Questions</strong></p>
+<p><strong>Q: What happens if you skip <code>addChild</code>/<code>didMove(toParent:)</code> and just add the view?</strong> A: The child's view displays, but it's an "orphan" — no lifecycle forwarding, wrong <code>parent</code>, and Auto Layout/safe-area/status-bar queries can behave unexpectedly.</p>
+<p><strong>Q: Do container view controllers need extra work for rotation?</strong> A: No — as long as containment is set up correctly, <code>viewWillTransition(to:with:)</code> and trait collection changes are automatically forwarded to all children.</p>
+<p><strong>Q: When would you build a custom container instead of using <code>UINavigationController</code>/<code>UITabBarController</code>?</strong> A: When you need custom transition animations, side-by-side/overlapping children (e.g. a drawer, paged onboarding, or split panels) that Apple's stock containers don't support.</p>
 </main>
 </body>
 </html>

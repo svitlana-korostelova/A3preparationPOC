@@ -62,7 +62,28 @@ ul.toc li a{font-size:1.05em}
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2. Views</a></nav>
 <main>
 <h1>2.6. Why do we reuse cells in table view or collection view?</h1>
-<p>notes:</p>
+
+<ul>
+<li>Only a handful of rows are ever visible — reuse keeps memory/CPU proportional to <strong>visible</strong> cells, not total data set size, instead of alloc + Auto Layout pass per row.</li>
+<li>UIKit pools off-screen cells per <code>reuseIdentifier</code>; <code>dequeueReusableCell(withIdentifier:for:)</code> recycles one instead of creating new.</li>
+</ul>
+
+<div class="codehilite"><pre><code>tableView.register(ImageCell.self, forCellReuseIdentifier: "ImageCell")
+let cell = tableView.dequeueReusableCell(withIdentifier: "ImageCell", for: indexPath) as! ImageCell
+cell.configure(with: items[indexPath.row]) // must fully reconfigure - old state may remain
+</code></pre></div>
+
+<ul>
+<li>Trade-off: must fully reconfigure/reset (<code>prepareForReuse()</code>) every reused cell, or stale data leaks across rows — see <a href="2.5%20Rules%20for%20tablecollection%20views%3B%20unexpected%20behaviors.html">2.5</a>.</li>
+</ul>
+
+<p><strong>Common Interview Questions</strong></p>
+
+<p><strong>Q: What happens if a reuse identifier isn't registered?</strong> A: <code>dequeueReusableCell(withIdentifier:for:)</code> crashes; the non-<code>for:</code> variant returns <code>nil</code> instead.</p>
+
+<p><strong>Q: Why does reuse cause the "wrong image on wrong row" bug?</strong> A: An async load for row N finishes after that cell was recycled for row M; fix with a per-request token invalidated in <code>prepareForReuse()</code>.</p>
+
+<p><strong>Q: Does SwiftUI's <code>List</code>/<code>LazyVStack</code> need manual reuse?</strong> A: No explicit <code>reuseIdentifier</code>, but it's the same idea — lazy/virtualized rendering of only near-visible rows.</p>
 </main>
 </body>
 </html>

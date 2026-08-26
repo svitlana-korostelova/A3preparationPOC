@@ -63,6 +63,121 @@ ul.toc li a{font-size:1.05em}
 <main>
 <h1>2.4. How to create custom container view controller if you do not want to use navigation vc?</h1>
 
+<p><strong>Core idea:</strong> Use UIKit's view controller <strong>containment API</strong> — <code>addChild</code>, <code>didMove(toParent:)</code>, <code>willMove(toParent:)</code>, <code>removeFromParent()</code> — to embed one or more child VCs' views inside a parent VC. This is the same mechanism <code>UINavigationController</code>/<code>UITabBarController</code> use internally, but you control the layout/transition yourself (e.g. custom tab switcher, onboarding pager, side menu, a mini "navigation stack").</p>
+
+<p><strong>Full example — a custom push/pop container (mini nav controller):</strong></p>
+
+<div class="codehilite"><pre><code>final class ContainerViewController: UIViewController {
+    private var stack: [UIViewController] = []
+
+    private func addChildView(_ child: UIViewController) {
+        addChild(child)
+        child.view.frame = view.bounds
+        child.view.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(child.view)
+        NSLayoutConstraint.activate([
+            child.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            child.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            child.view.topAnchor.constraint(equalTo: view.topAnchor),
+            child.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        child.didMove(toParent: self)
+    }
+
+    private func removeChildView(_ child: UIViewController) {
+        child.willMove(toParent: nil)
+        child.view.removeFromSuperview()
+        child.removeFromParent()
+    }
+
+    func push(_ child: UIViewController, animated: Bool = true) {
+        let previous = stack.last
+        stack.append(child)
+        addChildView(child)
+
+        guard animated, let previous else { return }
+        child.view.frame = view.bounds.offsetBy(dx: view.bounds.width, dy: 0)
+        UIView.animate(withDuration: 0.3) {
+            child.view.frame = self.view.bounds
+            previous.view.frame = previous.view.frame.offsetBy(dx: -self.view.bounds.width, dy: 0)
+        } completion: { _ in
+            previous.view.frame = self.view.bounds // reset for reuse if popped back to
+        }
+    }
+
+    func pop(animated: Bool = true) {
+        guard stack.count > 1 else { return }
+        let top = stack.removeLast()
+        let previous = stack.last!
+
+        // insert `previous` back below `top` before animating out
+        view.insertSubview(previous.view, belowSubview: top.view)
+        previous.view.frame = view.bounds
+
+        let finish = {
+            self.removeChildView(top)
+        }
+        guard animated else { return finish() }
+
+        UIView.animate(withDuration: 0.3) {
+            top.view.frame = self.view.bounds.offsetBy(dx: self.view.bounds.width, dy: 0)
+        } completion: { _ in finish() }
+    }
+}
+</code></pre></div>
+
+<p><strong>Usage — pushing multiple view controllers:</strong></p>
+
+<div class="codehilite"><pre><code>final class FirstViewController: UIViewController {
+    weak var container: ContainerViewController?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBlue
+        let button = UIButton(type: .system)
+        button.setTitle("Push Second", for: .normal)
+        button.addAction(UIAction { [weak self] _ in
+            self?.container?.push(SecondViewController.make(container: self?.container))
+        }, for: .touchUpInside)
+        button.center = view.center
+        view.addSubview(button)
+    }
+}
+
+final class SecondViewController: UIViewController {
+    weak var container: ContainerViewController?
+
+    static func make(container: ContainerViewController?) -&gt; SecondViewController {
+        let vc = SecondViewController()
+        vc.container = container
+        return vc
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemGreen
+        let pop = UIButton(type: .system)
+        pop.setTitle("Pop", for: .normal)
+        pop.addAction(UIAction { [weak self] _ in self?.container?.pop() }, for: .touchUpInside)
+        pop.center = view.center
+        view.addSubview(pop)
+    }
+}
+
+// wiring it up, e.g. in SceneDelegate / AppDelegate
+let container = ContainerViewController()
+let first = FirstViewController()
+first.container = container
+container.push(first, animated: false) // root, no animation
+window?.rootViewController = container
+</code></pre></div>
+
+<p><strong>Q: Why call both <code>addChild</code>/<code>removeFromParent</code> and <code>didMove</code>/<code>willMove</code>?</strong> A: <code>addChild</code>/<code>removeFromParent</code> register the containment relationship (so appearance/rotation/trait events propagate); <code>willMove(toParent:)</code>/<code>didMove(toParent:)</code> are lifecycle hooks the child can override — call <code>willMove(toParent: nil)</code> <em>before</em> removing the view, and <code>didMove(toParent: self)</code> <em>after</em> adding it.</p>
+
+<p><strong>Q: How do you animate the swap?</strong> A: Use <code>transition(from:to:duration:options:animations:completion:)</code>, or manually animate frames as above — both must stay bracketed by the same containment calls.</p>
+
+<p><strong>Q: Why keep <code>previous.view</code> under <code>top.view</code> during pop?</strong> A: So the outgoing view slides off while the one underneath is already visible, matching <code>UINavigationController</code>'s pop transition instead of flashing a blank container.</p>
+
 </main>
 </body>
 </html>

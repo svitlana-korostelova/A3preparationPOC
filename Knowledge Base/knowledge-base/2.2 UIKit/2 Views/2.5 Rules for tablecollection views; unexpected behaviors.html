@@ -62,7 +62,114 @@ ul.toc li a{font-size:1.05em}
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2. Views</a></nav>
 <main>
 <h1>2.5. Rules for table/collection views; unexpected behaviors</h1>
-<p>notes: </p>
+
+<p><strong>Core rules you must follow:</strong></p>
+
+<ol>
+<li><strong>Register before you dequeue.</strong> <code>register(_:forCellReuseIdentifier:)</code> / <code>register(_:forCellWithReuseIdentifier:)</code> (class or nib) must run before <code>dequeueReusableCell</code>, otherwise it crashes (<code>dequeueReusableCell(withIdentifier:for:)</code> always crashes without registration; the non-<code>for:</code> variant just returns <code>nil</code>).</li>
+<li><strong>Fully configure every reused cell — every time.</strong> Cells come from a reuse pool, so any property you don't overwrite carries over from whatever row previously used that cell (stale image, checkmark, label text, background color).</li>
+<li><strong>Reset transient/async state in <code>prepareForReuse()</code>.</strong> Cancel in-flight image loads, reset <code>accessoryType</code>, <code>isSelected</code>, custom subviews' visibility — anything that isn't driven unconditionally by <code>cellForRowAt</code>.</li>
+<li><strong>Data source counts must match reality before/after every update.</strong> <code>numberOfRowsInSection</code> must reflect the model <em>before</em> <code>reloadData()</code>, and the delta you pass to <code>performBatchUpdates</code> must exactly match the change you made to the backing array — mismatches throw <code>NSInternalInconsistencyException: Invalid number of rows in section</code>.</li>
+<li><strong>All UI mutations happen on the main thread.</strong> Mutating the model and calling <code>reloadData</code>/<code>insertRows</code> off the main thread causes crashes or the classic purple runtime warning.</li>
+<li><strong><code>performBatchUpdates</code> index-path semantics:</strong> deletes/moves reference the <em>pre-update</em> index paths, inserts/moves-to reference the <em>post-update</em> index paths — mutate the backing array first, then describe deltas that match it exactly, in one batch call (don't interleave manual <code>reloadData</code> with pending batch animations).</li>
+</ol>
+
+<p><strong>Cell reuse — reset &amp; async race example:</strong></p>
+
+<div class="codehilite"><pre><code>final class ImageCell: UITableViewCell {
+    private var currentToken: UUID?
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        currentToken = nil          // invalidate any in-flight request
+        imageView?.image = nil      // don't show the previous row's image while loading
+        accessoryType = .none
+    }
+
+    func configure(url: URL) {
+        let token = UUID()
+        currentToken = token
+        ImageLoader.shared.load(url) { [weak self] image in
+            guard let self, self.currentToken == token else { return } // cell was reused meanwhile
+            self.imageView?.image = image
+        }
+    }
+}
+</code></pre></div>
+
+<p><strong>Batch update crash vs. fix:</strong></p>
+
+<div class="codehilite"><pre><code>// ❌ Crashes: array mutated, but batch update not called with matching delta
+items.remove(at: 2)
+tableView.reloadData() // works, but loses row animation — fine if that's acceptable
+
+// ❌ Crashes: says "delete row 2" but array wasn't changed yet
+tableView.performBatchUpdates {
+    tableView.deleteRows(at: [IndexPath(row: 2, section: 0)], with: .automatic)
+} // -&gt; NSInternalInconsistencyException, counts don't match
+
+// ✅ Correct: mutate first, then describe the exact same delta
+tableView.performBatchUpdates {
+    items.remove(at: 2)
+    tableView.deleteRows(at: [IndexPath(row: 2, section: 0)], with: .automatic)
+}
+</code></pre></div>
+
+<p><strong>Other unexpected behaviors to watch for:</strong></p>
+
+<ul>
+<li><strong>Stale index paths in closures/async callbacks.</strong> By the time an async task completes, the cell at that <code>indexPath</code> may now show different data (scrolled/reused). Re-check via <code>tableView.indexPath(for: cell)</code> or a per-request token (see example above) rather than trusting a captured <code>indexPath</code>.</li>
+<li><strong><code>reloadData()</code> resets scroll position feel</strong> — it doesn't literally scroll to top, but it discards animations and can shift <code>contentOffset</code> when row heights change; prefer targeted <code>reloadRows(at:)</code>/<code>performBatchUpdates</code>/diffable snapshots for smoother updates.</li>
+<li><strong>Self-sizing cells need both <code>estimatedRowHeight</code> and <code>rowHeight = UITableView.automaticDimension</code></strong>, plus complete, unambiguous constraints pinned to the content view's edges — otherwise you get 0-height or incorrect first-pass layout (visible as a flash/jump).</li>
+<li><strong>Off-screen cells don't exist.</strong> <code>cellForRow(at:)</code> returns <code>nil</code> for non-visible rows — never use a cell to store or read your source of truth; keep state in the data model.</li>
+<li><strong><code>willDisplay</code>/<code>didEndDisplaying</code> aren't perfectly paired during fast scrolls or reloads</strong> — don't assume exactly one <code>didEndDisplaying</code> per <code>willDisplay</code>; guard cleanup code with identity checks (same token/reuse-race pattern as above).</li>
+<li><strong>Prefetching (<code>UITableViewDataSourcePrefetching</code> / <code>UICollectionViewDataSourcePrefetching</code>) fires <em>before</em> <code>willDisplay</code></strong>, on rows that aren't visible yet — cancel prefetch work in <code>cancelPrefetchingForRowsAt</code> if the user scrolls away.</li>
+<li><strong>Section header/footer reuse has the same pitfalls as cells</strong> — they come from their own reuse pool (<code>register(_:forHeaderFooterViewReuseIdentifier:)</code>) and need the same reset discipline.</li>
+</ul>
+
+<p><strong>Comparison — ways to update table/collection views:</strong></p>
+
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Behavior</th>
+<th>Risk</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>reloadData()</code></td>
+<td>Full rebuild, no animation</td>
+<td>Safe but loses animations, can feel jarring, no diffing needed</td>
+</tr>
+<tr>
+<td><code>performBatchUpdates</code> + <code>insert/delete/moveRows</code></td>
+<td>Animated, precise</td>
+<td>Manual index-path math — mismatched counts crash</td>
+</tr>
+<tr>
+<td><code>UITableViewDiffableDataSource</code> / <code>UICollectionViewDiffableDataSource</code> + snapshots</td>
+<td>Animated diff computed for you from old vs. new snapshot</td>
+<td>Safest for concurrent/complex updates (see <a href="2.7 What is UIDiffableDataSource why for diffable classes.html">2.7</a>); requires hashable, unique identifiers</td>
+</tr>
+</tbody>
+</table>
+
+<p><strong>Common Interview Questions</strong></p>
+
+<p><strong>Q: Why does my app crash with "Invalid number of rows in section" after updating an array and calling <code>reloadData</code>?</strong> A: It usually isn't <code>reloadData()</code> itself (that always works because it doesn't diff) — the crash comes from a <code>performBatchUpdates</code>/<code>insertRows</code>/<code>deleteRows</code> call whose index-path delta doesn't match the actual change you made to the backing array (wrong count, wrong section, or the array wasn't mutated at all before the animated call).</p>
+
+<p><strong>Q: Why did the wrong image show up on a cell after fast scrolling?</strong> A: Classic reuse race — an async image load kicked off for a cell showing row N completed after that cell was recycled for row M. Fix by cancelling/invalidating with a per-request token in <code>prepareForReuse()</code>, or checking the cell is still associated with the expected index path/URL before applying the result.</p>
+
+<p><strong>Q: Why is <code>performBatchUpdates</code> safer than manual <code>reloadData</code> for complex updates, and why might you still prefer diffable data sources?</strong> A: <code>performBatchUpdates</code> batches multiple insert/delete/move calls into one animation pass and validates consistency at the end — but you must compute the index-path deltas yourself, which is error-prone for concurrent/rapid updates. Diffable data sources compute the diff between two full snapshots automatically, eliminating manual index-path math and the most common crash class, at the cost of needing stable, hashable item identifiers.</p>
+
+<p><strong>Q: Why shouldn't you keep application state in table/collection view cells?</strong> A: Cells are ephemeral and reused — a cell for an off-screen row can be <code>nil</code> (<code>cellForRow(at:)</code> returns <code>nil</code>) or already repurposed for different data. State must live in the model/view model; cells should be a pure, stateless projection of that model for whatever index path they're currently configured with.</p>
+
+<p><strong>Q: What causes self-sizing cells to render at the wrong height briefly, and how do you fix it?</strong> A: Missing/ambiguous constraints to the content view's edges, or omitting <code>estimatedRowHeight</code>/<code>UITableView.automaticDimension</code>, forces UIKit to guess a height on the first pass before Auto Layout resolves the real one. Fix: pin all edges unambiguously, set both <code>rowHeight = .automaticDimension</code> and a reasonable <code>estimatedRowHeight</code>, and avoid intrinsic-content-size-less views without explicit constraints.</p>
+
+<p><strong>Q: Is it safe to update the data source array on a background thread and then call <code>reloadData</code> on main?</strong> A: Only if the entire mutation of the array <em>and</em> the reload/batch-update call happen on the main thread relative to each other — you can compute the new data off-thread, but the swap of the array reference and any table/collection view API call must be dispatched to main, otherwise you risk data races (reading the array mid-mutation) and UIKit API-on-background-thread crashes/warnings.</p>
+
 </main>
 </body>
 </html>

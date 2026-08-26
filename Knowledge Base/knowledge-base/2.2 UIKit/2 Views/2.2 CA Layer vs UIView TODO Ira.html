@@ -61,8 +61,78 @@ ul.toc li a{font-size:1.05em}
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2. Views</a></nav>
 <main>
-<h1>2.2. CA Layer vs UIView TODO: Ira</h1>
+<h1>2.2. CA Layer vs UIView</h1>
+<p><strong>Core idea:</strong> Every <code>UIView</code> is backed by a <code>CALayer</code> (<code>view.layer</code>). UIView (UIKit) owns <strong>event handling, layout, responder chain, gesture recognizers</strong>; CALayer (Core Animation) owns <strong>rendering, compositing and animation</strong>. UIView is a thin wrapper that forwards drawing/visual work to its backing layer — separation of concerns between "interaction" and "presentation".</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>UIView</code></th>
+<th><code>CALayer</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Framework</td>
+<td>UIKit</td>
+<td>Core Animation</td>
+</tr>
+<tr>
+<td>Responsibility</td>
+<td>touch handling, hit-testing, Auto Layout, responder chain</td>
+<td>rendering, compositing (GPU), implicit/explicit animation</td>
+</tr>
+<tr>
+<td>Can exist standalone</td>
+<td>No — nothing to touch without a layer</td>
+<td>Yes — sublayers (<code>CAShapeLayer</code>, <code>CAGradientLayer</code>) can be added directly with no <code>UIView</code></td>
+</tr>
+<tr>
+<td>Animating a change</td>
+<td><code>UIView.animate { }</code> wraps CA under the hood</td>
+<td>animate directly via <code>CABasicAnimation</code>/<code>CATransaction</code>, or get implicit animation for free</td>
+</tr>
+<tr>
+<td>Cost</td>
+<td>heavier (hit-testing, accessibility, layout)</td>
+<td>lightweight, cheaper to add many of</td>
+</tr>
+<tr>
+<td>Typical properties</td>
+<td><code>frame</code>, <code>backgroundColor</code>, <code>alpha</code>, <code>isHidden</code></td>
+<td><code>bounds</code>, <code>position</code>, <code>cornerRadius</code>, <code>borderWidth</code>, <code>shadowXxx</code>, <code>transform</code> (<code>CATransform3D</code>), <code>mask</code></td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><code>// UIView always has a backing layer
+let view = UIView()
+view.layer.cornerRadius = 8
+view.layer.borderWidth = 1
+view.layer.shadowOpacity = 0.3
 
+// Customizing the backing layer class of a UIView subclass
+final class ShapeView: UIView {
+    override class var layerClass: AnyClass { CAShapeLayer.self }
+    var shapeLayer: CAShapeLayer { layer as! CAShapeLayer }
+}
+
+// A CALayer with NO corresponding UIView — cheap, no touch handling
+let gradient = CAGradientLayer()
+gradient.frame = view.bounds
+gradient.colors = [UIColor.red.cgColor, UIColor.blue.cgColor]
+view.layer.addSublayer(gradient)
+</code></pre></div>
+<p><strong>Implicit animation:</strong> changing an animatable <code>CALayer</code> property (e.g. <code>opacity</code>, <code>position</code>, <code>backgroundColor</code>) animates automatically via the layer's default <em>action</em>, even outside <code>UIView.animate</code>. UIKit disables this for view-backed layers unless you're inside an animation block (it wraps changes in <code>CATransaction</code> with actions disabled), so <code>view.layer.opacity = 0</code> on a plain <code>UIView</code>'s layer typically animates implicitly too — to suppress it, wrap in <code>CATransaction</code>:</p>
+<div class="codehilite"><pre><code>CATransaction.begin()
+CATransaction.setDisableActions(true)
+view.layer.cornerRadius = 20   // applied instantly, no implicit animation
+CATransaction.commit()
+</code></pre></div>
+<p><strong>Common Interview Questions</strong></p>
+<p><strong>Q: Why does UIView need a separate CALayer instead of drawing itself?</strong> A: Separation of concerns — UIKit handles interaction/layout on the main thread, while Core Animation handles rendering/compositing, which can be optimized and driven independently (render server, GPU) without blocking touch handling.</p>
+<p><strong>Q: Can a CALayer exist without a UIView?</strong> A: Yes — you can add <code>CALayer</code>/<code>CAShapeLayer</code>/<code>CAGradientLayer</code> sublayers directly to <code>view.layer</code> for effects, masks, or many cheap decorative elements. They don't get touches automatically; you'd hit-test manually if needed.</p>
+<p><strong>Q: Where do properties like <code>cornerRadius</code>, <code>shadow*</code>, <code>borderWidth</code>, <code>transform</code> live?</strong> A: On the layer, not the view — you access them via <code>view.layer.cornerRadius</code>, etc., because they're rendering concerns, not layout/interaction concerns.</p>
+<p><strong>Q: What decides whether a property change animates implicitly?</strong> A: Whether it happens inside a <code>CATransaction</code>/<code>UIView.animate</code> block and whether the layer has a delegate providing actions; <code>UIView</code>-backed layers get actions disabled outside of explicit animation blocks so plain property assignment doesn't animate.</p>
 </main>
 </body>
 </html>

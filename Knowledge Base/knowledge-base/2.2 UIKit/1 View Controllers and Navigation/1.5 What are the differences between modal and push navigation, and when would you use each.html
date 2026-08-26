@@ -63,14 +63,142 @@ ul.toc li a{font-size:1.05em}
 <main>
 <h1>1.5. What are the differences between modal and push navigation, and when would you use each?</h1>
 <ul>
-<li>present</li>
-<li>push</li>
-<li>segue</li>
-<li>*other</li>
+<li><strong>Push</strong> adds a view controller onto a <code>UINavigationController</code>'s stack — it's for <strong>drilling down</strong> into a hierarchical flow (list → detail). The user goes "deeper" and expects a <strong>Back</strong> button to return to where they came from.</li>
+<li><strong>Modal (<code>present</code>)</strong> shows a view controller <strong>on top of everything</strong>, in its own presentation context, independent of any navigation stack. It's for <strong>self-contained tasks</strong> (compose, sign in, settings) that interrupt the current flow and must be explicitly <strong>dismissed</strong>.</li>
 </ul>
-<p>TODO: Ira - fill in</p>
-<p>Disable Pull-to-Dismiss (iOS 13+)</p>
-<p>Alternatives - show full screen or sth similar to Alert View Controller</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Push</th>
+<th>Modal (<code>present</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>API</strong></td>
+<td><code>navigationController?.pushViewController(_:animated:)</code></td>
+<td><code>present(_:animated:completion:)</code></td>
+</tr>
+<tr>
+<td><strong>Requires</strong></td>
+<td>A <code>UINavigationController</code></td>
+<td>Nothing — any VC can present any VC</td>
+</tr>
+<tr>
+<td><strong>Transition</strong></td>
+<td>Slide in from the right</td>
+<td>Slide up from bottom (default), or per <code>modalPresentationStyle</code></td>
+</tr>
+<tr>
+<td><strong>Dismissal</strong></td>
+<td>Automatic back button / swipe-back gesture / <code>popViewController</code></td>
+<td>Must call <code>dismiss(animated:)</code> yourself (usually via a Cancel/Done button)</td>
+</tr>
+<tr>
+<td><strong>Relationship to stack</strong></td>
+<td>Becomes part of the existing navigation stack</td>
+<td>Presented VC gets <strong>its own stack context</strong>; presenting VC stays in memory underneath</td>
+</tr>
+<tr>
+<td><strong>Typical use</strong></td>
+<td>Continuing a flow, drilling into detail</td>
+<td>Interrupting the flow: forms, alerts, onboarding, camera, share sheet</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Push example</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="kd">let</span><span class="w"> </span><span class="nv">detailVC</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">DetailViewController</span><span class="p">()</span>
+<span class="n">navigationController</span><span class="p">?.</span><span class="n">pushViewController</span><span class="p">(</span><span class="n">detailVC</span><span class="p">,</span><span class="w"> </span><span class="n">animated</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+
+<span class="c1">// back</span>
+<span class="n">navigationController</span><span class="p">?.</span><span class="n">popViewController</span><span class="p">(</span><span class="n">animated</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Modal example</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="kd">let</span><span class="w"> </span><span class="nv">composeVC</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">ComposeViewController</span><span class="p">()</span>
+<span class="n">composeVC</span><span class="p">.</span><span class="n">modalPresentationStyle</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">.</span><span class="n">pageSheet</span><span class="w">   </span><span class="c1">// .fullScreen, .formSheet, .overFullScreen…</span>
+<span class="n">composeVC</span><span class="p">.</span><span class="n">modalTransitionStyle</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">.</span><span class="n">coverVertical</span>
+<span class="n">present</span><span class="p">(</span><span class="n">composeVC</span><span class="p">,</span><span class="w"> </span><span class="n">animated</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+
+<span class="c1">// dismiss (from the presented VC, or from the presenter)</span>
+<span class="n">dismiss</span><span class="p">(</span><span class="n">animated</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Storyboard segues</strong> — the same distinction exists as segue kinds:</p>
+<table>
+<thead>
+<tr>
+<th>Segue</th>
+<th>Equivalent to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Show</strong> (<code>push</code>)</td>
+<td><code>pushViewController</code> — requires embedding in a nav controller</td>
+</tr>
+<tr>
+<td><strong>Show Detail</strong></td>
+<td>Push on compact size classes, modal-like on regular (split view)</td>
+</tr>
+<tr>
+<td><strong>Present Modally</strong></td>
+<td><code>present(_:animated:)</code></td>
+</tr>
+<tr>
+<td><strong>Present as Popover</strong></td>
+<td>Anchored modal presentation, mainly iPad</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>UIModalPresentationStyle</code> options</strong> (<em>other</em> ways to configure a modal):</p>
+<table>
+<thead>
+<tr>
+<th>Style</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.fullScreen</code></td>
+<td>Covers the entire screen, presenter's view is removed from the hierarchy</td>
+</tr>
+<tr>
+<td><code>.pageSheet</code> (default, iOS 13+)</td>
+<td>Card-like sheet, shows a peek of the presenter behind it, <strong>swipe-to-dismiss</strong> enabled</td>
+</tr>
+<tr>
+<td><code>.formSheet</code></td>
+<td>Centered, smaller card (mostly iPad)</td>
+</tr>
+<tr>
+<td><code>.overFullScreen</code> / <code>.overCurrentContext</code></td>
+<td>Covers the screen but keeps the presenter in the view hierarchy — needed for transparent/blurred backgrounds</td>
+</tr>
+<tr>
+<td><code>.popover</code></td>
+<td>Anchored bubble from a source view/bar button (iPad, or iPhone via adaptive presentation)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Disable pull-to-dismiss (iOS 13+):</strong> the <code>.pageSheet</code> style lets users swipe down to dismiss, which can lose unsaved data (e.g. a half-written form). Prevent it with:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">composeVC</span><span class="p">.</span><span class="n">isModalInPresentation</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="c1">// blocks interactive/pull-to-dismiss</span>
+</code></pre></div>
+
+<p>You can still handle <code>presentationControllerDidAttemptToDismiss(_:)</code> to show a confirmation alert when the user tries to swipe it away.</p>
+<p><strong>When to use which</strong></p>
+<ul>
+<li>Use <strong>push</strong> for hierarchical navigation the user should be able to back out of step-by-step (list → item → sub-item).</li>
+<li>Use <strong>modal</strong> for a focused, temporary task that's logically separate from the current screen and needs an explicit exit (new item creation, login, alerts, share sheets, full-screen media).</li>
+<li><em>Other</em> options worth knowing: <strong>popover</strong> (contextual, iPad-style), <strong>custom transitions</strong> (<code>UIViewControllerAnimatedTransitioning</code> for bespoke animations, e.g. a card that morphs from a cell), and <code>UISplitViewController</code> (push-like on iPhone, side-by-side "master-detail" on iPad — the adaptive alternative to always pushing).</li>
+</ul>
+<p><strong>Common Interview Questions</strong></p>
+<p><strong>Q: Can you push without a navigation controller?</strong> A: No — <code>pushViewController</code> silently does nothing (or crashes in older iOS versions with an assertion) if <code>navigationController</code> is <code>nil</code>. You must embed the VC in a <code>UINavigationController</code> first.</p>
+<p><strong>Q: What happens to the presenting VC when you present modally?</strong> A: It's not deallocated — it stays in memory and its view is kept in the hierarchy (unless <code>.fullScreen</code> removes it) so it can be revealed again on dismiss.</p>
+<p><strong>Q: Why did Apple make <code>.pageSheet</code> the default in iOS 13?</strong> A: To give a more lightweight, reversible feel to modals and reduce the jarring "full takeover" of the screen for simple tasks — while still allowing <code>.fullScreen</code> when the task genuinely needs it (e.g. camera, video player).</p>
+<p><strong>Q: How do you pass data back from a modal?</strong> A: Delegate protocol, a completion closure set before presenting, or Combine/<code>@Binding</code> in SwiftUI — never <code>unwind segue</code>-style circular references without care for retain cycles.</p>
 </main>
 </body>
 </html>
