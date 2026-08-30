@@ -1,0 +1,9 @@
+# Xcode
+*.xcuserstate
+xcuserdata/
+
+# AI planning / agent scratch files
+docs/
+
+# macOS
+.DS_Store
