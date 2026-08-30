@@ -14,6 +14,7 @@ This repo is a learning playground used to prepare for a Senior iOS Developer in
 | **Testing** | User says "test", "write tests", "run tests" | ONLY then work on tests (no test target exists yet — confirm before scaffolding one) |
 | **Git Ops** | User says "commit", "push", "PR", "branch" | ONLY then do git operations |
 | **Xcode Project** | Adding/removing/renaming source files | Edit `A3_poc_ios_only/project.yml` if structure changes, then run `xcodegen generate`; never hand-edit `.xcodeproj/project.pbxproj` |
+| **KB HTML-only** | Editing ANY file under `Knowledge Base/` | Edit only the `.html` files in `Knowledge Base/knowledge-base/` — `.md` files have been removed; no sync needed |
 | **Shell** | ANY shell command | Use bash/zsh syntax (macOS) |
 
 **Recovery**: If stuck → check [Troubleshooting](#-troubleshooting).
@@ -27,6 +28,7 @@ This repo is a learning playground used to prepare for a Senior iOS Developer in
 | Architecture | `.codemie/guides/architecture/architecture.md` | App layout, demo screen pattern, MVVM-lite, where to add new topics |
 | Development Practices | `.codemie/guides/development/concurrency-patterns.md` | GCD, OperationQueue, semaphores, locks, structured concurrency, pthreads, Combine — when to pick which |
 | Development Practices | `.codemie/guides/development/swiftui-patterns.md` | State wrappers, demo screen skeleton, auto-scrolling log view, navigation, MVVM |
+| Knowledge Base | `Knowledge Base/knowledge-base/` | KB is HTML-only; one `.html` file per Q&A point, organized in `<Section>/<Subsection>/` dirs with `index.html` TOCs |
 
 ---
 
@@ -40,6 +42,7 @@ This repo is a learning playground used to prepare for a Senior iOS Developer in
 | **Concurrency** | GCD, async/await, actors, locks, Combine threading | "Show me an actor example", "Explain DispatchGroup", "Fix this race" | `.codemie/guides/development/concurrency-patterns.md` | `.codemie/guides/development/swiftui-patterns.md` |
 | **SwiftUI / UI** | Views, state management, navigation, ViewModels | "Add a button row", "Why does my @StateObject reset?" | `.codemie/guides/development/swiftui-patterns.md` | `.codemie/guides/architecture/architecture.md` |
 | **Interview Q&A** | Conceptual questions about iOS topics already in the repo | "Why os_unfair_lock vs NSLock?", "When does async let leak?" | Match topic above | — |
+| **Knowledge Base edit** | Fixing/updating KB content | "Fix this KB page", "Update the viewDidLoad answer", "Correct this typo in the html" | Edit the `.html` file in `Knowledge Base/knowledge-base/` directly — no sync required | — |
 
 ### Intent Detection
 

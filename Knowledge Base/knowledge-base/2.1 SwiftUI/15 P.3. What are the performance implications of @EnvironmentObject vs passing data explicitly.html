@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P.3. What are the performance implications of @EnvironmentObject vs passing data explicitly?</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../index.html">⌂ Knowledge Base</a> › <a href="index.html">2.1 SwiftUI</a> › ⚡ Performance &amp; Optimization</nav>
+<main>
+<h1>P.3. What are the performance implications of @EnvironmentObject vs passing data explicitly?</h1>
+
+<table>
+<thead><tr><th></th><th><code>@EnvironmentObject</code></th><th>Explicit prop</th></tr></thead>
+<tbody>
+<tr><td><strong>Re-render scope</strong></td><td>All views in subtree that subscribe</td><td>Only the view receiving the prop</td></tr>
+<tr><td><strong>Granularity</strong></td><td>Object-level (any <code>@Published</code> change notifies all)</td><td>Value-level (SwiftUI diffs the passed value)</td></tr>
+<tr><td><strong>Coupling</strong></td><td>Implicit / hidden dependency</td><td>Explicit / visible</td></tr>
+<tr><td><strong>Testability</strong></td><td>Harder (must inject in previews/tests)</td><td>Easy</td></tr>
+</tbody>
+</table>
+
+<p><strong>The problem:</strong></p>
+<div class="codehilite"><pre><code>// ❌ SearchBar typing triggers re-render of ResultsView too
+class AppState: ObservableObject {
+    @Published var searchText = ""   // changes rapidly
+    @Published var results: [Item] = []
+}
+// Every view using @EnvironmentObject var appState re-renders on any change</code></pre></div>
+
+<p><strong>Solutions:</strong></p>
+<ul>
+<li>Pass only the data a child needs as <code>let</code> or <code>@Binding</code> — SwiftUI diffs the value</li>
+<li>Split into smaller <code>ObservableObject</code>s (see 2.7 "Split ObservableObject")</li>
+<li>iOS 17+: use <code>@Observable</code> — property-level tracking means only views reading a specific property update</li>
+</ul>
+
+<p><strong>Rule of thumb:</strong> Use <code>@EnvironmentObject</code> for truly global, infrequently-changing state (auth, theme). Prefer explicit passing for performance-sensitive or leaf views.</p>
+</main>
+</body>
+</html>

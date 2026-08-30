@@ -1,0 +1,8 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>1.6. When should you use throws, do-catch, and Result?</title></head><body class="markdown-body"><nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">1. Swift Foundation</a> › <a href="index.html">Topics</a></nav><main><h1>1.6. When should you use throws, do-catch, and Result?</h1><p>Use <code>throws</code> for synchronous operations whose failure should be handled by the caller. Use <code>do-catch</code> to recover, translate, or report errors. <code>Result&lt;Success, Failure&gt;</code> is useful when a success or failure value must be stored or passed through callbacks. Define focused error types and do not swallow errors with empty catches.</p><pre><code>enum ParseError: Error {
+    case invalidInput
+}
+
+func parse(_ value: String) throws -&gt; Int {
+    guard let number = Int(value) else { throw ParseError.invalidInput }
+    return number
+}</code></pre></main></body></html>

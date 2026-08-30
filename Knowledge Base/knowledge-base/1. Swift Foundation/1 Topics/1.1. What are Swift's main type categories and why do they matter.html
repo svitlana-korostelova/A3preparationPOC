@@ -1,0 +1,6 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>1.1. What are Swift's main type categories and why do they matter?</title></head><body class="markdown-body"><nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">1. Swift Foundation</a> › <a href="index.html">Topics</a></nav><main><h1>1.1. What are Swift's main type categories and why do they matter?</h1><p>Swift is strongly and statically typed. Common value types include <code>struct</code>, <code>enum</code>, tuples, and primitive types; reference types include <code>class</code> and closures. The compiler catches incompatible assignments early, while type inference keeps declarations concise. Prefer immutable <code>let</code> values and model data with value types unless identity, inheritance, or shared mutable state is required.</p><pre><code>struct User {
+    let id: UUID
+    var name: String
+}
+
+let user = User(id: UUID(), name: "Taylor")</code></pre></main></body></html>

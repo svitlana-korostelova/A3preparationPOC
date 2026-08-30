@@ -62,6 +62,155 @@ ul.toc li a{font-size:1.05em}
 <nav class="breadcrumbs"><a href="../../../index.html">⌂ Knowledge Base</a> › <a href="../../index.html">2.1 SwiftUI</a> › <a href="../index.html">**🔄  2. State Management**</a></nav>
 <main>
 <h1>**2.7. How do you prevent unnecessary view re-renders in SwiftUI?**</h1>
+<ol>
+<li><p><strong>Extract Subviews</strong></p>
+<p><strong>Why:</strong> Parent state change only re-evaluates parent's body. Child views with unchanged inputs skip re-evaluation.</p>
+<p><strong>The Core Problem</strong></p>
+<p>When a parent view's state changes, <strong>SwiftUI re-renders the entire parent body</strong>, including all child views — even ones that don't care about that state change.</p>
+<div class="codehilite"><pre><code>struct ParentView: View {
+    @State private var counter = 0
+
+    var body: some View {
+        VStack {
+            // 🔴 Re-renders every time counter changes
+            // Even though it doesn't use counter at all
+            HeavyProfileCard(name: "John", age: 25)
+
+            Text("Count: \(counter)")
+
+            Button("Increment") {
+                counter += 1
+            }
+        }
+    }
+}
+
+// ✅ Fix: Extracted into its own view
+struct ProfileCard: View {
+    let name: String
+    let age: Int
+
+    var body: some View {
+        VStack {
+            Text(name)
+            Text("\(age) years old")
+        }
+    }
+}
+
+struct ParentView: View {
+    @State private var counter = 0
+
+    var body: some View {
+        VStack {
+            // ✅ SwiftUI checks: did name or age change? NO → skip re-render
+            ProfileCard(name: "John", age: 25)
+
+            Text("Count: \(counter)")
+
+            Button("Increment") {
+                counter += 1
+            }
+        }
+    }
+}</code></pre></div></li>
+
+<li><p><strong>Equatable Conformance</strong></p>
+<p><strong>Why:</strong> Custom <code>==</code> lets you ignore closures or unnecessary properties and compare only meaningful data.</p>
+<div class="codehilite"><pre><code>struct ItemRow: View, Equatable {
+    let item: Item
+    let onTap: () -&gt; Void  // Closure - always "different"
+
+    static func == (lhs: Self, rhs: Self) -&gt; Bool {
+        lhs.item.id == rhs.item.id  // Ignore closure
+    }
+
+    var body: some View {
+        Text(item.name).onTapGesture(perform: onTap)
+    }
+}
+
+// Usage
+ItemRow(item: item, onTap: { /**/ }).equatable()</code></pre></div></li>
+
+<li><p><strong>Split ObservableObject — Composable ViewModel</strong></p>
+<p><strong>Why:</strong> ANY <code>@Published</code> change notifies ALL subscribers. Smaller objects = fewer views affected.</p>
+<p><strong>Architectural Best Practice:</strong> Single Responsibility Principle — each view model should have one reason to change. Avoid "God" view models.</p>
+<div class="codehilite"><pre><code>// ❌ Typing in search re-renders results list
+class BigViewModel: ObservableObject {
+    @Published var searchText = ""    // Changes rapidly
+    @Published var results: [Item] = [] // Changes rarely
+}
+
+// ✅ Separated concerns
+class SearchViewModel: ObservableObject {
+    @Published var searchText = ""
+}
+class ResultsViewModel: ObservableObject {
+    @Published var results: [Item] = []
+}
+
+struct ParentView: View {
+    @StateObject var searchVM = SearchViewModel()
+    @StateObject var resultsVM = ResultsViewModel()
+
+    var body: some View {
+        VStack {
+            SearchView(viewModel: searchVM)
+            ResultsView(viewModel: resultsVM)
+        }
+    }
+}</code></pre></div></li>
+
+<li><p><strong>@Observable (iOS 17+)</strong></p>
+<p><strong>Why:</strong> Automatic per-property tracking. Only views reading specific properties update when those properties change.</p>
+<div class="codehilite"><pre><code>@Observable class ViewModel {
+    var name = ""     // Only NameView updates
+    var age = 0       // Only AgeView updates
+}
+
+struct NameView: View {
+    var vm: ViewModel
+    var body: some View {
+        Text(vm.name)  // Ignores age changes automatically
+    }
+}</code></pre></div></li>
+
+<li><p><strong>Stable View Identity</strong></p>
+<p><strong>Why:</strong> Unstable IDs (like array index) cause view destruction/recreation on reorder. Stable IDs allow efficient diffing.</p>
+<div class="codehilite"><pre><code>// ❌ Index-based - full recreation on reorder
+ForEach(items.indices, id: \.self) { index in ... }
+
+// ✅ Stable ID - smooth updates
+ForEach(items, id: \.id) { item in ... }</code></pre></div></li>
+
+<li><p><strong>Lazy Containers</strong></p>
+<p><strong>Why:</strong> Regular VStack/HStack create ALL child views immediately. Lazy versions only create visible ones.</p>
+<div class="codehilite"><pre><code>// ❌ Creates 10,000 views at once
+ScrollView {
+    VStack {
+        ForEach(hugeArray) { ItemView(item: $0) }
+    }
+}
+
+// ✅ Creates only ~15-20 visible views
+ScrollView {
+    LazyVStack {
+        ForEach(hugeArray) { ItemView(item: $0) }
+    }
+}</code></pre></div></li>
+
+<li><p><strong>drawingGroup()</strong></p>
+<p><strong>Why:</strong> Complex overlapping views with effects require multiple render passes. <code>drawingGroup()</code> composites into a single Metal texture.</p>
+<div class="codehilite"><pre><code>ZStack {
+    ForEach(0..&lt;100) { _ in
+        Circle().blur(radius: 5)
+    }
+}
+.drawingGroup()  // Single GPU pass instead of 100</code></pre></div></li>
+</ol>
+
+<h3>Sub-topics</h3>
 <ul class="toc"><li><a href="1%20Debug%20Cheatsheet.html">**Debug Cheatsheet**</a></li></ul>
 </main>
 </body>

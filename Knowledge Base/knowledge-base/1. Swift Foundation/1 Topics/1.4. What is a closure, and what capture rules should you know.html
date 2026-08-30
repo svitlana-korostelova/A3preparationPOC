@@ -1,0 +1,7 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>1.4. What is a closure, and what capture rules should you know?</title></head><body class="markdown-body"><nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">1. Swift Foundation</a> › <a href="index.html">Topics</a></nav><main><h1>1.4. What is a closure, and what capture rules should you know?</h1><p>A closure is a self-contained function value that can capture constants and variables from its surrounding scope. Captured reference types are normally retained strongly, which can create cycles when a closure is stored by the captured object. Use a capture list such as <code>[weak self]</code> when the closure should not keep an owner alive.</p><pre><code>final class Loader {
+    var onComplete: (() -&gt; Void)?
+
+    func finish() {
+        onComplete?()
+    }
+}</code></pre></main></body></html>

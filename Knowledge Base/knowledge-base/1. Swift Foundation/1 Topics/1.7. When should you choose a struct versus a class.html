@@ -1,0 +1,8 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>1.7. When should you choose a struct versus a class?</title></head><body class="markdown-body"><nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">1. Swift Foundation</a> › <a href="index.html">Topics</a></nav><main><h1>1.7. When should you choose a struct versus a class?</h1><p>A structure is copied by value, making independent state and thread-safe composition easier. A class has identity and reference semantics, so multiple variables can observe the same instance; it is appropriate for shared identity, inheritance, or lifecycle-managed resources. Swift collections use copy-on-write, so value semantics do not necessarily imply an immediate deep copy.</p><pre><code>struct Settings {
+    var theme = "light"
+}
+
+var first = Settings()
+var second = first
+second.theme = "dark"
+// first.theme remains "light"</code></pre></main></body></html>

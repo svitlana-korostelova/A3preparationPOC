@@ -1,0 +1,4 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>1.2. How should you unwrap and work with optionals safely?</title></head><body class="markdown-body"><nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">1. Swift Foundation</a> › <a href="index.html">Topics</a></nav><main><h1>1.2. How should you unwrap and work with optionals safely?</h1><p>An optional represents either a value or <code>nil</code>. Use optional binding when the value is needed in a scope, <code>guard</code> when failure should exit early, and nil-coalescing when a default is appropriate. Avoid force-unwrapping unless an invariant is guaranteed and documented.</p><pre><code>func displayName(for user: User?) -&gt; String {
+    guard let user else { return "Anonymous" }
+    return user.name
+}</code></pre></main></body></html>

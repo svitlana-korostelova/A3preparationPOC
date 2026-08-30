@@ -1,0 +1,8 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>1.5. How do protocols and generics provide reusable Swift designs?</title></head><body class="markdown-body"><nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">1. Swift Foundation</a> › <a href="index.html">Topics</a></nav><main><h1>1.5. How do protocols and generics provide reusable Swift designs?</h1><p>A protocol defines capabilities without prescribing a concrete type. Generics preserve type information while allowing an algorithm to work with many types. Together they enable composition and dependency inversion: depend on a protocol, constrain generic code only as much as necessary, and use protocol extensions for shared default behavior.</p><pre><code>protocol IdentifiableValue {
+    associatedtype ID: Hashable
+    var id: ID { get }
+}
+
+func first&lt;T&gt;(_ values: [T]) -&gt; T? {
+    values.first
+}</code></pre></main></body></html>
