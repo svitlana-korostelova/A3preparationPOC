@@ -42,20 +42,23 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
@@ -63,6 +66,36 @@ ul.toc li a{font-size:1.05em}
 <main>
 <h1>2.11. How do you handle dynamic layouts for different device sizes and orientations?</h1>
 
+<ul>
+<li><strong>Relative, not fixed, constraints:</strong> anchor to `safeAreaLayoutGuide`/`layoutMarginsGuide`, use multipliers/ratios instead of hardcoded widths, so layout scales instead of breaking on different screen sizes.</li>
+<li><strong>Size classes over raw device/orientation checks:</strong> `UITraitCollection.horizontalSizeClass`/`verticalSizeClass` describe available space (compact/regular) — an iPad in Split View or Slide Over can be compact-width in landscape, so checking orientation or `UIDevice.userInterfaceIdiom` directly is brittle across multitasking/Stage Manager/folding devices.</li>
+<li><strong>React to trait changes:</strong> override `traitCollectionDidChange(_:)` (or the iOS 17+ `registerForTraitChanges` API) to re-flow layout, e.g. flip a `UIStackView`'s axis.</li>
+<li><strong>React to rotation/size transitions:</strong> `viewWillTransition(to:with:)` + the transition coordinator to animate constraint changes alongside the rotation.</li>
+<li><strong>Content priorities:</strong> set hugging/compression-resistance so labels/images adapt gracefully instead of ambiguous-constraint warnings across screen widths.</li>
+<li><strong>Dynamic Type / accessibility:</strong> `adjustsFontForContentSizeCategory`, scalable metrics (`UIFontMetrics`), and stack views that switch axis at large text sizes — layout must flex for content size, not just screen size.</li>
+<li><strong>Adaptive containers:</strong> `UISplitViewController` for regular-width (iPad) vs. stacked navigation on compact (iPhone), driven by the same size-class mechanism.</li>
+</ul>
+
+<div class="codehilite"><pre><code><span class="kw">override func</span> traitCollectionDidChange(_ previous: <span class="type">UITraitCollection</span>?) {
+  <span class="kw">super</span>.traitCollectionDidChange(previous)
+  stack.axis = traitCollection.horizontalSizeClass == .compact ? .vertical : .horizontal
+}
+
+<span class="kw">override func</span> viewWillTransition(to size: <span class="type">CGSize</span>, with coordinator: <span class="type">UIViewControllerTransitionCoordinator</span>) {
+  coordinator.animate(alongsideTransition: { _ <span class="kw">in</span>
+    <span class="kw">self</span>.imageWidthConstraint.constant = size.width * <span class="num">0.5</span>
+    <span class="kw">self</span>.view.layoutIfNeeded()
+  })
+}
+</code></pre></div>
+
+<p><strong>Common Interview Questions</strong></p>
+
+<p><strong>Q: Size classes vs. orientation checks — why prefer size classes?</strong> A: Size classes reflect actual available space, which can change independent of device rotation (multitasking, Slide Over, Stage Manager); orientation checks conflate "device rotated" with "space available" and break on iPad/multitasking.</p>
+
+<p><strong>Q: When would you use <code>viewWillTransition</code> vs <code>traitCollectionDidChange</code>?</strong> A: `viewWillTransition` is for size-driven, animated transitions (rotation, split-view resize) via the transition coordinator; `traitCollectionDidChange` fires for any trait change (size class, Dark Mode, Dynamic Type) even without a size-animated transition.</p>
+
+<p><strong>Q: How do you test this without a physical device farm?</strong> A: Xcode Previews across device presets, Simulator's rotate/Slide Over/Split View, and the Accessibility Inspector to step through Dynamic Type sizes.</p>
 </main>
 </body>
 </html>

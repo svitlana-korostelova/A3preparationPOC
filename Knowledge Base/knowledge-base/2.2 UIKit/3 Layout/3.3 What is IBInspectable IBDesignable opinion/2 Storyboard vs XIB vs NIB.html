@@ -42,27 +42,48 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../../index.html">⌂ Knowledge Base</a> › <a href="../../index.html">2.2 UIKit</a> › <a href="../index.html">3. Layout</a> › <a href="index.html">3.3. What is IBInspectable / IBDesignable opinion</a></nav>
 <main>
 <h1>Storyboard vs XIB vs NIB</h1>
-
+<p>A <strong>NIB</strong> is the umbrella/legacy term for a serialized Interface-Builder view hierarchy; a <strong>XIB</strong> is the modern XML source for a single NIB, typically one view/view controller/cell; a <strong>Storyboard</strong> holds many scenes plus the segues/relationships between them, compiled into one <code>.storyboardc</code> bundle.</p>
+<table>
+<thead><tr><th>Aspect</th><th>Storyboard</th><th>XIB/NIB</th></tr></thead>
+<tbody>
+<tr><td>Scope</td><td>Multiple scenes + flow</td><td>Single view/cell/component</td></tr>
+<tr><td>Git diffs</td><td>Large XML, frequent merge conflicts</td><td>Small, easier to review</td></tr>
+<tr><td>Reuse</td><td>Poor - hard to reuse one scene elsewhere</td><td>Great for reusable cells/views (<code>UINib(nibName:)</code>)</td></tr>
+<tr><td>Load cost</td><td>Whole graph parsed at first load</td><td>Lightweight, loads only what's needed</td></tr>
+<tr><td>Navigation</td><td>Segues built-in but hidden in IB</td><td>Navigation done explicitly in code</td></tr>
+<tr><td>Modularity</td><td>Hard to split across frameworks</td><td>Easy to ship inside a framework/module</td></tr>
+</tbody>
+</table>
+<p><strong>Senior opinion:</strong> XIBs for reusable cells/components, code (or SwiftUI) for view controllers/navigation - keeps diffs reviewable, navigation unit-testable, and avoids hidden segue logic. Storyboards are fine for small apps/prototypes but scale poorly with team size.</p>
+<h2>Follow-up questions</h2>
+<ul>
+<li>How would you migrate a large storyboard-based app to code-based navigation incrementally?</li>
+<li>What causes a "has no segue with identifier" crash and how do you prevent it at compile time?</li>
+<li>How do <code>@IBDesignable</code>/<code>@IBInspectable</code> interact with XIBs at design time?</li>
+</ul>
 </main>
 </body>
 </html>

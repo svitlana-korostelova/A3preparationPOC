@@ -42,27 +42,52 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">4. User Interaction &amp; Animations</a></nav>
 <main>
 <h1>How to define on which view did we tapped? hit test, point inside</h1>
-<p>notes:</p>
+<p>UIKit resolves the topmost view under a touch via a top-down recursive walk starting at the window:</p>
+<ol>
+<li><code>hitTest(_:with:)</code> is called on a view; it first checks <code>point(inside:with:)</code> and returns <code>nil</code> if the point is outside, or the view is hidden, has <code>alpha &lt; 0.01</code>, or <code>isUserInteractionEnabled == false</code>.</li>
+<li>If inside, it recurses into subviews <strong>back-to-front (topmost first)</strong>, converting the point into each subview's coordinate space via <code>convert(_:to:)</code>.</li>
+<li>The deepest view whose <code>point(inside:)</code> returns true becomes the hit-test view for that touch.</li>
+</ol>
+<p>Overriding both lets you customize tappable regions:</p>
+<div class="codehilite"><pre><code><span class="kw">override func</span> point(inside point: <span class="type">CGPoint</span>, with event: <span class="type">UIEvent?</span>) -&gt; <span class="type">Bool</span> {
+    <span class="cm">// expand the tappable area beyond the view&#39;s bounds</span>
+    bounds.insetBy(dx: -<span class="num">20</span>, dy: -<span class="num">20</span>).contains(point)
+}
+
+<span class="kw">override func</span> hitTest(_ point: <span class="type">CGPoint</span>, with event: <span class="type">UIEvent?</span>) -&gt; <span class="type">UIView?</span> {
+    <span class="kw">guard</span> isUserInteractionEnabled, !isHidden, alpha &gt; <span class="num">0.01</span> <span class="kw">else</span> { <span class="kw">return nil</span> }
+    <span class="kw">return super</span>.hitTest(point, with: event)
+}
+</code></pre></div>
+<h2>Follow-up questions</h2>
+<ul>
+<li>Why would a button not respond to a tap that visually overlaps it?</li>
+<li>How does hit-testing behave differently for views with <code>CALayer</code> transforms vs Auto Layout frames?</li>
+<li>How would you make a view "pass through" touches to whatever is behind it?</li>
+</ul>
 </main>
 </body>
 </html>

@@ -42,27 +42,145 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2. Views</a></nav>
 <main>
 <h1>2.1. UIView lifecycle</h1>
-<p>// TODO: Sveta</p>
+
+<ul>
+<li>Unlike <code>UIViewController</code>, <code>UIView</code> has <strong>no single official "lifecycle"</strong> — behavior comes from three independent, overlapping systems: <strong>hierarchy attachment</strong> (superview/window), the <strong>layout pass</strong>, and the <strong>display/draw pass</strong>. Knowing when each fires — and how the run loop coalesces them — is the core of this topic.</li>
+</ul>
+
+<p><strong>1. Creation</strong></p>
+<ul>
+<li><code>init(frame:)</code> — programmatic creation. <code>frame</code>/<code>bounds</code> are set, but the view isn't in a hierarchy yet; layout-dependent setup (subview sizing) doesn't belong here.</li>
+<li><code>init?(coder:)</code> — created from a nib/storyboard; must be implemented or the view crashes when Interface Builder instantiates it.</li>
+<li><code>awakeFromNib()</code> — called once, after <strong>all</strong> objects in the nib are unarchived and outlets connected; the right place for one-time nib-based setup (outlets are guaranteed non-nil here, unlike inside <code>init?(coder:)</code>).</li>
+</ul>
+
+<p><strong>2. Hierarchy attachment</strong></p>
+<ul>
+<li><code>willMove(toSuperview:)</code> → superview added/removed → <code>didMoveToSuperview()</code>.</li>
+<li><code>willMove(toWindow:)</code> → the view's window changes (attach, detach, or the superview is reparented into a different hierarchy) → <code>didMoveToWindow()</code>.</li>
+<li>Order when adding to an already-visible hierarchy: <code>willMove(toSuperview:)</code> → <code>willMove(toWindow:)</code> → superview/window actually set → <code>didMoveToWindow()</code> → <code>didMoveToSuperview()</code>. Removal fires the same callbacks with <code>nil</code>, in the same relative order.</li>
+<li><code>window != nil</code> is the closest thing <code>UIView</code> has to "on screen" — but it's an approximation (a view can have a window while scrolled off-screen, hidden, or <code>alpha == 0</code>).</li>
+</ul>
+
+<p><strong>3. Layout pass</strong></p>
+<ul>
+<li><code>setNeedsLayout()</code> marks the view dirty and returns immediately; the run loop <strong>coalesces</strong> every pending request into a single <code>layoutSubviews()</code> call before the next frame commits.</li>
+<li><code>layoutIfNeeded()</code> forces that pass to happen synchronously right now — needed before reading a view's final <code>frame</code> (e.g. driving a custom transition) but expensive if called repeatedly (e.g. inside <code>scrollViewDidScroll</code>).</li>
+<li><code>layoutSubviews()</code> runs on <strong>every</strong> ancestor layout pass, not just once — never do heavy or non-idempotent work there (allocations, network calls); only position/size subviews.</li>
+<li>With Auto Layout, constraints are resolved right before <code>layoutSubviews()</code> runs; <code>frame</code> is only guaranteed correct <em>after</em> that pass — never in <code>init</code> or immediately after <code>addSubview(_:)</code>.</li>
+</ul>
+
+<p><strong>4. Display / draw pass</strong></p>
+<ul>
+<li><code>setNeedsDisplay()</code> marks the backing layer's contents dirty; Core Animation calls <code>draw(_:)</code> asynchronously before the next commit — same coalescing idea as layout.</li>
+<li>Overriding <code>draw(_:)</code> at all forces the layer to allocate its own backing store and opts the view out of the fast, implicitly GPU-composited path — only override it for genuine custom <code>Core Graphics</code> drawing; prefer layers/images otherwise.</li>
+<li><code>draw(_:)</code> always runs on the main thread and must be fast — it blocks the next frame's commit.</li>
+</ul>
+
+<p><strong>5. Teardown</strong></p>
+<ul>
+<li><code>removeFromSuperview()</code> triggers <code>willMove(toSuperview: nil)</code>/<code>willMove(toWindow: nil)</code>, then the corresponding <code>didMoveTo…</code> calls with <code>nil</code>, then <code>deinit</code> once the last strong reference is released.</li>
+<li>A retain cycle (a closure, timer, or delegate capturing <code>self</code> strongly) keeps the view — and its whole subview subtree — alive after removal; <code>deinit</code> never fires, layout/draw callbacks silently stop, but memory leaks.</li>
+</ul>
+
+<div class="codehilite"><pre><code><span class="kw">final class</span> <span class="type">AvatarView</span>: <span class="type">UIView</span> {
+    <span class="kw">private let</span> imageView = <span class="type">UIImageView</span>()
+
+    <span class="kw">override init</span>(frame: <span class="type">CGRect</span>) {
+        <span class="kw">super</span>.init(frame: frame)
+        addSubview(imageView) <span class="cm">// one-time hierarchy setup only</span>
+    }
+
+    <span class="kw">required init?</span>(coder: <span class="type">NSCoder</span>) {
+        <span class="kw">super</span>.init(coder: coder)
+        addSubview(imageView)
+    }
+
+    <span class="kw">override func</span> awakeFromNib() {
+        <span class="kw">super</span>.awakeFromNib()
+        <span class="cm">// outlets from the nib are safe to use here</span>
+    }
+
+    <span class="kw">override func</span> willMove(toWindow newWindow: <span class="type">UIWindow?</span>) {
+        <span class="kw">super</span>.willMove(toWindow: newWindow)
+        <span class="cm">// start/stop expensive work based on visibility</span>
+        newWindow == <span class="kw">nil</span> ? pauseAnimating() : resumeAnimating()
+    }
+
+    <span class="kw">override func</span> layoutSubviews() {
+        <span class="kw">super</span>.layoutSubviews()
+        <span class="cm">// called repeatedly - keep this cheap and idempotent</span>
+        imageView.frame = bounds
+    }
+
+    <span class="kw">override func</span> draw(<span class="kw">_</span> rect: <span class="type">CGRect</span>) {
+        <span class="cm">// only override for real Core Graphics drawing</span>
+        <span class="kw">super</span>.draw(rect)
+    }
+
+    <span class="kw">deinit</span> {
+        <span class="cm">// final cleanup - invalidate timers/observers here</span>
+    }
+}
+</code></pre></div>
+
+<table>
+<thead>
+<tr><th>Method</th><th>Fired by</th><th>Typical use</th></tr>
+</thead>
+<tbody>
+<tr><td><code>init(frame:)</code> / <code>init?(coder:)</code></td><td>Object creation</td><td>Allocate subviews, set static config</td></tr>
+<tr><td><code>awakeFromNib()</code></td><td>Nib/storyboard unarchiving complete</td><td>One-time setup using connected outlets</td></tr>
+<tr><td><code>willMove(toSuperview:)</code> / <code>didMoveToSuperview()</code></td><td><code>addSubview(_:)</code> / <code>removeFromSuperview()</code></td><td>React to being added/removed from a parent</td></tr>
+<tr><td><code>willMove(toWindow:)</code> / <code>didMoveToWindow()</code></td><td>View enters/leaves an on-screen window</td><td>Start/stop timers, animations, KVO/notification observers</td></tr>
+<tr><td><code>layoutSubviews()</code></td><td><code>setNeedsLayout()</code> / <code>layoutIfNeeded()</code> / bounds change</td><td>Manually position/size subviews (non-Auto-Layout code)</td></tr>
+<tr><td><code>draw(_:)</code></td><td><code>setNeedsDisplay()</code></td><td>Custom Core Graphics drawing only</td></tr>
+<tr><td><code>deinit</code></td><td>Last strong reference released</td><td>Invalidate timers/observers, break remaining cycles</td></tr>
+</tbody>
+</table>
+
+<p><strong>Gotchas</strong></p>
+<ul>
+<li><code>frame</code> read in <code>init</code>/right after <code>addSubview(_:)</code> is unreliable with Auto Layout — wait for <code>layoutSubviews()</code> or call <code>layoutIfNeeded()</code> first.</li>
+<li>Calling <code>layoutIfNeeded()</code> inside a scroll/drag callback (e.g. <code>scrollViewDidScroll</code>) can tank frame rate — it forces a synchronous full layout pass every call.</li>
+<li>Overriding <code>draw(_:)</code> "just in case" silently disables layer compositing optimizations for that view — a common, hard-to-spot perf regression.</li>
+<li><code>isHidden = true</code> and <code>alpha = 0</code> do <strong>not</strong> trigger <code>willMove(toWindow:)</code>/<code>didMoveToWindow()</code> — the view is still attached, just not rendered.</li>
+</ul>
+
+<p><strong>Common Interview Questions</strong></p>
+
+<p><strong>Q: Why doesn't <code>UIView</code> have a <code>viewDidAppear</code>-style callback?</strong> A: "Visibility" is a presentation concept owned by <code>UIViewController</code>/<code>UIWindow</code>; a view only knows about superview/window attachment, which isn't equivalent to "actually on screen" (it could be off-screen, hidden, or covered).</p>
+
+<p><strong>Q: What's the difference between <code>setNeedsLayout()</code> and <code>layoutIfNeeded()</code>?</strong> A: <code>setNeedsLayout()</code> schedules an async, coalesced pass on the next run-loop tick; <code>layoutIfNeeded()</code> forces that pass to run synchronously right now, walking up to the nearest dirty ancestor.</p>
+
+<p><strong>Q: Which fires first when adding a view to a visible hierarchy — <code>willMove(toSuperview:)</code> or <code>willMove(toWindow:)</code>?</strong> A: <code>willMove(toSuperview:)</code>, then <code>willMove(toWindow:)</code>; the "did" callbacks fire in reverse (window, then superview) once both are actually set.</p>
+
+<p><strong>Q: Why must both <code>init(frame:)</code> and <code>required init?(coder:)</code> be implemented in a <code>UIView</code> subclass?</strong> A: They're the two designated initializers UIKit can call depending on how the view is instantiated (code vs. nib/storyboard); omitting <code>init?(coder:)</code> compiles but crashes at runtime the moment Interface Builder tries to unarchive the view.</p>
+
+<p><strong>Q: If a view is removed from its superview but a timer closure still captures it, does <code>deinit</code> run?</strong> A: No — the closure's strong capture keeps the view alive indefinitely; this is a classic invisible leak since the view produces no visible symptoms once off-screen, only growing memory.</p>
 </main>
 </body>
 </html>
