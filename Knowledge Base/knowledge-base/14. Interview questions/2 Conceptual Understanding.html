@@ -39,20 +39,23 @@ ul.toc li a{font-size:1.05em}
 .badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
   margin-left:8px;vertical-align:middle}
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 .qa-item{margin-bottom:32px;border-bottom:1px solid #eaeef2;padding-bottom:24px}
 .qa-item:last-child{border-bottom:none}
 .qa-q{font-weight:600;font-size:1.05em;margin-bottom:8px;color:#1f2328}
@@ -81,21 +84,21 @@ ul.toc li a{font-size:1.05em}
 <div class="qa-a">
 <p><strong>Regular protocol:</strong> usable directly as type (<code>var x: any Drawable</code>). Compiler treats it as existential — concrete type erased at runtime.</p>
 <p><strong>Protocol with Associated Types (PAT):</strong> introduces a type placeholder. Cannot be used as a plain existential before Swift 5.7. Must use generics (<code>func process&lt;C: Container&gt;(_ c: C)</code>) or, from Swift 5.7, <code>any Container</code> — but that loses the associated type info.</p>
-<pre><code>protocol Container {
-    associatedtype Item
-    func add(_ item: Item)
-    func first() -> Item?
+<pre><code><span class="kw">protocol</span> <span class="type">Container</span> {
+    <span class="kw">associatedtype</span> Item
+    <span class="kw">func</span> add(_ item: Item)
+    <span class="kw">func</span> first() -> Item?
 }
 
-// Before Swift 5.7 — must use generic constraint
-func fill&lt;C: Container&gt;(_ c: inout C, with item: C.Item) { c.add(item) }
+<span class="cm">// Before Swift 5.7 — must use generic constraint</span>
+<span class="kw">func</span> fill&lt;<span class="type">C</span>: <span class="type">Container</span>&gt;(_ c: <span class="kw">inout</span> <span class="type">C</span>, with item: <span class="type">C</span>.Item) { c.add(item) }
 
-// Swift 5.7+ existential — loses Item type
-var box: any Container   // Item is opaque</code></pre>
+<span class="cm">// Swift 5.7+ existential — loses Item type</span>
+<span class="kw">var</span> box: any <span class="type">Container</span>   <span class="cm">// Item is opaque</span></code></pre>
 <p><strong>Enum with associated types + Equatable:</strong> Swift synthesises <code>Equatable</code> automatically only if every associated value also conforms to <code>Equatable</code>. Custom types without conformance break synthesis → must implement <code>==</code> manually or make associated types <code>Equatable</code>.</p>
-<pre><code>enum Outcome {
-    case success(MyModel)   // MyModel must be Equatable for auto-synthesis
-    case failure(Error)     // Error is not Equatable → must implement == manually
+<pre><code><span class="kw">enum</span> <span class="type">Outcome</span> {
+    <span class="kw">case</span> success(<span class="type">MyModel</span>)   <span class="cm">// MyModel must be Equatable for auto-synthesis</span>
+    <span class="kw">case</span> failure(<span class="type">Error</span>)     <span class="cm">// Error is not Equatable → must implement == manually</span>
 }</code></pre>
 </div>
 </div>
@@ -104,13 +107,13 @@ var box: any Container   // Item is opaque</code></pre>
 <p class="qa-q">6. What are Generics and why are they useful?</p>
 <div class="qa-a">
 <p>Generics let you write type-safe reusable code with a type placeholder resolved at compile time — no boxing/unboxing, no casting, no <code>Any</code>.</p>
-<pre><code>func swap&lt;T&gt;(_ a: inout T, _ b: inout T) { let tmp = a; a = b; b = tmp }
-func max&lt;T: Comparable&gt;(_ a: T, _ b: T) -> T { a > b ? a : b }
+<pre><code><span class="kw">func</span> swap&lt;<span class="type">T</span>&gt;(_ a: <span class="kw">inout</span> <span class="type">T</span>, _ b: <span class="kw">inout</span> <span class="type">T</span>) { <span class="kw">let</span> tmp = a; a = b; b = tmp }
+<span class="kw">func</span> max&lt;<span class="type">T</span>: <span class="type">Comparable</span>&gt;(_ a: <span class="type">T</span>, _ b: <span class="type">T</span>) -> <span class="type">T</span> { a > b ? a : b }
 
-struct Stack&lt;Element&gt; {
-    private var items: [Element] = []
-    mutating func push(_ item: Element) { items.append(item) }
-    mutating func pop() -> Element? { items.popLast() }
+<span class="kw">struct</span> <span class="type">Stack</span>&lt;<span class="type">Element</span>&gt; {
+    <span class="kw">private</span> <span class="kw">var</span> items: [<span class="type">Element</span>] = []
+    <span class="kw">mutating</span> <span class="kw">func</span> push(_ item: <span class="type">Element</span>) { items.append(item) }
+    <span class="kw">mutating</span> <span class="kw">func</span> pop() -> <span class="type">Element</span>? { items.popLast() }
 }</code></pre>
 <p><strong>Why useful:</strong></p>
 <ul>
@@ -127,24 +130,24 @@ struct Stack&lt;Element&gt; {
 <div class="qa-a">
 <p><strong>Non-escaping (default):</strong> closure must be called before the function returns. Compiler guarantees it cannot outlive the call. <code>self.</code> inside can be omitted.</p>
 <p><strong><code>@escaping</code>:</strong> closure is stored (as property, in a dispatch queue, in an async callback) and called after the function returns.</p>
-<pre><code>// Non-escaping — safe, no retain risk
-func runNow(_ work: () -> Void) { work() }
+<pre><code><span class="cm">// Non-escaping — safe, no retain risk</span>
+<span class="kw">func</span> runNow(_ work: () -> <span class="type">Void</span>) { work() }
 
-// Escaping — closure stored, outlives the call
-func runLater(_ work: @escaping () -> Void) {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { work() }
+<span class="cm">// Escaping — closure stored, outlives the call</span>
+<span class="kw">func</span> runLater(_ work: <span class="attr">@escaping</span> () -> <span class="type">Void</span>) {
+    <span class="type">DispatchQueue</span>.main.asyncAfter(deadline: .now() + <span class="num">1</span>) { work() }
 }
 
-class Loader {
-    var onComplete: (() -> Void)?
+<span class="kw">class</span> <span class="type">Loader</span> {
+    <span class="kw">var</span> onComplete: (() -> <span class="type">Void</span>)?
 
-    func fetch(_ done: @escaping () -> Void) {
-        onComplete = done          // stored → escaping
+    <span class="kw">func</span> fetch(_ done: <span class="attr">@escaping</span> () -> <span class="type">Void</span>) {
+        onComplete = done          <span class="cm">// stored → escaping</span>
     }
 
-    func start() {
-        fetch { [weak self] in     // weak self breaks retain cycle
-            self?.render()
+    <span class="kw">func</span> start() {
+        fetch { [<span class="kw">weak</span> <span class="kw">self</span>] <span class="kw">in</span>     <span class="cm">// weak self breaks retain cycle</span>
+            <span class="kw">self</span>?.render()
         }
     }
 }</code></pre>
@@ -158,25 +161,25 @@ class Loader {
 <div class="qa-a">
 <p><strong><code>some View</code> (opaque return type):</strong> compiler-level contract — "I return exactly one concrete type, but I won't name it." Branching between different concrete types is a compile error.</p>
 <p><strong><code>@ViewBuilder</code>:</strong> result builder DSL. Lets a function body contain multiple view expressions, <code>if/else</code>, <code>switch</code>. Compiler synthesises <code>_ConditionalContent&lt;A,B&gt;</code> / <code>TupleView</code> etc. Can still return <code>some View</code> as the outer signature — the builder constructs what <code>some View</code> erases.</p>
-<pre><code>// some View alone — ONE concrete type, no branching
-var body: some View { Text("Hi") }           // ✅
-// var body: some View { isOn ? Text("") : Button("") {} }  // ❌ compile error
+<pre><code><span class="cm">// some View alone — ONE concrete type, no branching</span>
+<span class="kw">var</span> body: some <span class="type">View</span> { <span class="type">Text</span>(<span class="str">"Hi"</span>) }           <span class="cm">// ✅</span>
+<span class="cm">// var body: some View { isOn ? Text("") : Button("") {} }  // ❌ compile error</span>
 
-// @ViewBuilder — multiple types OK via conditional synthesis
-@ViewBuilder
-var content: some View {
-    if isLoggedIn {
-        Dashboard()             // one branch
-    } else {
-        LoginView()             // another branch — different type, fine here
+<span class="cm">// @ViewBuilder — multiple types OK via conditional synthesis</span>
+<span class="attr">@ViewBuilder</span>
+<span class="kw">var</span> content: some <span class="type">View</span> {
+    <span class="kw">if</span> isLoggedIn {
+        <span class="type">Dashboard</span>()             <span class="cm">// one branch</span>
+    } <span class="kw">else</span> {
+        <span class="type">LoginView</span>()             <span class="cm">// another branch — different type, fine here</span>
     }
-    Footer()                    // additional view — TupleView
+    <span class="type">Footer</span>()                    <span class="cm">// additional view — TupleView</span>
 }
 
-// ViewBuilder on parameter (how SwiftUI uses it)
-struct Card&lt;Content: View&gt;: View {
-    @ViewBuilder var content: () -> Content
-    var body: some View { content() }
+<span class="cm">// ViewBuilder on parameter (how SwiftUI uses it)</span>
+<span class="kw">struct</span> <span class="type">Card</span>&lt;<span class="type">Content</span>: <span class="type">View</span>&gt;: <span class="type">View</span> {
+    <span class="attr">@ViewBuilder</span> <span class="kw">var</span> content: () -> <span class="type">Content</span>
+    <span class="kw">var</span> body: some <span class="type">View</span> { content() }
 }</code></pre>
 <p><strong>Rule of thumb:</strong> <code>some View</code> = single opaque type contract. <code>@ViewBuilder</code> = multi-expression/conditional view construction. Both often appear together: <code>@ViewBuilder</code> builds it, <code>some View</code> is the return type.</p>
 </div>
@@ -187,22 +190,22 @@ struct Card&lt;Content: View&gt;: View {
 <div class="qa-a">
 <p><strong><code>init</code>:</strong> runs synchronously when SwiftUI creates the view struct. Cannot <code>await</code>. Heavy work here blocks the main thread — users see a frozen/blank screen during the delay.</p>
 <p><strong><code>.task</code>:</strong> async context, fires after view appears, automatically cancelled when view disappears. Correct place for network calls, DB queries, any async/heavy work.</p>
-<pre><code>// ❌ Heavy work in init — blocks main thread
-struct CatalogView: View {
-    let items: [Item]
-    init() {
-        items = Database.shared.fetchAll()  // synchronous, main thread frozen
+<pre><code><span class="cm">// ❌ Heavy work in init — blocks main thread</span>
+<span class="kw">struct</span> <span class="type">CatalogView</span>: <span class="type">View</span> {
+    <span class="kw">let</span> items: [<span class="type">Item</span>]
+    <span class="kw">init</span>() {
+        items = <span class="type">Database</span>.shared.fetchAll()  <span class="cm">// synchronous, main thread frozen</span>
     }
-    var body: some View { List(items) { Text($0.name) } }
+    <span class="kw">var</span> body: some <span class="type">View</span> { <span class="type">List</span>(items) { <span class="type">Text</span>($0.name) } }
 }
 
-// ✅ .task — async, off main thread, cancels on disappear
-struct CatalogView: View {
-    @State private var items: [Item] = []
-    var body: some View {
-        List(items) { Text($0.name) }
+<span class="cm">// ✅ .task — async, off main thread, cancels on disappear</span>
+<span class="kw">struct</span> <span class="type">CatalogView</span>: <span class="type">View</span> {
+    <span class="attr">@State</span> <span class="kw">private</span> <span class="kw">var</span> items: [<span class="type">Item</span>] = []
+    <span class="kw">var</span> body: some <span class="type">View</span> {
+        <span class="type">List</span>(items) { <span class="type">Text</span>($0.name) }
             .task {
-                items = await api.fetchItems()
+                items = <span class="kw">await</span> api.fetchItems()
             }
     }
 }</code></pre>
@@ -224,14 +227,14 @@ struct CatalogView: View {
 </tbody>
 </table>
 <p><strong>For image loading in list cells — use <code>.task</code>.</strong> When the user scrolls quickly, cells disappear before their images load. <code>.task</code> cancels the in-flight load automatically, freeing the network slot and preventing a ghost image from landing on a recycled cell.</p>
-<pre><code>// ❌ .onAppear — no cancellation; wasted requests for scrolled-past cells
+<pre><code><span class="cm">// ❌ .onAppear — no cancellation; wasted requests for scrolled-past cells</span>
 .onAppear {
-    Task { image = await imageLoader.load(url) }  // not cancelled on disappear
+    <span class="type">Task</span> { image = <span class="kw">await</span> imageLoader.load(url) }  <span class="cm">// not cancelled on disappear</span>
 }
 
-// ✅ .task — cancels when cell leaves screen
+<span class="cm">// ✅ .task — cancels when cell leaves screen</span>
 .task {
-    image = await imageLoader.load(url)  // cancelled automatically on disappear
+    image = <span class="kw">await</span> imageLoader.load(url)  <span class="cm">// cancelled automatically on disappear</span>
 }</code></pre>
 <p>Without <code>.task</code>, rapidly scrolled lists spawn uncontrolled concurrent loads — memory pressure, bandwidth waste, and images appearing in wrong cells after reuse.</p>
 </div>
@@ -295,15 +298,15 @@ struct CatalogView: View {
 <div class="qa-a">
 <p><strong>Responder Chain (UIKit):</strong> a linked chain of <code>UIResponder</code> subclasses. Unhandled events travel up: <code>UIView → UIViewController → UIWindow → UIApplication → AppDelegate</code>. First responder gets first opportunity; each can handle or pass up via <code>next</code>.</p>
 <p><strong>Hit testing:</strong> <code>hitTest(_:with:)</code> traverses the view hierarchy depth-first to find the deepest view where <code>pointInside(_:with:)</code> returns <code>true</code>. That view becomes first responder for the touch. Override <code>hitTest</code> returning <code>nil</code> to make a view invisible to touches (pass-through).</p>
-<pre><code>// UIKit: pass-through overlay — ignore self, but let subviews receive touches
-override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-    let hit = super.hitTest(point, with: event)
-    return hit == self ? nil : hit
+<pre><code><span class="cm">// UIKit: pass-through overlay — ignore self, but let subviews receive touches</span>
+<span class="kw">override</span> <span class="kw">func</span> hitTest(_ point: <span class="type">CGPoint</span>, with event: <span class="type">UIEvent</span>?) -> <span class="type">UIView</span>? {
+    <span class="kw">let</span> hit = <span class="kw">super</span>.hitTest(point, with: event)
+    <span class="kw">return</span> hit == <span class="kw">self</span> ? <span class="kw">nil</span> : hit
 }
 
-// UIKit: handle same tap at multiple levels — call super or forward manually
-override func touchesBegan(_ touches: Set&lt;UITouch&gt;, with event: UIEvent?) {
-    super.touchesBegan(touches, with: event)  // pass up the chain
+<span class="cm">// UIKit: handle same tap at multiple levels — call super or forward manually</span>
+<span class="kw">override</span> <span class="kw">func</span> touchesBegan(_ touches: <span class="type">Set</span>&lt;<span class="type">UITouch</span>&gt;, with event: <span class="type">UIEvent</span>?) {
+    <span class="kw">super</span>.touchesBegan(touches, with: event)  <span class="cm">// pass up the chain</span>
     doLocalWork()
 }</code></pre>
 <p><strong>SwiftUI:</strong> no explicit responder chain. Gestures are attached via modifiers (<code>.onTapGesture</code>, <code>.gesture()</code>). A gesture attached to a parent view is masked by child gestures unless composed with <code>.simultaneously(with:)</code> or <code>.sequenced(before:)</code>. <code>.allowsHitTesting(false)</code> makes a view transparent to touches.</p>
@@ -324,24 +327,24 @@ override func touchesBegan(_ touches: Set&lt;UITouch&gt;, with event: UIEvent?) 
 <li>Failure (refresh expired/revoked) → clear all credentials → force user back to login</li>
 </ol>
 <p><strong>Race condition:</strong> multiple simultaneous 401s → only one refresh call should fire. Use an actor or flag + continuation queue:</p>
-<pre><code>actor TokenRefresher {
-    private var isRefreshing = false
-    private var waiters: [CheckedContinuation&lt;String, Error&gt;] = []
+<pre><code><span class="kw">actor</span> <span class="type">TokenRefresher</span> {
+    <span class="kw">private</span> <span class="kw">var</span> isRefreshing = <span class="kw">false</span>
+    <span class="kw">private</span> <span class="kw">var</span> waiters: [<span class="type">CheckedContinuation</span>&lt;<span class="type">String</span>, <span class="type">Error</span>&gt;] = []
 
-    func refreshIfNeeded() async throws -> String {
-        if isRefreshing {
-            return try await withCheckedThrowingContinuation {
+    <span class="kw">func</span> refreshIfNeeded() <span class="kw">async</span> <span class="kw">throws</span> -> <span class="type">String</span> {
+        <span class="kw">if</span> isRefreshing {
+            <span class="kw">return</span> <span class="kw">try</span> <span class="kw">await</span> withCheckedThrowingContinuation {
                 waiters.append($0)
             }
         }
-        isRefreshing = true
-        defer { isRefreshing = false }
+        isRefreshing = <span class="kw">true</span>
+        <span class="kw">defer</span> { isRefreshing = <span class="kw">false</span> }
 
-        let newToken = try await AuthAPI.refresh(using: Keychain.refreshToken)
-        Keychain.accessToken = newToken
+        <span class="kw">let</span> newToken = <span class="kw">try</span> <span class="kw">await</span> <span class="type">AuthAPI</span>.refresh(using: <span class="type">Keychain</span>.refreshToken)
+        <span class="type">Keychain</span>.accessToken = newToken
         waiters.forEach { $0.resume(returning: newToken) }
         waiters.removeAll()
-        return newToken
+        <span class="kw">return</span> newToken
     }
 }</code></pre>
 <p><strong>Dead in-flight requests on 401:</strong> automatically retried with the fresh access token — never ask the user to retry manually.</p>
@@ -354,24 +357,24 @@ override func touchesBegan(_ touches: Set&lt;UITouch&gt;, with event: UIEvent?) 
 <p class="qa-q">16. What technique prevents a Man-in-the-Middle (MITM) attack in an iOS app?</p>
 <div class="qa-a">
 <p><strong>Primary defence — Certificate Pinning:</strong> embed the server's certificate or public key hash in the app bundle. During TLS handshake, compare server's presented certificate against the pinned value. Reject any mismatch.</p>
-<pre><code>// URLSession-based pinning
-extension NetworkClient: URLSessionDelegate {
-    func urlSession(
-        _ session: URLSession,
-        didReceive challenge: URLAuthenticationChallenge,
-        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+<pre><code><span class="cm">// URLSession-based pinning</span>
+<span class="kw">extension</span> <span class="type">NetworkClient</span>: <span class="type">URLSessionDelegate</span> {
+    <span class="kw">func</span> urlSession(
+        _ session: <span class="type">URLSession</span>,
+        didReceive challenge: <span class="type">URLAuthenticationChallenge</span>,
+        completionHandler: <span class="attr">@escaping</span> (<span class="type">URLSession</span>.<span class="type">AuthChallengeDisposition</span>, <span class="type">URLCredential</span>?) -> <span class="type">Void</span>
     ) {
-        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-              let serverTrust = challenge.protectionSpace.serverTrust,
-              let certificate = SecTrustGetCertificateAtIndex(serverTrust, 0) else {
-            completionHandler(.cancelAuthenticationChallenge, nil)
-            return
+        <span class="kw">guard</span> challenge.protectionSpace.authenticationMethod == <span class="type">NSURLAuthenticationMethodServerTrust</span>,
+              <span class="kw">let</span> serverTrust = challenge.protectionSpace.serverTrust,
+              <span class="kw">let</span> certificate = <span class="type">SecTrustGetCertificateAtIndex</span>(serverTrust, <span class="num">0</span>) <span class="kw">else</span> {
+            completionHandler(.cancelAuthenticationChallenge, <span class="kw">nil</span>)
+            <span class="kw">return</span>
         }
-        let serverData = SecCertificateCopyData(certificate) as Data
-        if pinnedCertificates.contains(serverData) {
-            completionHandler(.useCredential, URLCredential(trust: serverTrust))
-        } else {
-            completionHandler(.cancelAuthenticationChallenge, nil)
+        <span class="kw">let</span> serverData = <span class="type">SecCertificateCopyData</span>(certificate) <span class="kw">as</span> <span class="type">Data</span>
+        <span class="kw">if</span> pinnedCertificates.contains(serverData) {
+            completionHandler(.useCredential, <span class="type">URLCredential</span>(trust: serverTrust))
+        } <span class="kw">else</span> {
+            completionHandler(.cancelAuthenticationChallenge, <span class="kw">nil</span>)
         }
     }
 }</code></pre>

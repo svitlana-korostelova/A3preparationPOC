@@ -1,8 +1,28 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>1.7. When should you choose a struct versus a class?</title></head><body class="markdown-body"><nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">1. Swift Foundation</a> › <a href="index.html">Topics</a></nav><main><h1>1.7. When should you choose a struct versus a class?</h1><p>A structure is copied by value, making independent state and thread-safe composition easier. A class has identity and reference semantics, so multiple variables can observe the same instance; it is appropriate for shared identity, inheritance, or lifecycle-managed resources. Swift collections use copy-on-write, so value semantics do not necessarily imply an immediate deep copy.</p><pre><code>struct Settings {
-    var theme = "light"
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>1.7. When should you choose a struct versus a class?</title>
+<style>
+pre { border-radius: 8px; padding: 1em; overflow-x: auto; font-size: 0.88em; line-height: 1.55; background: #f7f8fa; color: #1d1d1f; }
+pre code { background: none; padding: 0; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  pre { background: #1c1c1e; color: #e8e8e8; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head><body class="markdown-body"><nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">1. Swift Foundation</a> › <a href="index.html">Topics</a></nav><main><h1>1.7. When should you choose a struct versus a class?</h1><p>A structure is copied by value, making independent state and thread-safe composition easier. A class has identity and reference semantics, so multiple variables can observe the same instance; it is appropriate for shared identity, inheritance, or lifecycle-managed resources. Swift collections use copy-on-write, so value semantics do not necessarily imply an immediate deep copy.</p><pre><code><span class="kw">struct</span> <span class="type">Settings</span> {
+    <span class="kw">var</span> theme = <span class="str">"light"</span>
 }
 
-var first = Settings()
-var second = first
-second.theme = "dark"
-// first.theme remains "light"</code></pre></main></body></html>
+<span class="kw">var</span> first = <span class="type">Settings</span>()
+<span class="kw">var</span> second = first
+second.theme = <span class="str">"dark"</span>
+<span class="cm">// first.theme remains "light"</span></code></pre></main></body></html>

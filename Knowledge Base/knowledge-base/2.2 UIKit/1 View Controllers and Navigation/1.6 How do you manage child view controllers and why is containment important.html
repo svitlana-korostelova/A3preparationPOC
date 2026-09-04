@@ -42,20 +42,23 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
@@ -65,17 +68,17 @@ ul.toc li a{font-size:1.05em}
 <p><strong>Containment</strong> = embedding one view controller's view inside another (<code>UINavigationController</code>, <code>UITabBarController</code>, custom containers) while keeping each VC's own lifecycle, layout, and view hierarchy self-contained and independently reusable.</p>
 <p><strong>Why it matters:</strong> without proper containment, if you just do <code>addSubview(childVC.view)</code> without the containment calls, the child never gets <code>viewWillAppear</code>/<code>viewDidAppear</code>, rotation and trait-collection changes aren't forwarded, and UIKit doesn't know who "owns" the child — leading to lifecycle bugs, wrong safe-area/status-bar behavior, and memory-management ambiguity.</p>
 <p><strong>The 4 required steps to add a child:</strong></p>
-<div class="codehilite"><pre><code>func add(_ child: UIViewController, to container: UIView) {
-    addChild(child)                       // 1. establish parent-child relationship
-    container.addSubview(child.view)      // 2. insert child's view into hierarchy
-    child.view.frame = container.bounds   // 3. layout (or Auto Layout constraints)
-    child.didMove(toParent: self)         // 4. tell child the move completed
+<div class="codehilite"><pre><code><span class="kw">func</span> add(_ child: <span class="type">UIViewController</span>, to container: <span class="type">UIView</span>) {
+    addChild(child)                       <span class="cm">// 1. establish parent-child relationship</span>
+    container.addSubview(child.view)      <span class="cm">// 2. insert child's view into hierarchy</span>
+    child.view.frame = container.bounds   <span class="cm">// 3. layout (or Auto Layout constraints)</span>
+    child.didMove(toParent: <span class="kw">self</span>)         <span class="cm">// 4. tell child the move completed</span>
 }
 
-func remove(_ child: UIViewController) {
-    child.willMove(toParent: nil)         // 1. about to be removed
-    child.view.removeFromSuperview()      // 2. remove view
-    child.removeFromParent()              // 3. break parent-child relationship
+<span class="kw">func</span> remove(_ child: <span class="type">UIViewController</span>) {
+    child.willMove(toParent: <span class="kw">nil</span>)         <span class="cm">// 1. about to be removed</span>
+    child.view.removeFromSuperview()      <span class="cm">// 2. remove view</span>
+    child.removeFromParent()              <span class="cm">// 3. break parent-child relationship</span>
 }
 </code></pre></div>
 <ul>
@@ -110,19 +113,19 @@ func remove(_ child: UIViewController) {
 </tbody>
 </table>
 <p><strong>Real-world example:</strong> a custom paged/segmented container (like a mini <code>UIPageViewController</code>) that swaps children when a segment changes:</p>
-<div class="codehilite"><pre><code>final class ContainerViewController: UIViewController {
-    private var current: UIViewController?
+<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">ContainerViewController</span>: <span class="type">UIViewController</span> {
+    <span class="kw">private</span> <span class="kw">var</span> current: <span class="type">UIViewController</span>?
 
-    func display(_ vc: UIViewController) {
-        if let current {
-            current.willMove(toParent: nil)
+    <span class="kw">func</span> display(_ vc: <span class="type">UIViewController</span>) {
+        <span class="kw">if</span> <span class="kw">let</span> current {
+            current.willMove(toParent: <span class="kw">nil</span>)
             current.view.removeFromSuperview()
             current.removeFromParent()
         }
         addChild(vc)
         vc.view.frame = view.bounds
         view.addSubview(vc.view)
-        vc.didMove(toParent: self)
+        vc.didMove(toParent: <span class="kw">self</span>)
         current = vc
     }
 }
@@ -132,6 +135,43 @@ func remove(_ child: UIViewController) {
 <p><strong>Q: What happens if you skip <code>addChild</code>/<code>didMove(toParent:)</code> and just add the view?</strong> A: The child's view displays, but it's an "orphan" — no lifecycle forwarding, wrong <code>parent</code>, and Auto Layout/safe-area/status-bar queries can behave unexpectedly.</p>
 <p><strong>Q: Do container view controllers need extra work for rotation?</strong> A: No — as long as containment is set up correctly, <code>viewWillTransition(to:with:)</code> and trait collection changes are automatically forwarded to all children.</p>
 <p><strong>Q: When would you build a custom container instead of using <code>UINavigationController</code>/<code>UITabBarController</code>?</strong> A: When you need custom transition animations, side-by-side/overlapping children (e.g. a drawer, paged onboarding, or split panels) that Apple's stock containers don't support.</p>
+<p><strong>Known-app example — Instagram Home Feed</strong></p>
+<p>Instagram's main screen is <strong>one parent VC</strong> that uses containment to embed two fully independent child VCs into distinct regions of its view:</p>
+<ul>
+<li><strong>StoriesViewController</strong> — horizontally scrolling story bubbles at the top.</li>
+<li><strong>FeedViewController</strong> — the infinite-scroll photo/video feed below.</li>
+</ul>
+<p>Without containment, <code>StoriesViewController</code> would never receive <code>viewDidAppear</code> (so it could not auto-play story previews) and <code>FeedViewController</code> could not correctly manage its own <code>UICollectionView</code> prefetching and pause video when backgrounded. Each child needs its own lifecycle — that is exactly what containment provides.</p>
+<div class="codehilite"><pre><code><span class="cm">// Simplified sketch of Instagram-style parent VC</span>
+<span class="kw">final</span> <span class="kw">class</span> <span class="type">HomeViewController</span>: <span class="type">UIViewController</span> {
+
+    <span class="kw">private</span> <span class="kw">let</span> storiesVC = <span class="type">StoriesViewController</span>()
+    <span class="kw">private</span> <span class="kw">let</span> feedVC    = <span class="type">FeedViewController</span>()
+
+    <span class="kw">override</span> <span class="kw">func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
+
+        <span class="cm">// --- Embed StoriesVC in the top strip ---</span>
+        addChild(storiesVC)
+        storiesVC.view.frame = <span class="type">CGRect</span>(x: <span class="num">0</span>, y: <span class="num">0</span>,
+                                      width: view.bounds.width, height: <span class="num">88</span>)
+        view.addSubview(storiesVC.view)
+        storiesVC.didMove(toParent: <span class="kw">self</span>)          <span class="cm">// stories now gets viewWillAppear etc.</span>
+
+        <span class="cm">// --- Embed FeedVC below stories ---</span>
+        addChild(feedVC)
+        feedVC.view.frame = <span class="type">CGRect</span>(x: <span class="num">0</span>, y: <span class="num">88</span>,
+                                   width: view.bounds.width,
+                                   height: view.bounds.height - <span class="num">88</span>)
+        view.addSubview(feedVC.view)
+        feedVC.didMove(toParent: <span class="kw">self</span>)             <span class="cm">// feed manages its own scroll &amp; playback</span>
+
+        <span class="cm">// Both children are now first-class VCs:</span>
+        <span class="cm">// rotation, trait changes, and lifecycle events are forwarded automatically.</span>
+    }
+}
+</code></pre></div>
+<p><strong>Why this matters at interview:</strong> mentioning a recognizable app shows you understand <em>when</em> to reach for the pattern, not just <em>how</em> to call the four containment methods. Other places you see the same pattern: <strong>Twitter/X</strong> (timeline + live-event banner), <strong>Spotify</strong> (mini-player overlaid on a browse tab), <strong>Apple Maps</strong> (search sheet + map coexisting as siblings), and any app with an <strong>onboarding carousel</strong> built on top of <code>UIPageViewController</code>.</p>
 </main>
 </body>
 </html>

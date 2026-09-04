@@ -56,6 +56,23 @@ ul.toc li a{font-size:1.05em}
 .codehilite .na{color:#22863a}
 .codehilite .nt{color:#22863a}
 .codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
@@ -65,21 +82,22 @@ ul.toc li a{font-size:1.05em}
 <ul>
 <li>
 <p>Auto Layout is a <strong>constraint-based layout system</strong> in UIKit that automatically calculates the size and position of views based on rules (constraints) you define. Instead of setting fixed frames, you describe <strong>relationships between views</strong>.</p>
-<p>```swift
-let button = UIButton()
-button.translatesAutoresizingMaskIntoConstraints = false
-view.addSubview(button)</p>
-<p>NSLayoutConstraint.activate([
+<div class="codehilite"><pre><code class="language-swift"><span class="kw">let</span> button = <span class="type">UIButton</span>()
+button.translatesAutoresizingMaskIntoConstraints = <span class="kw">false</span>
+view.addSubview(button)
+
+<span class="type">NSLayoutConstraint</span>.activate([
     button.centerXAnchor.constraint(equalTo: view.centerXAnchor),
     button.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-    button.widthAnchor.constraint(equalToConstant: 100),
-    button.heightAnchor.constraint(equalToConstant: 50)
-])</p>
-<p>// Modern Approach with Layout Anchors</p>
-<p>// Make button fill width with padding
-button.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20).isActive = true
-button.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20).isActive = true
-```</p>
+    button.widthAnchor.constraint(equalToConstant: <span class="num">100</span>),
+    button.heightAnchor.constraint(equalToConstant: <span class="num">50</span>)
+])
+
+<span class="cm">// Modern Approach with Layout Anchors</span>
+
+<span class="cm">// Make button fill width with padding</span>
+button.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: <span class="num">20</span>).isActive = <span class="kw">true</span>
+button.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -<span class="num">20</span>).isActive = <span class="kw">true</span></code></pre></div>
 <ul>
 <li>
 <p><strong>Common Interview "Why" Questions:</strong></p>

@@ -1,3 +1,23 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>1.3. What are the key differences between Array, Set, and Dictionary?</title></head><body class="markdown-body"><nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">1. Swift Foundation</a> › <a href="index.html">Topics</a></nav><main><h1>1.3. What are the key differences between Array, Set, and Dictionary?</h1><p><code>Array</code> preserves order and permits duplicates. <code>Set</code> stores unique hashable elements and is useful for membership checks. <code>Dictionary</code> maps unique hashable keys to optional values. Arrays provide indexed access, while sets and dictionaries generally provide near-constant-time lookup.</p><pre><code>let tags = Set(["swift", "ios", "swift"])
-var scores = ["swift": 10]
-scores["ios"] = 8</code></pre></main></body></html>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>1.3. What are the key differences between Array, Set, and Dictionary?</title>
+<style>
+pre { border-radius: 8px; padding: 1em; overflow-x: auto; font-size: 0.88em; line-height: 1.55; background: #f7f8fa; color: #1d1d1f; }
+pre code { background: none; padding: 0; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  pre { background: #1c1c1e; color: #e8e8e8; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head><body class="markdown-body"><nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">1. Swift Foundation</a> › <a href="index.html">Topics</a></nav><main><h1>1.3. What are the key differences between Array, Set, and Dictionary?</h1><p><code>Array</code> preserves order and permits duplicates. <code>Set</code> stores unique hashable elements and is useful for membership checks. <code>Dictionary</code> maps unique hashable keys to optional values. Arrays provide indexed access, while sets and dictionaries generally provide near-constant-time lookup.</p><pre><code><span class="kw">let</span> tags = <span class="type">Set</span>([<span class="str">"swift"</span>, <span class="str">"ios"</span>, <span class="str">"swift"</span>])
+<span class="kw">var</span> scores = [<span class="str">"swift"</span>: <span class="num">10</span>]
+scores[<span class="str">"ios"</span>] = <span class="num">8</span></code></pre></main></body></html>

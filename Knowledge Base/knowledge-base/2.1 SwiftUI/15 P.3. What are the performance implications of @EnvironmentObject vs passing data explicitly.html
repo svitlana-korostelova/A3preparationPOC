@@ -19,7 +19,7 @@ body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:
   background-color:rgba(175,184,193,.2);border-radius:6px;
   font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
 .markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
-  background-color:#f6f8fa;border-radius:6px}
+  background-color:#f6f8fa;border-radius:6px;color:#1d1d1f}
 .markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
 .markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
 .markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
@@ -33,7 +33,21 @@ nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
   border-bottom:1px solid #eaeef2;margin-bottom:24px}
 nav.breadcrumbs a{color:#0969da;text-decoration:none}
 nav.breadcrumbs a:hover{text-decoration:underline}
-.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
@@ -52,12 +66,12 @@ nav.breadcrumbs a:hover{text-decoration:underline}
 </table>
 
 <p><strong>The problem:</strong></p>
-<div class="codehilite"><pre><code>// ❌ SearchBar typing triggers re-render of ResultsView too
-class AppState: ObservableObject {
-    @Published var searchText = ""   // changes rapidly
-    @Published var results: [Item] = []
+<pre><code><span class="cm">// ❌ SearchBar typing triggers re-render of ResultsView too</span>
+<span class="kw">class</span> <span class="type">AppState</span>: <span class="type">ObservableObject</span> {
+    <span class="attr">@Published</span> <span class="kw">var</span> searchText = <span class="str">""</span>   <span class="cm">// changes rapidly</span>
+    <span class="attr">@Published</span> <span class="kw">var</span> results: [<span class="type">Item</span>] = []
 }
-// Every view using @EnvironmentObject var appState re-renders on any change</code></pre></div>
+<span class="cm">// Every view using @EnvironmentObject var appState re-renders on any change</span></code></pre>
 
 <p><strong>Solutions:</strong></p>
 <ul>

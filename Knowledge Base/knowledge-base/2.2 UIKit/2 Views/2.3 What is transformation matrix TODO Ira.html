@@ -42,20 +42,23 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
@@ -105,20 +108,20 @@ ul.toc li a{font-size:1.05em}
 </tr>
 </tbody>
 </table>
-<div class="codehilite"><pre><code>// CGAffineTransform — 2D, on UIView
+<div class="codehilite"><pre><code><span class="cm">// CGAffineTransform — 2D, on UIView</span>
 view.transform = .identity
-view.transform = CGAffineTransform(translationX: 50, y: 0)
-view.transform = view.transform.scaledBy(x: 1.2, y: 1.2)          // combine
-view.transform = view.transform.rotated(by: .pi / 4)
+view.transform = <span class="type">CGAffineTransform</span>(translationX: <span class="num">50</span>, y: <span class="num">0</span>)
+view.transform = view.transform.scaledBy(x: <span class="num">1.2</span>, y: <span class="num">1.2</span>)          <span class="cm">// combine</span>
+view.transform = view.transform.rotated(by: .pi / <span class="num">4</span>)
 
-UIView.animate(withDuration: 0.3) {
-    view.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
+<span class="type">UIView</span>.animate(withDuration: <span class="num">0.3</span>) {
+    view.transform = <span class="type">CGAffineTransform</span>(scaleX: <span class="num">0.9</span>, y: <span class="num">0.9</span>)
 }
 
-// CATransform3D — 3D, on CALayer, e.g. flip/perspective card animation
-var transform = CATransform3DIdentity
-transform.m34 = -1 / 500                 // perspective (further = smaller)
-transform = CATransform3DRotate(transform, .pi / 4, 0, 1, 0)  // rotate around Y axis
+<span class="cm">// CATransform3D — 3D, on CALayer, e.g. flip/perspective card animation</span>
+<span class="kw">var</span> transform = <span class="type">CATransform3DIdentity</span>
+transform.m34 = -<span class="num">1</span> / <span class="num">500</span>                 <span class="cm">// perspective (further = smaller)</span>
+transform = <span class="type">CATransform3DRotate</span>(transform, .pi / <span class="num">4</span>, <span class="num">0</span>, <span class="num">1</span>, <span class="num">0</span>)  <span class="cm">// rotate around Y axis</span>
 view.layer.transform = transform
 </code></pre></div>
 <p><strong>Matrix form (affine, 2D):</strong></p>

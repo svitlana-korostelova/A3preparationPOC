@@ -42,20 +42,23 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
@@ -63,23 +66,23 @@ ul.toc li a{font-size:1.05em}
 <main>
 <h1>1.7. TabViewController example</h1>
 <p><code>UITabBarController</code> is a <strong>container VC</strong> (see 1.6) that manages an array of <code>viewControllers</code>, shows one at a time, and lets the user switch via the tab bar. Each tab is usually a <code>UINavigationController</code> wrapping the actual screen, so pushing works independently per tab.</p>
-<div class="codehilite"><pre><code>final class MainTabBarController: UITabBarController {
+<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">MainTabBarController</span>: <span class="type">UITabBarController</span> {
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    <span class="kw">override</span> <span class="kw">func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
 
-        let home = UINavigationController(rootViewController: HomeViewController())
-        home.tabBarItem = UITabBarItem(title: "Home", image: UIImage(systemName: "house"), tag: 0)
+        <span class="kw">let</span> home = <span class="type">UINavigationController</span>(rootViewController: <span class="type">HomeViewController</span>())
+        home.tabBarItem = <span class="type">UITabBarItem</span>(title: <span class="str">"Home"</span>, image: <span class="type">UIImage</span>(systemName: <span class="str">"house"</span>), tag: <span class="num">0</span>)
 
-        let search = UINavigationController(rootViewController: SearchViewController())
-        search.tabBarItem = UITabBarItem(title: "Search", image: UIImage(systemName: "magnifyingglass"), tag: 1)
+        <span class="kw">let</span> search = <span class="type">UINavigationController</span>(rootViewController: <span class="type">SearchViewController</span>())
+        search.tabBarItem = <span class="type">UITabBarItem</span>(title: <span class="str">"Search"</span>, image: <span class="type">UIImage</span>(systemName: <span class="str">"magnifyingglass"</span>), tag: <span class="num">1</span>)
 
-        let profile = UINavigationController(rootViewController: ProfileViewController())
-        profile.tabBarItem = UITabBarItem(title: "Profile", image: UIImage(systemName: "person"), tag: 2)
+        <span class="kw">let</span> profile = <span class="type">UINavigationController</span>(rootViewController: <span class="type">ProfileViewController</span>())
+        profile.tabBarItem = <span class="type">UITabBarItem</span>(title: <span class="str">"Profile"</span>, image: <span class="type">UIImage</span>(systemName: <span class="str">"person"</span>), tag: <span class="num">2</span>)
 
-        viewControllers = [home, search, profile]   // order = tab order
-        selectedIndex = 0
-        delegate = self   // see explanation below
+        viewControllers = [home, search, profile]   <span class="cm">// order = tab order</span>
+        selectedIndex = <span class="num">0</span>
+        delegate = <span class="kw">self</span>   <span class="cm">// see explanation below</span>
     }
 }
 </code></pre></div>
@@ -90,18 +93,18 @@ ul.toc li a{font-size:1.05em}
 <li>Without setting <code>delegate</code>, <code>UITabBarController</code> works fine for basic tab switching — the delegate is only needed if you want to <strong>hook into</strong> the switching process: veto a switch (<code>shouldSelect</code>), react after a switch (<code>didSelect</code>), or customize animated transitions between tabs (<code>animationControllerForTransitionFrom:to:</code>).</li>
 </ul>
 <p><strong>Common tasks:</strong></p>
-<div class="codehilite"><pre><code>// switch tab programmatically
-tabBarController?.selectedIndex = 1
+<div class="codehilite"><pre><code><span class="cm">// switch tab programmatically</span>
+tabBarController?.selectedIndex = <span class="num">1</span>
 
-// badge on a tab
-tabBarController?.viewControllers?[1].tabBarItem.badgeValue = "3"
+<span class="cm">// badge on a tab</span>
+tabBarController?.viewControllers?[<span class="num">1</span>].tabBarItem.badgeValue = <span class="str">"3"</span>
 
-// intercept/veto a tab switch
-extension MainTabBarController: UITabBarControllerDelegate {
-    func tabBarController(_ tabBarController: UITabBarController,
-                           shouldSelect viewController: UIViewController) -> Bool {
-        // e.g. block leaving an unsaved form, or require login for a tab
-        return true
+<span class="cm">// intercept/veto a tab switch</span>
+<span class="kw">extension</span> <span class="type">MainTabBarController</span>: <span class="type">UITabBarControllerDelegate</span> {
+    <span class="kw">func</span> tabBarController(_ tabBarController: <span class="type">UITabBarController</span>,
+                           shouldSelect viewController: <span class="type">UIViewController</span>) -> <span class="type">Bool</span> {
+        <span class="cm">// e.g. block leaving an unsaved form, or require login for a tab</span>
+        <span class="kw">return</span> <span class="kw">true</span>
     }
 }
 </code></pre></div>

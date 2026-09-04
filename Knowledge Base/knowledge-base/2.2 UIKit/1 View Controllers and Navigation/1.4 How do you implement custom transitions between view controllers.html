@@ -42,20 +42,23 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
@@ -71,97 +74,97 @@ ul.toc li a{font-size:1.05em}
 <li>Set the presented controller's <code>modalPresentationStyle = .custom</code> and <code>transitioningDelegate</code>.</li>
 <li>Call <code>completeTransition(!context.transitionWasCancelled)</code> in the animation completion.</li>
 </ol>
-<div class="codehilite"><pre><code class="language-swift">import UIKit
+<div class="codehilite"><pre><code class="language-swift"><span class="kw">import</span> <span class="type">UIKit</span>
 
-final class ProfileViewController: UIViewController, UIViewControllerTransitioningDelegate {
-    private let animator = FadeAnimator(isPresenting: true)
+<span class="kw">final</span> <span class="kw">class</span> <span class="type">ProfileViewController</span>: <span class="type">UIViewController</span>, <span class="type">UIViewControllerTransitioningDelegate</span> {
+    <span class="kw">private</span> <span class="kw">let</span> animator = <span class="type">FadeAnimator</span>(isPresenting: <span class="kw">true</span>)
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    <span class="kw">override</span> <span class="kw">func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
         view.backgroundColor = .systemBackground
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            title: "Details",
+        navigationItem.rightBarButtonItem = <span class="type">UIBarButtonItem</span>(
+            title: <span class="str">"Details"</span>,
             style: .plain,
-            target: self,
+            target: <span class="kw">self</span>,
             action: #selector(showDetails)
         )
     }
 
-    @objc private func showDetails() {
-        let details = UINavigationController(rootViewController: DetailsViewController())
+    <span class="attr">@objc</span> <span class="kw">private</span> <span class="kw">func</span> showDetails() {
+        <span class="kw">let</span> details = <span class="type">UINavigationController</span>(rootViewController: <span class="type">DetailsViewController</span>())
         details.modalPresentationStyle = .custom
-        details.transitioningDelegate = self
-        present(details, animated: true)
+        details.transitioningDelegate = <span class="kw">self</span>
+        present(details, animated: <span class="kw">true</span>)
     }
 
-    func animationController(
-        forPresented presented: UIViewController,
-        presenting: UIViewController,
-        source: UIViewController
-    ) -&gt; UIViewControllerAnimatedTransitioning? {
+    <span class="kw">func</span> animationController(
+        forPresented presented: <span class="type">UIViewController</span>,
+        presenting: <span class="type">UIViewController</span>,
+        source: <span class="type">UIViewController</span>
+    ) -&gt; <span class="type">UIViewControllerAnimatedTransitioning</span>? {
         animator
     }
 
-    func animationController(forDismissed dismissed: UIViewController)
-        -&gt; UIViewControllerAnimatedTransitioning? {
-        FadeAnimator(isPresenting: false)
+    <span class="kw">func</span> animationController(forDismissed dismissed: <span class="type">UIViewController</span>)
+        -&gt; <span class="type">UIViewControllerAnimatedTransitioning</span>? {
+        <span class="type">FadeAnimator</span>(isPresenting: <span class="kw">false</span>)
     }
 }
 
-final class DetailsViewController: UIViewController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
+<span class="kw">final</span> <span class="kw">class</span> <span class="type">DetailsViewController</span>: <span class="type">UIViewController</span> {
+    <span class="kw">override</span> <span class="kw">func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
         view.backgroundColor = .systemBlue
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
+        navigationItem.rightBarButtonItem = <span class="type">UIBarButtonItem</span>(
             barButtonSystemItem: .close,
-            target: self,
+            target: <span class="kw">self</span>,
             action: #selector(close)
         )
     }
 
-    @objc private func close() {
-        dismiss(animated: true)
+    <span class="attr">@objc</span> <span class="kw">private</span> <span class="kw">func</span> close() {
+        dismiss(animated: <span class="kw">true</span>)
     }
 }
 
-final class FadeAnimator: NSObject, UIViewControllerAnimatedTransitioning {
-    private let isPresenting: Bool
+<span class="kw">final</span> <span class="kw">class</span> <span class="type">FadeAnimator</span>: <span class="type">NSObject</span>, <span class="type">UIViewControllerAnimatedTransitioning</span> {
+    <span class="kw">private</span> <span class="kw">let</span> isPresenting: <span class="type">Bool</span>
 
-    init(isPresenting: Bool) {
-        self.isPresenting = isPresenting
+    <span class="kw">init</span>(isPresenting: <span class="type">Bool</span>) {
+        <span class="kw">self</span>.isPresenting = isPresenting
     }
 
-    func transitionDuration(using context: UIViewControllerContextTransitioning?) -&gt; TimeInterval {
-        0.25
+    <span class="kw">func</span> transitionDuration(using context: <span class="type">UIViewControllerContextTransitioning</span>?) -&gt; <span class="type">TimeInterval</span> {
+        <span class="num">0.25</span>
     }
 
-    func animateTransition(using context: UIViewControllerContextTransitioning) {
-        guard
-            let fromView = context.view(forKey: .from),
-            let toView = context.view(forKey: .to)
-        else {
-            context.completeTransition(false)
-            return
+    <span class="kw">func</span> animateTransition(using context: <span class="type">UIViewControllerContextTransitioning</span>) {
+        <span class="kw">guard</span>
+            <span class="kw">let</span> fromView = context.view(forKey: .from),
+            <span class="kw">let</span> toView = context.view(forKey: .to)
+        <span class="kw">else</span> {
+            context.completeTransition(<span class="kw">false</span>)
+            <span class="kw">return</span>
         }
 
-        let container = context.containerView
-        if isPresenting {
-            toView.alpha = 0
-            toView.transform = CGAffineTransform(scaleX: 0.96, y: 0.96)
+        <span class="kw">let</span> container = context.containerView
+        <span class="kw">if</span> isPresenting {
+            toView.alpha = <span class="num">0</span>
+            toView.transform = <span class="type">CGAffineTransform</span>(scaleX: <span class="num">0.96</span>, y: <span class="num">0.96</span>)
             container.addSubview(toView)
-        } else {
+        } <span class="kw">else</span> {
             container.insertSubview(toView, belowSubview: fromView)
         }
 
-        UIView.animate(withDuration: transitionDuration(using: context)) {
-            if self.isPresenting {
-                toView.alpha = 1
+        <span class="type">UIView</span>.animate(withDuration: transitionDuration(using: context)) {
+            <span class="kw">if</span> <span class="kw">self</span>.isPresenting {
+                toView.alpha = <span class="num">1</span>
                 toView.transform = .identity
-            } else {
-                fromView.alpha = 0
-                fromView.transform = CGAffineTransform(scaleX: 0.96, y: 0.96)
+            } <span class="kw">else</span> {
+                fromView.alpha = <span class="num">0</span>
+                fromView.transform = <span class="type">CGAffineTransform</span>(scaleX: <span class="num">0.96</span>, y: <span class="num">0.96</span>)
             }
-        } completion: { _ in
+        } completion: { _ <span class="kw">in</span>
             context.completeTransition(!context.transitionWasCancelled)
         }
     }

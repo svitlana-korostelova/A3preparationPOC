@@ -15,6 +15,8 @@ This repo is a learning playground used to prepare for a Senior iOS Developer in
 | **Git Ops** | User says "commit", "push", "PR", "branch" | ONLY then do git operations |
 | **Xcode Project** | Adding/removing/renaming source files | Edit `A3_poc_ios_only/project.yml` if structure changes, then run `xcodegen generate`; never hand-edit `.xcodeproj/project.pbxproj` |
 | **KB HTML-only** | Editing ANY file under `Knowledge Base/` | Edit only the `.html` files in `Knowledge Base/knowledge-base/` — `.md` files have been removed; no sync needed |
+| **KB Code Style** | Adding/editing any code example in KB HTML | Add inline `<style>` block from `1.8` reference file; annotate tokens with `.kw` `.type` `.str` `.num` `.cm` `.attr` spans; support light + dark via `prefers-color-scheme` |
+| **Response Language** | ANY response to user | Simple words, concise sentences — no jargon without explanation, no filler |
 | **Shell** | ANY shell command | Use bash/zsh syntax (macOS) |
 
 **Recovery**: If stuck → check [Troubleshooting](#-troubleshooting).

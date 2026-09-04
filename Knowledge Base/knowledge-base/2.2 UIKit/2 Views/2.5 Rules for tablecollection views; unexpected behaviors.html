@@ -42,20 +42,23 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
@@ -76,22 +79,22 @@ ul.toc li a{font-size:1.05em}
 
 <p><strong>Cell reuse — reset &amp; async race example:</strong></p>
 
-<div class="codehilite"><pre><code>final class ImageCell: UITableViewCell {
-    private var currentToken: UUID?
+<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">ImageCell</span>: <span class="type">UITableViewCell</span> {
+    <span class="kw">private</span> <span class="kw">var</span> currentToken: <span class="type">UUID</span>?
 
-    override func prepareForReuse() {
-        super.prepareForReuse()
-        currentToken = nil          // invalidate any in-flight request
-        imageView?.image = nil      // don't show the previous row's image while loading
+    <span class="kw">override</span> <span class="kw">func</span> prepareForReuse() {
+        <span class="kw">super</span>.prepareForReuse()
+        currentToken = <span class="kw">nil</span>          <span class="cm">// invalidate any in-flight request</span>
+        imageView?.image = <span class="kw">nil</span>      <span class="cm">// don't show the previous row's image while loading</span>
         accessoryType = .none
     }
 
-    func configure(url: URL) {
-        let token = UUID()
+    <span class="kw">func</span> configure(url: <span class="type">URL</span>) {
+        <span class="kw">let</span> token = <span class="type">UUID</span>()
         currentToken = token
-        ImageLoader.shared.load(url) { [weak self] image in
-            guard let self, self.currentToken == token else { return } // cell was reused meanwhile
-            self.imageView?.image = image
+        <span class="type">ImageLoader</span>.shared.load(url) { [<span class="kw">weak</span> <span class="kw">self</span>] image <span class="kw">in</span>
+            <span class="kw">guard</span> <span class="kw">let</span> <span class="kw">self</span>, <span class="kw">self</span>.currentToken == token <span class="kw">else</span> { <span class="kw">return</span> } <span class="cm">// cell was reused meanwhile</span>
+            <span class="kw">self</span>.imageView?.image = image
         }
     }
 }
@@ -99,19 +102,19 @@ ul.toc li a{font-size:1.05em}
 
 <p><strong>Batch update crash vs. fix:</strong></p>
 
-<div class="codehilite"><pre><code>// ❌ Crashes: array mutated, but batch update not called with matching delta
-items.remove(at: 2)
-tableView.reloadData() // works, but loses row animation — fine if that's acceptable
+<div class="codehilite"><pre><code><span class="cm">// ❌ Crashes: array mutated, but batch update not called with matching delta</span>
+items.remove(at: <span class="num">2</span>)
+tableView.reloadData() <span class="cm">// works, but loses row animation — fine if that's acceptable</span>
 
-// ❌ Crashes: says "delete row 2" but array wasn't changed yet
+<span class="cm">// ❌ Crashes: says "delete row 2" but array wasn't changed yet</span>
 tableView.performBatchUpdates {
-    tableView.deleteRows(at: [IndexPath(row: 2, section: 0)], with: .automatic)
-} // -&gt; NSInternalInconsistencyException, counts don't match
+    tableView.deleteRows(at: [<span class="type">IndexPath</span>(row: <span class="num">2</span>, section: <span class="num">0</span>)], with: .automatic)
+} <span class="cm">// -&gt; NSInternalInconsistencyException, counts don't match</span>
 
-// ✅ Correct: mutate first, then describe the exact same delta
+<span class="cm">// ✅ Correct: mutate first, then describe the exact same delta</span>
 tableView.performBatchUpdates {
-    items.remove(at: 2)
-    tableView.deleteRows(at: [IndexPath(row: 2, section: 0)], with: .automatic)
+    items.remove(at: <span class="num">2</span>)
+    tableView.deleteRows(at: [<span class="type">IndexPath</span>(row: <span class="num">2</span>, section: <span class="num">0</span>)], with: .automatic)
 }
 </code></pre></div>
 

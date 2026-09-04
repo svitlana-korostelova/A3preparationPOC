@@ -1,7 +1,27 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>1.4. What is a closure, and what capture rules should you know?</title></head><body class="markdown-body"><nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">1. Swift Foundation</a> › <a href="index.html">Topics</a></nav><main><h1>1.4. What is a closure, and what capture rules should you know?</h1><p>A closure is a self-contained function value that can capture constants and variables from its surrounding scope. Captured reference types are normally retained strongly, which can create cycles when a closure is stored by the captured object. Use a capture list such as <code>[weak self]</code> when the closure should not keep an owner alive.</p><pre><code>final class Loader {
-    var onComplete: (() -&gt; Void)?
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>1.4. What is a closure, and what capture rules should you know?</title>
+<style>
+pre { border-radius: 8px; padding: 1em; overflow-x: auto; font-size: 0.88em; line-height: 1.55; background: #f7f8fa; color: #1d1d1f; }
+pre code { background: none; padding: 0; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  pre { background: #1c1c1e; color: #e8e8e8; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head><body class="markdown-body"><nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">1. Swift Foundation</a> › <a href="index.html">Topics</a></nav><main><h1>1.4. What is a closure, and what capture rules should you know?</h1><p>A closure is a self-contained function value that can capture constants and variables from its surrounding scope. Captured reference types are normally retained strongly, which can create cycles when a closure is stored by the captured object. Use a capture list such as <code>[weak self]</code> when the closure should not keep an owner alive.</p><pre><code><span class="kw">final class</span> <span class="type">Loader</span> {
+    <span class="kw">var</span> onComplete: (() -&gt; <span class="type">Void</span>)?
 
-    func finish() {
+    <span class="kw">func</span> finish() {
         onComplete?()
     }
 }</code></pre></main></body></html>

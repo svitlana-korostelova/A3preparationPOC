@@ -42,20 +42,23 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
@@ -91,11 +94,11 @@ ul.toc li a{font-size:1.05em}
 
 <p><strong>Key insight:</strong> SwiftUI doesn't diff the rendered pixels — it diffs the <strong>view description tree</strong> (structs). If a view's struct value is identical to the previous render, SwiftUI skips the layout and drawing passes for that branch.</p>
 
-<pre><code class="language-swift">// SwiftUI can diff this precisely — knows it's always a Text
-var body: some View { Text(name) }
+<pre><code><span class="cm">// SwiftUI can diff this precisely — knows it's always a Text</span>
+<span class="kw">var</span> body: <span class="kw">some</span> <span class="type">View</span> { <span class="type">Text</span>(name) }
 
-// SwiftUI can't diff — AnyView loses type info, always rebuilds
-var body: AnyView { AnyView(Text(name)) }
+<span class="cm">// SwiftUI can't diff — AnyView loses type info, always rebuilds</span>
+<span class="kw">var</span> body: <span class="type">AnyView</span> { <span class="type">AnyView</span>(<span class="type">Text</span>(name)) }
 </code></pre>
 
 <hr>
@@ -103,10 +106,10 @@ var body: AnyView { AnyView(Text(name)) }
 <h2>P.2. How would you profile and debug SwiftUI performance issues?</h2>
 
 <h3>1. <code>Self._printChanges()</code> (iOS 15+) — first stop</h3>
-<pre><code class="language-swift">var body: some View {
-    let _ = Self._printChanges()
-    // Output: "MyView: @self, _counter changed."
-    Text("Hello")
+<pre><code><span class="kw">var</span> body: <span class="kw">some</span> <span class="type">View</span> {
+    <span class="kw">let</span> _ = <span class="type">Self</span>._printChanges()
+    <span class="cm">// Output: "MyView: @self, _counter changed."</span>
+    <span class="type">Text</span>(<span class="str">"Hello"</span>)
 }
 </code></pre>
 <p>Logs exactly which dependency caused the re-render.</p>
@@ -131,8 +134,8 @@ var body: AnyView { AnyView(Text(name)) }
 </ul>
 
 <h3>5. Layout debugging (visual, not perf measurement)</h3>
-<pre><code class="language-swift">someView.border(.red)
-someView.background(Color.red.opacity(0.2))
+<pre><code>someView.border(.red)
+someView.background(<span class="type">Color</span>.red.opacity(<span class="num">0.2</span>))
 </code></pre>
 <p>Shows view frame boundaries. Useful for catching layout bugs (e.g. a view unexpectedly fills all space, forcing extra layout passes) — but does <strong>not</strong> measure render time or body call frequency. Use Instruments for actual perf numbers.</p>
 
@@ -156,12 +159,12 @@ someView.background(Color.red.opacity(0.2))
 </table>
 
 <h3>The problem</h3>
-<pre><code class="language-swift">// ❌ SearchBar typing triggers re-render of ResultsView too
-class AppState: ObservableObject {
-    @Published var searchText = ""   // changes rapidly
-    @Published var results: [Item] = []
+<pre><code><span class="cm">// ❌ SearchBar typing triggers re-render of ResultsView too</span>
+<span class="kw">class</span> <span class="type">AppState</span>: <span class="type">ObservableObject</span> {
+    <span class="attr">@Published</span> <span class="kw">var</span> searchText = <span class="str">""</span>   <span class="cm">// changes rapidly</span>
+    <span class="attr">@Published</span> <span class="kw">var</span> results: [<span class="type">Item</span>] = []
 }
-// Every view using @EnvironmentObject var appState re-renders on any change
+<span class="cm">// Every view using @EnvironmentObject var appState re-renders on any change</span>
 </code></pre>
 
 <h3>Solutions</h3>

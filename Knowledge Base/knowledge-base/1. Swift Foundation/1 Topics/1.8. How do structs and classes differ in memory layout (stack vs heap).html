@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1.8. How do structs and classes differ in memory layout (stack vs heap)?</title>
+<style>
+pre {
+  border-radius: 8px;
+  padding: 1em;
+  overflow-x: auto;
+  font-size: 0.88em;
+  line-height: 1.55;
+  background: #f7f8fa;
+  color: #1d1d1f;
+}
+pre code { background: none; padding: 0; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+
+@media (prefers-color-scheme: dark) {
+  pre { background: #1c1c1e; color: #e8e8e8; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ccc; padding: 0.45em 0.7em; text-align: left; vertical-align: top; }
+th { background: #eef0f3; }
+@media (prefers-color-scheme: dark) {
+  th { background: #2c2c2e; }
+  td, th { border-color: #444; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">1. Swift Foundation</a> › <a href="index.html">Topics</a></nav>
+<main>
+<h1>1.8. How do structs and classes differ in memory layout (stack vs heap)?</h1>
+
+<h2>Stack vs Heap</h2>
+<p>The <strong>stack</strong> is a fixed-size, LIFO region per thread. Allocation is a single stack-pointer decrement — essentially free. Memory is reclaimed automatically when the function returns.</p>
+<p>The <strong>heap</strong> is a shared, dynamically managed region. Allocation requires locking and bookkeeping. Lifetime is controlled by ARC (atomic retain/release on every copy).</p>
+
+<h2>Structs — Stack (usually)</h2>
+<p>Value types are stored <em>inline</em>: a local struct lives entirely on the stack. No reference counting, no heap allocation for the struct itself.</p>
+<pre><code><span class="kw">struct</span> <span class="type">Point</span> {
+    <span class="kw">var</span> x: <span class="type">Double</span>  <span class="cm">// 8 bytes</span>
+    <span class="kw">var</span> y: <span class="type">Double</span>  <span class="cm">// 8 bytes</span>
+}
+
+<span class="kw">func</span> compute() {
+    <span class="kw">let</span> p = <span class="type">Point</span>(x: <span class="num">1</span>, y: <span class="num">2</span>)  <span class="cm">// 16 bytes on the stack frame</span>
+    <span class="cm">// p is gone when compute() returns — no ARC involved</span>
+}</code></pre>
+
+<h2>Value Types with Heap-Allocated Storage</h2>
+<p>A struct that <em>contains</em> a heap-backed type (<code>String</code>, <code>Array</code>, <code>Data</code>, <code>Text</code>, or any class instance) still performs ARC on those stored references. The struct header sits on the stack; the data it owns lives on the heap.</p>
+<pre><code><span class="kw">struct</span> <span class="type">Profile</span> {
+    <span class="kw">var</span> name:   <span class="type">String</span>  <span class="cm">// String buffer is heap-allocated</span>
+    <span class="kw">var</span> scores: [<span class="type">Int</span>]    <span class="cm">// Array storage is heap-allocated</span>
+    <span class="kw">var</span> avatar: <span class="type">Data</span>    <span class="cm">// Data byte buffer is heap-allocated</span>
+    <span class="kw">var</span> label:  <span class="type">Text</span>    <span class="cm">// SwiftUI.Text internals are heap-allocated</span>
+}</code></pre>
+<p>Copying <code>Profile</code> is cheap (the struct header is small), but each heap-owning field triggers a retain on copy.</p>
+
+<h2>Classes — Heap (always)</h2>
+<p>Reference types are heap-allocated. A local variable holds an 8-byte pointer on the stack; the actual object and its ARC metadata live on the heap. Every assignment copies the pointer, not the data.</p>
+<pre><code><span class="kw">class</span> <span class="type">Node</span> {
+    <span class="kw">var</span> value: <span class="type">Int</span>
+    <span class="kw">var</span> next: <span class="type">Node</span>?
+    <span class="kw">init</span>(_ v: <span class="type">Int</span>) { value = v }
+}
+
+<span class="kw">func</span> build() {
+    <span class="kw">let</span> n = <span class="type">Node</span>(<span class="num">42</span>)
+    <span class="cm">// stack: 8-byte pointer `n`</span>
+    <span class="cm">// heap:  Node data + ARC header (~32+ bytes)</span>
+} <span class="cm">// ARC releases Node here when ref count hits 0</span></code></pre>
+
+<h2>4-Point Structural Comparison</h2>
+<table>
+<tr><th></th><th>Struct</th><th>Class</th></tr>
+<tr>
+  <td><strong>Inheritance</strong></td>
+  <td>None — protocol conformance only</td>
+  <td>Single-class inheritance + protocol conformance</td>
+</tr>
+<tr>
+  <td><strong>Dispatch</strong></td>
+  <td>Static — call site resolved at compile time; can be inlined</td>
+  <td>Dynamic — vtable lookup at runtime; <code>final</code> lets compiler devirtualize</td>
+</tr>
+<tr>
+  <td><strong>Memory</strong></td>
+  <td>Inline on the stack (or inline in enclosing type)</td>
+  <td>Always heap; variable is an 8-byte pointer</td>
+</tr>
+<tr>
+  <td><strong>Reference counting</strong></td>
+  <td>No ARC on the struct itself (only on heap-owning fields)</td>
+  <td>ARC on every copy — atomic retain/release</td>
+</tr>
+</table>
+
+<h3>Dispatch example</h3>
+<pre><code><span class="kw">struct</span> <span class="type">Circle</span> {
+    <span class="kw">var</span> radius: <span class="type">Double</span>
+    <span class="kw">func</span> area() -> <span class="type">Double</span> { .pi * radius * radius }
+    <span class="cm">// ↑ static dispatch — compiler resolves this call directly</span>
+}
+
+<span class="kw">class</span> <span class="type">Shape</span> {
+    <span class="kw">func</span> area() -> <span class="type">Double</span> { <span class="num">0</span> }
+    <span class="cm">// ↑ dynamic dispatch — runtime consults vtable</span>
+}
+
+<span class="kw">class</span> <span class="type">Square</span>: <span class="type">Shape</span> {
+    <span class="kw">override func</span> area() -> <span class="type">Double</span> { side * side }
+    <span class="cm">// ↑ still dynamic — replaces Shape's vtable entry</span>
+}
+
+<span class="kw">final class</span> <span class="type">Triangle</span> {
+    <span class="kw">func</span> area() -> <span class="type">Double</span> { base * height / <span class="num">2</span> }
+    <span class="cm">// ↑ compiler can devirtualize: final + no override possible</span>
+}</code></pre>
+
+<h2>When the Compiler Promotes Structs to the Heap</h2>
+<p>A local value type is promoted to the heap when its lifetime must outlive its stack frame — typically when captured by an escaping closure.</p>
+<pre><code><span class="kw">func</span> makeCounter() -> () -> <span class="type">Int</span> {
+    <span class="kw">var</span> count = <span class="num">0</span>
+    <span class="kw">return</span> { count += <span class="num">1</span>; <span class="kw">return</span> count }
+    <span class="cm">// ↑ escaping capture — `count` box is heap-allocated</span>
+}</code></pre>
+
+<h2>Quick Rule</h2>
+<ul>
+  <li>Prefer <code>struct</code> for plain data, independent copies, hot paths — no ARC overhead, no vtable.</li>
+  <li>Use <code>class</code> when you need shared identity, inheritance, or lifecycle management (e.g., a view controller, a network session).</li>
+</ul>
+
+</main>
+</body>
+</html>

@@ -58,14 +58,24 @@ ul.toc li a{font-size:1.05em}
 .codehilite .nv{color:#e36209}
 </style>
 </head>
+<style>
+.qa-block{margin-bottom:20px}
+.qa-block .question{font-weight:600;color:#1f2328;margin-bottom:4px}
+.qa-block .answer{color:#444;padding-left:16px;border-left:3px solid #0969da;margin:0}
+.callout{padding:12px 16px;border-radius:6px;margin-bottom:16px}
+.callout.tip{background:#dafbe1;border-left:4px solid #2da44e}
+</style>
 <body class="markdown-body">
-<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.1 SwiftUI</a> › <a href="index.html">7.  View Modifiers</a></nav>
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.1 SwiftUI</a> › <a href="index.html">7. View Modifiers</a></nav>
 <main>
-<h1>2. .onAppear {} vs  .task { }</h1>
-<ul>
-<li>
-<p><strong><code>.onAppear</code></strong> - Runs when view appears on screen</p>
-<p><strong><code>.task</code></strong> - Runs async work when view appears, with automatic cancellation</p>
+<h1>2. <code>.onAppear</code> vs <code>.task</code></h1>
+
+<p>
+  <strong><code>.onAppear</code></strong> — Executes <em>synchronous</em> code when the view enters the screen.<br>
+  <strong><code>.task</code></strong> — Launches a structured async task tied to the view's lifetime; automatically cancelled when the view disappears.
+</p>
+
+<h2>Comparison</h2>
 <table>
 <thead>
 <tr>
@@ -76,71 +86,137 @@ ul.toc li a{font-size:1.05em}
 </thead>
 <tbody>
 <tr>
-<td><strong>Async Support</strong></td>
+<td><strong>Async / await support</strong></td>
 <td>❌ Synchronous only</td>
-<td>✅ Built for async/await</td>
+<td>✅ Built-in async context</td>
 </tr>
 <tr>
-<td><strong>Automatic Cancellation</strong></td>
-<td>❌ No cancellation</td>
-<td>✅ Auto-cancels on view disappear</td>
+<td><strong>Automatic cancellation</strong></td>
+<td>❌ None — manual cleanup required</td>
+<td>✅ Cancelled on view disappear</td>
 </tr>
 <tr>
-<td><strong>iOS Version</strong></td>
+<td><strong>Available from</strong></td>
 <td>iOS 13+</td>
 <td>iOS 15+</td>
 </tr>
 <tr>
-<td><strong>Task Management</strong></td>
-<td>Manual Task creation needed</td>
-<td>Built-in task management</td>
+<td><strong>Task management</strong></td>
+<td>Must create <code>Task { }</code> manually</td>
+<td>Built-in structured task</td>
 </tr>
 <tr>
-<td><strong>Memory Safety</strong></td>
-<td>Risk of retain cycles</td>
-<td>Automatic cleanup</td>
+<td><strong>Re-trigger on value change</strong></td>
+<td>❌ No</td>
+<td>✅ Yes — via <code>.task(id:)</code></td>
 </tr>
 <tr>
-<td><strong>Use Case</strong></td>
-<td>Simple, sync operations</td>
-<td>Network calls, async operations</td>
+<td><strong>Priority control</strong></td>
+<td>N/A</td>
+<td>✅ <code>.task(priority: .background)</code></td>
 </tr>
 <tr>
-<td>- <strong>Code</strong></td>
-<td></td>
-<td></td>
+<td><strong>Task outlives view?</strong></td>
+<td>Yes, if <code>Task { }</code> is not cancelled manually</td>
+<td>No — always cleaned up automatically</td>
+</tr>
+<tr>
+<td><strong>Typical use case</strong></td>
+<td>Analytics logging, sync UI setup</td>
+<td>Network fetches, async data loading</td>
 </tr>
 </tbody>
 </table>
-<div class="codehilite"><pre><span></span><code>```swift
-// .onAppear - synchronous work
-.onAppear {
-    logAnalytics()
-}
 
-// ❌ Wrong with .onAppear
-.onAppear {
-    Task {
-        await fetchUserData() // Manual Task creation - because you ned to cancel task manually 
-    }
-}
+<h2>Code Examples</h2>
 
-// ✅ Right with .task
-.task {
-    await fetchUserData() // Clean, auto-cancelled
-}
-```
+<div class="codehilite"><pre><span></span><code><span class="c1">// ✅ .onAppear — synchronous work only</span>
+<span class="o">.</span><span class="nf">onAppear</span> <span class="p">{</span>
+    <span class="nf">logAnalytics</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="c1">// ⚠️  .onAppear + manual Task — works, but YOU must cancel it on disappear</span>
+<span class="o">.</span><span class="nf">onAppear</span> <span class="p">{</span>
+    <span class="nv">loadTask</span> <span class="o">=</span> <span class="kt">Task</span> <span class="p">{</span>
+        <span class="k">await</span> <span class="nf">fetchUserData</span><span class="p">()</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="o">.</span><span class="nf">onDisappear</span> <span class="p">{</span>
+    <span class="nv">loadTask</span><span class="o">?.</span><span class="nf">cancel</span><span class="p">()</span>   <span class="c1">// required — or the task outlives the view</span>
+<span class="p">}</span>
+
+<span class="c1">// ✅ .task — async work, automatically cancelled when view disappears</span>
+<span class="o">.</span><span class="nf">task</span> <span class="p">{</span>
+    <span class="k">await</span> <span class="nf">fetchUserData</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="c1">// ✅ .task with lower priority (does not block UI)</span>
+<span class="o">.</span><span class="nf">task</span><span class="p">(</span><span class="nv">priority</span><span class="p">:</span> <span class="o">.</span><span class="n">background</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">await</span> <span class="nf">prefetchImages</span><span class="p">()</span>
+<span class="p">}</span>
 </code></pre></div>
 
+<h2><code>.task(id:)</code> — Re-trigger on Value Change</h2>
+
+<p>Pass any <code>Equatable</code> value as <code>id</code>. Whenever the value changes, SwiftUI cancels the running task and starts a new one — replacing the old <code>.onChange + Task { }</code> pattern.</p>
+
+<div class="codehilite"><pre><span></span><code><span class="kd">struct</span> <span class="nc">UserProfileView</span><span class="p">:</span> <span class="nc">View</span> <span class="p">{</span>
+    <span class="kd">let</span> <span class="nv">userID</span><span class="p">:</span> <span class="kt">String</span>
+
+    <span class="kd">var</span> <span class="nv">body</span><span class="p">:</span> <span class="kd">some</span> <span class="nc">View</span> <span class="p">{</span>
+        <span class="nc">ProfileContent</span><span class="p">()</span>
+            <span class="c1">// Re-fetches automatically every time userID changes</span>
+            <span class="o">.</span><span class="nf">task</span><span class="p">(</span><span class="nv">id</span><span class="p">:</span> <span class="n">userID</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">await</span> <span class="nf">loadProfile</span><span class="p">(</span><span class="nv">for</span><span class="p">:</span> <span class="n">userID</span><span class="p">)</span>
+            <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<div class="callout tip">
+  <strong>💡 Pro tip:</strong> <code>.task(id:)</code> is the idiomatic replacement for <code>.onChange(of:) { Task { await … } }</code> whenever async work must re-run in response to a changing dependency.
+</div>
+
+<h2>When to Use Each</h2>
 <ul>
-<li>
-<p><strong>Interview questions</strong></p>
-<p><strong>Q: Why doesn't .onAppear support async directly?</strong> A: It was designed before async/await existed in Swift. <strong><code>.task</code></strong> was created specifically for the modern async world.</p>
-<p><strong>Q: Why is cancellation important?</strong> A: Prevents crashes from updating disappeared views and saves battery/network resources.</p>
-</li>
+  <li>Use <strong><code>.onAppear</code></strong> for lightweight synchronous side-effects: analytics pings, UI state resets, starting a timer.</li>
+  <li>Use <strong><code>.task</code></strong> for any async work: network calls, database queries, async image loading.</li>
+  <li>Use <strong><code>.task(id:)</code></strong> when async work must re-run in response to a changing dependency.</li>
+  <li>Avoid spawning a raw <code>Task { }</code> inside <code>.onAppear</code> unless you explicitly manage its lifecycle — it will not be cancelled when the view disappears.</li>
 </ul>
-</li>
-</ul>
+
+<h2>Interview Questions</h2>
+
+<div class="qa-block">
+  <p class="question">Q: Why doesn't <code>.onAppear</code> support <code>async</code> directly?</p>
+  <p class="answer">It predates Swift's async/await model (Swift 5.5 / iOS 15). Its closure is synchronous by design. <code>.task</code> was added in SwiftUI 3 as the structured-concurrency-native alternative.</p>
+</div>
+
+<div class="qa-block">
+  <p class="question">Q: Why is automatic cancellation important?</p>
+  <p class="answer">Without cancellation, a task may complete after the view has disappeared and attempt to update state — causing crashes or "publishing changes from background thread" warnings. It also wastes CPU and network resources on work whose result will never be displayed.</p>
+</div>
+
+<div class="qa-block">
+  <p class="question">Q: What happens to a <code>.task</code> when the view re-appears?</p>
+  <p class="answer">SwiftUI starts a brand-new task. The previous task was cancelled on disappear, so re-appearing always triggers a fresh execution — no manual restart logic needed.</p>
+</div>
+
+<div class="qa-block">
+  <p class="question">Q: Can you attach multiple <code>.task</code> modifiers to the same view?</p>
+  <p class="answer">Yes. Each <code>.task</code> runs as an independent structured task, and all of them are cancelled together when the view disappears.</p>
+</div>
+
+<div class="qa-block">
+  <p class="question">Q: What is the default task priority of <code>.task { }</code>?</p>
+  <p class="answer"><code>.userInitiated</code> — appropriate for data the user is actively waiting for. Override with <code>.task(priority: .background)</code> for prefetching or non-urgent work.</p>
+</div>
+
+<div class="qa-block">
+  <p class="question">Q: Can <code>.onAppear</code> and <code>.task</code> be used together on the same view?</p>
+  <p class="answer">Yes. A common pattern is <code>.onAppear</code> for synchronous setup (e.g., logging, resetting scroll position) and <code>.task</code> for async data loading — both in the same modifier chain.</p>
+</div>
+
 </main>
 </body>
 </html>
