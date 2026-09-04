@@ -198,7 +198,7 @@ ul.toc li a{font-size:1.05em}
 <p><strong>Q: Can you push without a navigation controller?</strong> A: No — <code>pushViewController</code> silently does nothing (or crashes in older iOS versions with an assertion) if <code>navigationController</code> is <code>nil</code>. You must embed the VC in a <code>UINavigationController</code> first.</p>
 <p><strong>Q: What happens to the presenting VC when you present modally?</strong> A: It's not deallocated — it stays in memory and its view is kept in the hierarchy (unless <code>.fullScreen</code> removes it) so it can be revealed again on dismiss.</p>
 <p><strong>Q: Why did Apple make <code>.pageSheet</code> the default in iOS 13?</strong> A: To give a more lightweight, reversible feel to modals and reduce the jarring "full takeover" of the screen for simple tasks — while still allowing <code>.fullScreen</code> when the task genuinely needs it (e.g. camera, video player).</p>
-<p><strong>Q: How do you pass data back from a modal?</strong> A: Delegate protocol, a completion closure set before presenting, or Combine/<code>@Binding</code> in SwiftUI — never <code>unwind segue</code>-style circular references without care for retain cycles.</p>
+<p><strong>Q: How do you pass data back from a modal?</strong> A: Delegate protocol, a completion closure set before presenting, or Combine/<code>@Binding</code> in SwiftUI</p>
 </main>
 </body>
 </html>
