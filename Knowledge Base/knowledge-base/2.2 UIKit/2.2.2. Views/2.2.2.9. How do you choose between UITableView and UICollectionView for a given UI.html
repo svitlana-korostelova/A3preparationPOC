@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.2.2.9. How do you choose between UITableView and UICollectionView for a given UI?</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.2. Views</a></nav>
+<main>
+<h1>2.2.2.9. How do you choose between UITableView and UICollectionView for a given UI?</h1>
+
+<ul>
+<li>Default to <strong><code>UITableView</code></strong> for single-column, vertically scrolling lists of rows (settings screens, chat threads, simple feeds) — it's simpler to set up and comes with row-oriented behaviors (swipe actions, section index titles, plain/grouped/inset styles) for free.</li>
+<li>Reach for <strong><code>UICollectionView</code></strong> whenever the layout isn't a single vertical column of full-width rows: grids, multi-column layouts, horizontal carousels, mixed/adaptive cell sizes, or anything that needs custom geometry (Pinterest/waterfall grids, cards, pager-style paging).</li>
+<li>In modern codebases the two have converged a lot: both support <code>UITableViewDiffableDataSource</code>/<code>UICollectionViewDiffableDataSource</code>, self-sizing cells, prefetching, and cell registration APIs — <code>UICollectionViewCompositionalLayout</code> can even reproduce a plain list (<code>.list(using:)</code> configuration, iOS 14+), so today it's really a layout decision, not a data-source-capability decision.</li>
+</ul>
+
+<table>
+<thead>
+<tr><th>Criterion</th><th>UITableView</th><th>UICollectionView</th></tr>
+</thead>
+<tbody>
+<tr><td>Layout shape</td><td>Fixed: one column, full-width rows</td><td>Arbitrary: grid, multi-column, horizontal, custom via <code>UICollectionViewLayout</code></td></tr>
+<tr><td>Built-in behaviors</td><td>Swipe actions, section index (A–Z), edit mode/reordering, grouped/inset styles</td><td>None of these out of the box — must be built (though swipe actions can be added via <code>UISwipeActionsConfiguration</code> too)</td></tr>
+<tr><td>Cell sizing</td><td>Row height only (fixed/automatic)</td><td>Full 2D size control per item, per section</td></tr>
+<tr><td>Setup effort</td><td>Low</td><td>Higher (need a layout object, even if it's just compositional "list")</td></tr>
+<tr><td>Modern replacement</td><td>Can be fully replaced by <code>UICollectionViewCompositionalLayout.list(using:)</code> when you also want grid/list sections mixed in the same screen</td><td>N/A</td></tr>
+</tbody>
+</table>
+
+<p><strong>Practical decision checklist</strong></p>
+<ul>
+<li><strong>Is every cell full-width and stacked in one column?</strong> → <code>UITableView</code> (or a compositional list layout if you might need grid sections later).</li>
+<li><strong>Do you need a grid, multiple columns, or horizontal scrolling?</strong> → <code>UICollectionView</code>.</li>
+<li><strong>Do cells vary a lot in size/shape (photos, cards, masonry)?</strong> → <code>UICollectionView</code> with compositional or custom layout.</li>
+<li><strong>Do you need swipe-to-delete, index titles, or reorder controls with minimal code?</strong> → <code>UITableView</code> gives these for free; on <code>UICollectionView</code> you'd wire up <code>UISwipeActionsConfiguration</code>/drag-and-drop yourself.</li>
+<li><strong>Will the screen need mixed sections (a list section plus a grid section)?</strong> → <code>UICollectionView</code> with per-section layout (<code>UICollectionViewCompositionalLayout(sectionProvider:)</code>), since a table view can't mix column counts.</li>
+<li><strong>SwiftUI context?</strong> The same reasoning maps to <code>List</code> (table-like) vs <code>LazyVGrid</code>/<code>LazyHGrid</code> (collection-like).</li>
+</ul>
+
+<p><strong>Gotchas</strong></p>
+<ul>
+<li>Don't force a grid into <code>UITableView</code> by stacking horizontal stack views inside rows — it works for a couple of items but breaks down for dynamic counts, accessibility, and independent scrolling; that's exactly the case <code>UICollectionView</code> was built for.</li>
+<li>Migrating an existing table view to a collection view "list" layout (<code>UICollectionLayoutListConfiguration</code>) is often less churn than it sounds — it keeps swipe actions, leading/trailing accessories, and separators while opening the door to per-section grid layouts later.</li>
+<li>Both should use diffable data sources for anything with dynamic content — manual <code>reloadData()</code>/<code>performBatchUpdates</code> index math is a common source of crashes ("attempt to delete row X, but only Y rows exist") in both view types.</li>
+</ul>
+
+<p><strong>Common Interview Questions</strong></p>
+
+<p><strong>Q: Is there anything a UITableView can do that a UICollectionView cannot?</strong> A: Not really since iOS 14 — <code>UICollectionLayoutListConfiguration</code>/<code>.list(using:)</code> gives collection views swipe actions, accessories, separators, and index titles, so a collection view can fully subsume a table view's behavior while also supporting non-list sections.</p>
+
+<p><strong>Q: You have a settings screen — which would you pick and why?</strong> A: <code>UITableView</code> (or a collection view list layout) — it's a single column of full-width rows, and the built-in grouped style, swipe actions, and simplicity outweigh the flexibility a collection view offers, which isn't needed here.</p>
+
+<p><strong>Q: How would you build a screen with a horizontal "featured" carousel followed by a vertical grid of items?</strong> A: One <code>UICollectionView</code> with <code>UICollectionViewCompositionalLayout(sectionProvider:)</code> — the carousel section uses horizontal scrolling behavior (<code>.groupPaging</code> or orthogonal scrolling) and the grid section uses a fractional-width group; a table view can't express per-section scroll direction or column counts.</p>
+
+<p><strong>Q: What's the performance difference between the two for large data sets?</strong> A: Negligible on their own — both reuse cells and support prefetching (<code>UITableViewDataSourcePrefetching</code>/<code>UICollectionViewDataSourcePrefetching</code>) and diffable data sources with the same batching semantics. Perceived performance differences usually come from cell complexity (Auto Layout cost, image decoding) rather than the container type.</p>
+</main>
+</body>
+</html>

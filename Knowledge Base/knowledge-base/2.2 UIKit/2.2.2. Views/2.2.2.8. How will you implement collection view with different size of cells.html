@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.2.2.8. How will you implement collection view with different size of cells ?</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.2. Views</a></nav>
+<main>
+<h1>2.2.2.8. How will you implement collection view with different size of cells ?</h1>
+
+<ul>
+<li>Three practical approaches, in order of preference today: <strong><code>UICollectionViewCompositionalLayout</code></strong> (iOS 13+, declarative, supports mixed sizes/orientations/nested groups), <strong><code>UICollectionViewFlowLayout</code></strong> with self-sizing or a delegate callback (works everywhere, imperative), and a <strong>custom <code>UICollectionViewLayout</code> subclass</strong> (full control — Pinterest/waterfall-style grids, custom geometry).</li>
+</ul>
+
+<p><strong>1. Compositional layout (preferred, modern)</strong></p>
+<ul>
+<li>Build layout from <code>NSCollectionLayoutSize</code> → <code>NSCollectionLayoutItem</code> → <code>NSCollectionLayoutGroup</code> → <code>NSCollectionLayoutSection</code>. Sizes are expressed as <code>.fractionalWidth</code>/<code>.fractionalHeight</code>/<code>.absolute</code>/<code>.estimated</code>, so different cells in the same section can have different dimensions without any delegate math.</li>
+<li><code>.estimated(_:)</code> lets Auto Layout compute the final size per cell (self-sizing), which is the standard way to mix cells whose content (e.g. text length, image aspect ratio) drives height.</li>
+<li>Can combine with <code>UICollectionViewDiffableDataSource</code> and per-section layouts (<code>UICollectionViewCompositionalLayout(sectionProvider:)</code>) for very different card sizes across sections in one view.</li>
+</ul>
+
+<div class="codehilite"><pre><code><span class="kw">func</span> makeLayout() -&gt; <span class="type">UICollectionViewCompositionalLayout</span> {
+    <span class="kw">let</span> smallItem = <span class="type">NSCollectionLayoutItem</span>(
+        layoutSize: <span class="type">NSCollectionLayoutSize</span>(widthDimension: .fractionalWidth(<span class="m">1.0</span>),
+                                              heightDimension: .fractionalHeight(<span class="m">1.0</span>)))
+    smallItem.contentInsets = <span class="type">NSDirectionalEdgeInsets</span>(top: <span class="m">4</span>, leading: <span class="m">4</span>, bottom: <span class="m">4</span>, trailing: <span class="m">4</span>)
+
+    <span class="cm">// two stacked small items next to one large item</span>
+    <span class="kw">let</span> pairGroup = <span class="type">NSCollectionLayoutGroup</span>.vertical(
+        layoutSize: <span class="type">NSCollectionLayoutSize</span>(widthDimension: .fractionalWidth(<span class="m">0.3</span>),
+                                              heightDimension: .fractionalHeight(<span class="m">1.0</span>)),
+        subitems: [smallItem, smallItem])
+
+    <span class="kw">let</span> bigItem = <span class="type">NSCollectionLayoutItem</span>(
+        layoutSize: <span class="type">NSCollectionLayoutSize</span>(widthDimension: .fractionalWidth(<span class="m">0.7</span>),
+                                              heightDimension: .fractionalHeight(<span class="m">1.0</span>)))
+
+    <span class="kw">let</span> rowGroup = <span class="type">NSCollectionLayoutGroup</span>.horizontal(
+        layoutSize: <span class="type">NSCollectionLayoutSize</span>(widthDimension: .fractionalWidth(<span class="m">1.0</span>),
+                                              heightDimension: .absolute(<span class="m">200</span>)),
+        subitems: [bigItem, pairGroup])
+
+    <span class="kw">let</span> section = <span class="type">NSCollectionLayoutSection</span>(group: rowGroup)
+    <span class="kw">return</span> <span class="type">UICollectionViewCompositionalLayout</span>(section: section)
+}
+</code></pre></div>
+
+<p><strong>2. Flow layout (legacy but still valid)</strong></p>
+<ul>
+<li>Delegate-driven: implement <code>collectionView(_:layout:sizeForItemAt:)</code> in <code>UICollectionViewDelegateFlowLayout</code> and return a per-item <code>CGSize</code> computed from your model (e.g. text length, aspect ratio table).</li>
+<li>Self-sizing alternative: set <code>flowLayout.estimatedItemSize = .automatic</code> (or a rough estimate) and let Auto Layout constraints inside the cell determine the final size — avoids a switch/lookup in the delegate but requires the cell's content view to be fully constrained top-to-bottom.</li>
+</ul>
+
+<div class="codehilite"><pre><code><span class="kw">func</span> collectionView(_ collectionView: <span class="type">UICollectionView</span>, layout: <span class="type">UICollectionViewLayout</span>,
+                    sizeForItemAt indexPath: <span class="type">IndexPath</span>) -&gt; <span class="type">CGSize</span> {
+    <span class="kw">let</span> item = items[indexPath.item]
+    <span class="kw">let</span> width = item.isFeatured ? collectionView.bounds.width : collectionView.bounds.width / <span class="m">2</span>
+    <span class="kw">return</span> <span class="type">CGSize</span>(width: width, height: item.isFeatured ? <span class="m">240</span> : <span class="m">140</span>)
+}
+</code></pre></div>
+
+<p><strong>3. Custom <code>UICollectionViewLayout</code> (waterfall/Pinterest grids)</strong></p>
+<ul>
+<li>Override <code>prepare()</code> to compute and cache an <code>[UICollectionViewLayoutAttributes]</code> per index path (tracking a running height per column), override <code>collectionViewContentSize</code>, and <code>layoutAttributesForElements(in:)</code>/<code>layoutAttributesForItem(at:)</code> to return the cached frames.</li>
+<li>Needed when item placement isn't expressible as rows/columns of fixed proportions — e.g. masonry layouts where the next item's column is chosen by "shortest column so far".</li>
+</ul>
+
+<table>
+<thead>
+<tr><th>Approach</th><th>Mixed sizes support</th><th>Effort</th><th>When to use</th></tr>
+</thead>
+<tbody>
+<tr><td>Compositional layout</td><td>Native, declarative (fractional/absolute/estimated)</td><td>Low–medium</td><td>Default choice iOS 13+; nested/mixed sections, self-sizing</td></tr>
+<tr><td>Flow layout + delegate</td><td>Via <code>sizeForItemAt</code> per index path</td><td>Low</td><td>Simple grids, supporting iOS &lt; 13, quick migrations</td></tr>
+<tr><td>Flow layout, self-sizing</td><td>Auto Layout-driven per cell</td><td>Low</td><td>Content-driven height (chat bubbles, cards with variable text)</td></tr>
+<tr><td>Custom <code>UICollectionViewLayout</code></td><td>Arbitrary geometry</td><td>High</td><td>Waterfall/Pinterest grids, circular/custom layouts</td></tr>
+</tbody>
+</table>
+
+<p><strong>Gotchas</strong></p>
+<ul>
+<li>Self-sizing (estimated size) requires the cell's <code>contentView</code> to have a complete, unambiguous constraint chain from top to bottom — a missing constraint makes the estimate become the final size (cells look clipped or too tall).</li>
+<li>Flow layout's <code>sizeForItemAt</code> is called frequently during scrolling/rotation; keep the size computation cheap (no layout passes or string measurement on every call — cache computed sizes on the model).</li>
+<li>Compositional layout's <code>.estimated</code> sizing invalidates and re-measures after the cell is displayed, which can cause a visible "jump" on first appearance for content that differs a lot from the estimate — pick a realistic estimate to minimize it.</li>
+<li>Custom layouts must invalidate correctly on bounds change (<code>shouldInvalidateLayout(forBoundsChange:)</code>) or rotation/size-class changes will leave stale frames.</li>
+</ul>
+
+<p><strong>Common Interview Questions</strong></p>
+
+<p><strong>Q: How do you support cells of different sizes in the same section with compositional layout?</strong> A: Model the section as nested <code>NSCollectionLayoutItem</code>/<code>NSCollectionLayoutGroup</code> objects, giving each item its own fractional/absolute/estimated width and height — different items in the same group can have different dimensions without a delegate callback.</p>
+
+<p><strong>Q: What's the difference between <code>.estimated</code> and <code>.absolute</code> sizing?</strong> A: <code>.absolute</code> is a fixed point value; <code>.estimated</code> gives the layout engine a starting guess and then lets Auto Layout (via the cell's constraints) resolve the real size after the cell is created — needed for content-driven (self-sizing) cells.</p>
+
+<p><strong>Q: Why would you write a custom <code>UICollectionViewLayout</code> instead of using compositional layout?</strong> A: When placement can't be expressed as rows/columns with fixed proportions — e.g. a Pinterest-style waterfall where each item goes into whichever column currently has the least height — compositional layout's group model can't express that, so you compute attributes manually in <code>prepare()</code>.</p>
+
+<p><strong>Q: What breaks if a self-sizing cell's constraints are incomplete?</strong> A: Auto Layout can't resolve an intrinsic content size, so the layout falls back to the estimated size as final — cells render clipped, overlapping, or with wrong spacing, and it can look fine at first glance until content varies.</p>
+</main>
+</body>
+</html>
