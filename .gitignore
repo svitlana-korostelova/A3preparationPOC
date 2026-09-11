@@ -1,9 +1,38 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
 # Xcode
 *.xcuserstate
 xcuserdata/
+DerivedData/
+build/
+Build/
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.moved-aside
+*.hmap
+timeline.xctimeline
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Secrets
+.env
+.env.*
+*.pem
+
+# Local editor / agent state
+.claude/settings.local.json
+.idea/
+*.swp
 
 # AI planning / agent scratch files
 docs/
-
-# macOS
-.DS_Store
