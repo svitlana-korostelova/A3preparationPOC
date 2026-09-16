@@ -66,16 +66,82 @@ ul.toc li a{font-size:1.05em}
 <main>
 <h1>2.2.2.5. Rules for table/collection views; unexpected behaviors</h1>
 
+<p><code>UITableView</code>/<code>UICollectionView</code> reuse cells for performance, which is also where most bugs come from. This page covers the rules that keep reuse safe, a complete setup with the data source and delegate, and the specific crashes/glitches that show up when those rules are broken.</p>
+
 <p><strong>Core rules you must follow:</strong></p>
 
 <ol>
-<li><strong>Register before you dequeue.</strong> <code>register(_:forCellReuseIdentifier:)</code> / <code>register(_:forCellWithReuseIdentifier:)</code> (class or nib) must run before <code>dequeueReusableCell</code>, otherwise it crashes (<code>dequeueReusableCell(withIdentifier:for:)</code> always crashes without registration; the non-<code>for:</code> variant just returns <code>nil</code>).</li>
-<li><strong>Fully configure every reused cell — every time.</strong> Cells come from a reuse pool, so any property you don't overwrite carries over from whatever row previously used that cell (stale image, checkmark, label text, background color).</li>
-<li><strong>Reset transient/async state in <code>prepareForReuse()</code>.</strong> Cancel in-flight image loads, reset <code>accessoryType</code>, <code>isSelected</code>, custom subviews' visibility — anything that isn't driven unconditionally by <code>cellForRowAt</code>.</li>
-<li><strong>Data source counts must match reality before/after every update.</strong> <code>numberOfRowsInSection</code> must reflect the model <em>before</em> <code>reloadData()</code>, and the delta you pass to <code>performBatchUpdates</code> must exactly match the change you made to the backing array — mismatches throw <code>NSInternalInconsistencyException: Invalid number of rows in section</code>.</li>
+<li><strong>Register before you dequeue.</strong> <code>register(_:forCellReuseIdentifier:)</code> / <code>register(_:forCellWithReuseIdentifier:)</code> (class or nib) must run before <code>dequeueReusableCell</code>. Without it, <code>dequeueReusableCell(withIdentifier:for:)</code> crashes; the non-<code>for:</code> variant just returns <code>nil</code>.</li>
+<li><strong>Fully configure every reused cell, every time.</strong> Cells come from a reuse pool, so any property you don't overwrite carries over from whatever row previously used that cell (stale image, checkmark, label text, background color).</li>
+<li><strong>Reset transient/async state in <code>prepareForReuse()</code>.</strong> Cancel in-flight image loads, reset <code>accessoryType</code>, <code>isSelected</code>, custom subviews' visibility — anything not driven unconditionally by <code>cellForRowAt</code>.</li>
+<li><strong>Data source counts must match reality before and after every update.</strong> <code>numberOfRowsInSection</code> must reflect the model <em>before</em> <code>reloadData()</code>, and the delta passed to <code>performBatchUpdates</code> must exactly match the change made to the backing array — mismatches throw <code>NSInternalInconsistencyException: Invalid number of rows in section</code>.</li>
 <li><strong>All UI mutations happen on the main thread.</strong> Mutating the model and calling <code>reloadData</code>/<code>insertRows</code> off the main thread causes crashes or the classic purple runtime warning.</li>
-<li><strong><code>performBatchUpdates</code> index-path semantics:</strong> deletes/moves reference the <em>pre-update</em> index paths, inserts/moves-to reference the <em>post-update</em> index paths — mutate the backing array first, then describe deltas that match it exactly, in one batch call (don't interleave manual <code>reloadData</code> with pending batch animations).</li>
+<li><strong><code>performBatchUpdates</code> index-path semantics:</strong> deletes/moves reference the <em>pre-update</em> index paths, inserts/moves-to reference the <em>post-update</em> index paths. Mutate the backing array first, then describe a matching delta in one batch call — don't interleave manual <code>reloadData</code> with pending batch animations.</li>
 </ol>
+
+<p><strong>Full example — UITableView setup with data source &amp; delegate:</strong></p>
+
+<p>A minimal, complete setup: register a cell, implement <code>UITableViewDataSource</code> to supply rows, and <code>UITableViewDelegate</code> to react to selection. Comments call out where each core rule above applies.</p>
+
+<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">FruitsViewController</span>: <span class="type">UIViewController</span> {
+
+    <span class="kw">private</span> <span class="kw">let</span> tableView = <span class="type">UITableView</span>(frame: .zero, style: .plain)
+    <span class="kw">private</span> <span class="kw">var</span> fruits = [<span class="str">"Apple"</span>, <span class="str">"Banana"</span>, <span class="str">"Cherry"</span>, <span class="str">"Date"</span>, <span class="str">"Fig"</span>]
+    <span class="kw">private</span> <span class="kw">let</span> cellID = <span class="str">"FruitCell"</span>
+
+    <span class="kw">override</span> <span class="kw">func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
+        tableView.frame = view.bounds
+        tableView.dataSource = <span class="kw">self</span>   <span class="cm">// wire up the data source</span>
+        tableView.delegate = <span class="kw">self</span>     <span class="cm">// wire up the delegate</span>
+        tableView.rowHeight = .automaticDimension
+        tableView.estimatedRowHeight = <span class="num">44</span>
+        tableView.register(<span class="type">UITableViewCell</span>.<span class="kw">self</span>, forCellReuseIdentifier: cellID) <span class="cm">// rule 1: register before dequeue</span>
+        view.addSubview(tableView)
+    }
+}
+
+<span class="cm">// MARK: - UITableViewDataSource — what to show</span>
+<span class="kw">extension</span> <span class="type">FruitsViewController</span>: <span class="type">UITableViewDataSource</span> {
+
+    <span class="kw">func</span> tableView(_ tableView: <span class="type">UITableView</span>, numberOfRowsInSection section: <span class="type">Int</span>) -&gt; <span class="type">Int</span> {
+        fruits.count <span class="cm">// rule 4: must match the array before reloadData/insertRows runs</span>
+    }
+
+    <span class="kw">func</span> tableView(_ tableView: <span class="type">UITableView</span>, cellForRowAt indexPath: <span class="type">IndexPath</span>) -&gt; <span class="type">UITableViewCell</span> {
+        <span class="kw">let</span> cell = tableView.dequeueReusableCell(withIdentifier: cellID, for: indexPath)
+        <span class="kw">var</span> content = cell.defaultContentConfiguration()
+        content.text = fruits[indexPath.row]          <span class="cm">// rule 2: fully configure — no stale leftovers</span>
+        cell.contentConfiguration = content
+        cell.accessoryType = .disclosureIndicator
+        <span class="kw">return</span> cell
+    }
+
+    <span class="kw">func</span> tableView(_ tableView: <span class="type">UITableView</span>, commit editingStyle: <span class="type">UITableViewCell</span>.<span class="type">EditingStyle</span>, forRowAt indexPath: <span class="type">IndexPath</span>) {
+        <span class="kw">guard</span> editingStyle == .delete <span class="kw">else</span> { <span class="kw">return</span> }
+        tableView.performBatchUpdates {
+            fruits.remove(at: indexPath.row)                        <span class="cm">// rule 6: mutate the model first...</span>
+            tableView.deleteRows(at: [indexPath], with: .automatic) <span class="cm">// ...then describe the same delta</span>
+        }
+    }
+}
+
+<span class="cm">// MARK: - UITableViewDelegate — how it behaves</span>
+<span class="kw">extension</span> <span class="type">FruitsViewController</span>: <span class="type">UITableViewDelegate</span> {
+
+    <span class="kw">func</span> tableView(_ tableView: <span class="type">UITableView</span>, didSelectRowAt indexPath: <span class="type">IndexPath</span>) {
+        tableView.deselectRow(at: indexPath, animated: <span class="kw">true</span>)
+        <span class="kw">let</span> name = fruits[indexPath.row]
+        print(<span class="str">"Selected: "</span> + name)
+    }
+
+    <span class="kw">func</span> tableView(_ tableView: <span class="type">UITableView</span>, heightForRowAt indexPath: <span class="type">IndexPath</span>) -&gt; <span class="type">CGFloat</span> {
+        <span class="type">UITableView</span>.automaticDimension <span class="cm">// paired with estimatedRowHeight above to avoid layout flicker</span>
+    }
+}
+</code></pre></div>
+
+<p>What this wires up, end to end: <code>register</code> runs once in <code>viewDidLoad</code> so <code>dequeueReusableCell</code> never crashes; <code>numberOfRowsInSection</code>/<code>cellForRowAt</code> supply data and fully overwrite every reused cell; <code>commit editingStyle:</code> shows the mutate-then-animate pattern for safe deletes; and the delegate methods handle selection and self-sizing height without touching the model.</p>
 
 <p><strong>Cell reuse — reset &amp; async race example:</strong></p>
 
