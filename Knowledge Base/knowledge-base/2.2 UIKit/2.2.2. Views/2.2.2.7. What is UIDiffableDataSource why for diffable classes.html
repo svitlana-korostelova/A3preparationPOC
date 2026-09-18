@@ -67,31 +67,34 @@ ul.toc li a{font-size:1.05em}
 <h1>2.2.2.7. What is UIDiffableDataSource ? why for diffable classes?</h1>
 
 <ul>
-<li><code>UITableViewDiffableDataSource</code> / <code>UICollectionViewDiffableDataSource</code> are generic data source objects (introduced iOS 13) that manage a table/collection view's content as a declarative <strong>state</strong> (a snapshot) instead of imperative index-path bookkeeping. You describe "what the data should look like now"; the data source diffs it against the previous state and animates the delta itself.</li>
-<li>They replace implementing <code>UITableViewDataSource</code>/<code>UICollectionViewDataSource</code> and manually calling <code>insertRows(at:)</code>/<code>deleteRows(at:)</code>/<code>performBatchUpdates(_:)</code> with matching index-path math.</li>
+<li><code>UITableViewDiffableDataSource</code> / <code>UICollectionViewDiffableDataSource</code> (iOS 13+) manage a table/collection view's content from a declarative <strong>snapshot</strong> of sections and items, instead of manual index-path bookkeeping. You build an <code>NSDiffableDataSourceSnapshot&lt;SectionID, ItemID&gt;</code> and call <code>apply(_:)</code>; the data source diffs it against the previous snapshot and animates the delta itself.</li>
+<li><code>SectionID</code>/<code>ItemID</code> must be <code>Hashable</code> — the diff keys on identity (<code>hash</code>/<code>==</code>), not array position or content. You still supply a cell-provider closure, but never implement <code>numberOfRowsInSection</code>/<code>cellForRowAt</code> yourself.</li>
+<li>Replaces implementing <code>UITableViewDataSource</code>/<code>UICollectionViewDataSource</code> plus manual <code>performBatchUpdates(_:)</code> insert/delete/move index-path math.</li>
 </ul>
 
-<p><strong>1. Core pieces</strong></p>
+<p><strong>Why diffable exists</strong></p>
 <ul>
-<li><code>NSDiffableDataSourceSnapshot&lt;SectionID, ItemID&gt;</code> — a value type listing sections and items in order. You build a new snapshot and <code>apply(_:)</code> it; nothing renders until you do.</li>
-<li>Both <code>SectionID</code> and <code>ItemID</code> must conform to <code>Hashable</code> — identity (via <code>hash</code>/<code>==</code>), not array position, is what the diff algorithm keys on.</li>
-<li>The data source itself conforms to <code>UITableViewDataSource</code>/<code>UICollectionViewDataSource</code> under the hood, so you still supply a cell-provider closure, but never implement <code>numberOfRowsInSection</code>/<code>cellForRowAt</code> yourself.</li>
+<li><strong>Crash safety</strong>: <code>performBatchUpdates</code> crashes if the counts you report don't exactly match the inserts/deletes you declared. Diffable derives counts straight from the applied snapshot, so they can never disagree.</li>
+<li><strong>No manual diffing</strong>: inserts, deletes, moves, and reorders are detected and animated automatically — no hand-written index-path arithmetic.</li>
+<li><strong>Background-safe</strong>: <code>apply(_:animatingDifferences:)</code> can be called off the main thread; calls are queued and applied serially.</li>
 </ul>
 
-<p><strong>2. Why diffable exists (vs. manual batch updates)</strong></p>
+<p><strong>Reload vs. reconfigure</strong></p>
 <ul>
-<li><strong>Crash safety</strong>: <code>performBatchUpdates</code> crashes at runtime if the counts you report from the data source don't exactly match the inserts/deletes you declared — a very common, hard-to-debug bug. Diffable computes the delta itself, so counts and updates can never disagree.</li>
-<li><strong>No manual diffing</strong>: you never hand-write index-path arithmetic for inserts/moves/deletes; the data source runs a diffing algorithm (based on identity, similar in spirit to a Myers diff) and produces the correct animation automatically.</li>
-<li><strong>Correct animations for free</strong>: moves, reloads, and reorders are detected and animated distinctly, which is tedious and error-prone to hand-roll.</li>
-<li><strong>Thread model</strong>: <code>apply(_:animatingDifferences:)</code> can be called from a background queue safely (each call is enqueued and applied serially) — useful when snapshots are computed off the main thread from a network/DB update.</li>
+<li><code>reloadItems(_:)</code> destroys and re-creates the cell via the cell provider — use when identity is unchanged but the cell must be fully rebuilt (rare).</li>
+<li><code>reconfigureItemsWithIdentifiers(_:)</code> (iOS 15+) updates the existing cell in place — the cheap, correct choice for "same identity, changed content" (e.g. a like-count bump).</li>
+<li>Neither called? A snapshot that only changes an item's data while <code>ItemID</code> stays <code>==</code> is a visual no-op — the diff reacts to identity, not content.</li>
 </ul>
 
-<p><strong>3. Reloading items vs. reconfiguring items</strong></p>
-<ul>
-<li><code>reloadItems(_:)</code> on a snapshot forces the cell to be fully destroyed and re-created via the cell provider — needed when the item's <em>identity</em> is unchanged but you must force a rebuild (rare).</li>
-<li><code>reconfigureItemsWithIdentifiers(_:)</code> (iOS 15+) updates the existing cell in place without a destroy/recreate cycle — the right choice for "same identity, changed content" (e.g. a like-count bump), and much cheaper.</li>
-<li>If neither is called, a snapshot that only changes an item's associated data (while the <code>ItemID</code> stays <code>==</code>) is a no-op visually — the diff only reacts to identity, not content, unless told otherwise.</li>
-</ul>
+<table>
+<thead>
+<tr><th>Method</th><th>What it does</th><th>Use it when</th></tr>
+</thead>
+<tbody>
+<tr><td><code>reloadItems</code></td><td>Destroys and creates the cell again.</td><td>The cell needs a full rebuild or its layout/registration changed.</td></tr>
+<tr><td><code>reconfigureItems</code></td><td>Updates the existing cell in place.</td><td>Only the displayed content changed; the item keeps the same identity.</td></tr>
+</tbody>
+</table>
 
 <div class="codehilite"><pre><code><span class="kw">enum</span> <span class="type">Section</span> { <span class="kw">case</span> main }
 
@@ -106,7 +109,7 @@ ul.toc li a{font-size:1.05em}
 
     <span class="kw">private func</span> makeDataSource() -&gt; <span class="type">UITableViewDiffableDataSource</span>&lt;<span class="type">Section</span>, <span class="type">Item</span>&gt; {
         <span class="type">UITableViewDiffableDataSource</span>(tableView: tableView) { tableView, indexPath, item <span class="kw">in</span>
-            <span class="kw">let</span> cell = tableView.dequeueReusableCell(withIdentifier: <span class="s">"Cell"</span>, for: indexPath)
+            <span class="kw">let</span> cell = tableView.dequeueReusableCell(withIdentifier: <span class="str">"Cell"</span>, for: indexPath)
             cell.textLabel?.text = item.title
             <span class="kw">return</span> cell
         }
@@ -136,23 +139,48 @@ ul.toc li a{font-size:1.05em}
 
 <p><strong>Gotchas</strong></p>
 <ul>
-<li>Item identity must be stable and unique across the whole snapshot (even across sections) — duplicate <code>Hashable</code> values in the same snapshot trigger a runtime crash/assertion.</li>
-<li>Diffable compares by identity, not content — mutating a struct's non-identity fields without a new snapshot (or without <code>reconfigureItemsWithIdentifiers</code>/<code>reloadItems</code>) silently produces stale cell content.</li>
-<li><code>animatingDifferences: true</code> on the very first snapshot applied to an empty table still performs a (harmless but sometimes visible) animation; pass <code>false</code> for the initial load if that's undesired.</li>
-<li>For self-sizing/complex layouts, rapid consecutive <code>apply(_:)</code> calls are coalesced/queued — don't assume each call renders before the next is applied.</li>
+<li>Item identity must be unique across the <em>whole</em> snapshot, even across sections — duplicate <code>Hashable</code> values trigger a runtime crash/assertion.</li>
+<li>The diff compares identity, not content — mutating a struct's non-identity fields without <code>reconfigureItemsWithIdentifiers</code>/<code>reloadItems</code> silently leaves stale cell content on screen.
+<div class="codehilite"><pre><code><span class="kw">struct</span> <span class="type">Item</span>: <span class="type">Hashable</span> {
+    <span class="kw">let</span> id: <span class="type">UUID</span>       <span class="cm">// identity</span>
+    <span class="kw">var</span> title: <span class="type">String</span>  <span class="cm">// content — not part of hash/equality</span>
+
+    <span class="kw">static func</span> == (l: <span class="type">Item</span>, r: <span class="type">Item</span>) -&gt; <span class="type">Bool</span> { l.id == r.id }
+    <span class="kw">func</span> hash(into hasher: <span class="kw">inout</span> <span class="type">Hasher</span>) { hasher.combine(id) }
+}
+
+<span class="kw">var</span> item = items[<span class="num">0</span>]
+item.title = <span class="str">"Updated"</span>   <span class="cm">// same id -&gt; diff sees no change</span>
+snapshot.reconfigureItems([item.id])       <span class="cm">// forces the cell to redraw with the new title</span>
+dataSource.apply(snapshot)
+</code></pre></div>
+</li>
+<li>Pass <code>animatingDifferences: false</code> for the very first snapshot (e.g. initial load into an empty table) to avoid an unwanted animation.</li>
 </ul>
 
 <p><strong>Common Interview Questions</strong></p>
 
-<p><strong>Q: Why does Apple recommend diffable data sources over manual <code>performBatchUpdates</code>?</strong> A: They eliminate the classic crash where declared inserts/deletes don't match the data source's reported counts, since the diff (and therefore the counts) is always derived directly from the snapshot you applied — there's no way for the two to disagree.</p>
+<p><strong>Q: Why does Apple recommend diffable data sources over manual <code>performBatchUpdates</code>?</strong> A: They eliminate the classic crash where declared inserts/deletes don't match the reported counts — the diff (and therefore the counts) is always derived directly from the applied snapshot, so the two can never disagree.</p>
 
-<p><strong>Q: What must <code>SectionID</code> and <code>ItemID</code> conform to, and why?</strong> A: <code>Hashable</code> (and <code>Equatable</code>) — the diffing algorithm identifies items by identity/equality, not by array index, so it can tell inserts/deletes/moves apart from in-place updates.</p>
+<p><strong>Q: What must <code>SectionID</code> and <code>ItemID</code> conform to, and why?</strong> A: <code>Hashable</code> — the diffing algorithm identifies items by identity/equality, not array index, so it can tell inserts/deletes/moves apart from in-place updates.</p>
 
-<p><strong>Q: If I change a property on an item but keep the same identity, will the cell update?</strong> A: Not automatically — the diff sees no identity change and produces no update. You must call <code>reconfigureItemsWithIdentifiers(_:)</code> (cheap, in-place) or <code>reloadItems(_:)</code> (destroys/recreates the cell) on the snapshot before applying it.</p>
+<p><strong>Q: If I change a property on an item but keep the same identity, will the cell update?</strong> A: Not automatically — the diff sees no identity change and produces no update. Call <code>reconfigureItemsWithIdentifiers(_:)</code> (cheap, in-place) or <code>reloadItems(_:)</code> (destroys/recreates the cell) on the snapshot before applying it.</p>
 
 <p><strong>Q: Is it safe to build and apply a snapshot from a background thread?</strong> A: Yes — <code>apply(_:animatingDifferences:)</code> is documented as safe to call off the main thread; successive calls are serialized internally, though the actual UI update still happens on the main thread.</p>
 
-<p><strong>Q: What happens if a snapshot contains two items with the same <code>Hashable</code> value?</strong> A: It's a programmer error — applying such a snapshot triggers a runtime crash/assertion, since the data source can no longer uniquely map items to cells.</p>
+<div class="codehilite"><pre><code><span class="kw">func</span> applyInBackground(items: [<span class="type">Item</span>]) {
+    <span class="type">DispatchQueue</span>.global().async {
+        <span class="kw">var</span> snapshot = <span class="type">NSDiffableDataSourceSnapshot</span>&lt;<span class="type">Section</span>, <span class="type">Item</span>&gt;()
+        snapshot.appendSections([.main])
+        snapshot.appendItems(items, toSection: .main)
+
+        <span class="cm">// Called off-main; UIKit updates the UI and calls completion on main.</span>
+        dataSource.apply(snapshot, animatingDifferences: <span class="kw">true</span>) {
+            <span class="cm">// Safe to update UIKit here.</span>
+        }
+    }
+}
+</code></pre></div>
 </main>
 </body>
 </html>

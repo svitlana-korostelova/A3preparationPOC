@@ -143,7 +143,7 @@ ul.toc li a{font-size:1.05em}
 
 <p>What this wires up, end to end: <code>register</code> runs once in <code>viewDidLoad</code> so <code>dequeueReusableCell</code> never crashes; <code>numberOfRowsInSection</code>/<code>cellForRowAt</code> supply data and fully overwrite every reused cell; <code>commit editingStyle:</code> shows the mutate-then-animate pattern for safe deletes; and the delegate methods handle selection and self-sizing height without touching the model.</p>
 
-<p><strong>Cell reuse — reset &amp; async race example:</strong></p>
+<p><strong>Cell reuse — reset &amp; async race example:</strong> a cell can be recycled for a new row while its old async image request is still in flight; if that request completes after reuse, it can paint the wrong image onto the now-repurposed cell. The <code>currentToken</code> check guards against this by only applying the result if the cell is still showing the row that requested it.</p>
 
 <div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">ImageCell</span>: <span class="type">UITableViewCell</span> {
     <span class="kw">private</span> <span class="kw">var</span> currentToken: <span class="type">UUID</span>?
@@ -184,18 +184,6 @@ tableView.performBatchUpdates {
 }
 </code></pre></div>
 
-<p><strong>Other unexpected behaviors to watch for:</strong></p>
-
-<ul>
-<li><strong>Stale index paths in closures/async callbacks.</strong> By the time an async task completes, the cell at that <code>indexPath</code> may now show different data (scrolled/reused). Re-check via <code>tableView.indexPath(for: cell)</code> or a per-request token (see example above) rather than trusting a captured <code>indexPath</code>.</li>
-<li><strong><code>reloadData()</code> resets scroll position feel</strong> — it doesn't literally scroll to top, but it discards animations and can shift <code>contentOffset</code> when row heights change; prefer targeted <code>reloadRows(at:)</code>/<code>performBatchUpdates</code>/diffable snapshots for smoother updates.</li>
-<li><strong>Self-sizing cells need both <code>estimatedRowHeight</code> and <code>rowHeight = UITableView.automaticDimension</code></strong>, plus complete, unambiguous constraints pinned to the content view's edges — otherwise you get 0-height or incorrect first-pass layout (visible as a flash/jump).</li>
-<li><strong>Off-screen cells don't exist.</strong> <code>cellForRow(at:)</code> returns <code>nil</code> for non-visible rows — never use a cell to store or read your source of truth; keep state in the data model.</li>
-<li><strong><code>willDisplay</code>/<code>didEndDisplaying</code> aren't perfectly paired during fast scrolls or reloads</strong> — don't assume exactly one <code>didEndDisplaying</code> per <code>willDisplay</code>; guard cleanup code with identity checks (same token/reuse-race pattern as above).</li>
-<li><strong>Prefetching (<code>UITableViewDataSourcePrefetching</code> / <code>UICollectionViewDataSourcePrefetching</code>) fires <em>before</em> <code>willDisplay</code></strong>, on rows that aren't visible yet — cancel prefetch work in <code>cancelPrefetchingForRowsAt</code> if the user scrolls away.</li>
-<li><strong>Section header/footer reuse has the same pitfalls as cells</strong> — they come from their own reuse pool (<code>register(_:forHeaderFooterViewReuseIdentifier:)</code>) and need the same reset discipline.</li>
-</ul>
-
 <p><strong>Comparison — ways to update table/collection views:</strong></p>
 
 <table>
@@ -229,15 +217,43 @@ tableView.performBatchUpdates {
 
 <p><strong>Q: Why does my app crash with "Invalid number of rows in section" after updating an array and calling <code>reloadData</code>?</strong> A: It usually isn't <code>reloadData()</code> itself (that always works because it doesn't diff) — the crash comes from a <code>performBatchUpdates</code>/<code>insertRows</code>/<code>deleteRows</code> call whose index-path delta doesn't match the actual change you made to the backing array (wrong count, wrong section, or the array wasn't mutated at all before the animated call).</p>
 
-<p><strong>Q: Why did the wrong image show up on a cell after fast scrolling?</strong> A: Classic reuse race — an async image load kicked off for a cell showing row N completed after that cell was recycled for row M. Fix by cancelling/invalidating with a per-request token in <code>prepareForReuse()</code>, or checking the cell is still associated with the expected index path/URL before applying the result.</p>
-
-<p><strong>Q: Why is <code>performBatchUpdates</code> safer than manual <code>reloadData</code> for complex updates, and why might you still prefer diffable data sources?</strong> A: <code>performBatchUpdates</code> batches multiple insert/delete/move calls into one animation pass and validates consistency at the end — but you must compute the index-path deltas yourself, which is error-prone for concurrent/rapid updates. Diffable data sources compute the diff between two full snapshots automatically, eliminating manual index-path math and the most common crash class, at the cost of needing stable, hashable item identifiers.</p>
-
-<p><strong>Q: Why shouldn't you keep application state in table/collection view cells?</strong> A: Cells are ephemeral and reused — a cell for an off-screen row can be <code>nil</code> (<code>cellForRow(at:)</code> returns <code>nil</code>) or already repurposed for different data. State must live in the model/view model; cells should be a pure, stateless projection of that model for whatever index path they're currently configured with.</p>
-
 <p><strong>Q: What causes self-sizing cells to render at the wrong height briefly, and how do you fix it?</strong> A: Missing/ambiguous constraints to the content view's edges, or omitting <code>estimatedRowHeight</code>/<code>UITableView.automaticDimension</code>, forces UIKit to guess a height on the first pass before Auto Layout resolves the real one. Fix: pin all edges unambiguously, set both <code>rowHeight = .automaticDimension</code> and a reasonable <code>estimatedRowHeight</code>, and avoid intrinsic-content-size-less views without explicit constraints.</p>
 
-<p><strong>Q: Is it safe to update the data source array on a background thread and then call <code>reloadData</code> on main?</strong> A: Only if the entire mutation of the array <em>and</em> the reload/batch-update call happen on the main thread relative to each other — you can compute the new data off-thread, but the swap of the array reference and any table/collection view API call must be dispatched to main, otherwise you risk data races (reading the array mid-mutation) and UIKit API-on-background-thread crashes/warnings.</p>
+<p><strong>Q: <code>reloadData()</code> vs. <code>performBatchUpdates</code> — when to use which?</strong> A: <code>reloadData()</code> rebuilds every visible cell with no animation — use it for whole-screen replacements (first load, filter/sort changing most rows). <code>performBatchUpdates</code> animates only the rows that actually changed — use it for incremental changes (one row inserted/deleted/moved), but the delta you describe must exactly match the mutation already made to the backing array, or it crashes. Prefer a diffable data source over hand-rolled <code>performBatchUpdates</code> when the update logic gets complex.</p>
+
+<p><strong>Q: How do you implement pagination correctly in a <code>UITableView</code>, and which methods update the UI?</strong> A: Detect "near the end of data" in <code>willDisplay cell:forRowAt:</code> (or <code>UITableViewDataSourcePrefetching</code>) to trigger the next page fetch before the user hits the bottom. Fetch off the main thread, then on the main thread append the new items to the model <em>first</em> and describe only that delta with <code>insertRows(at:with:)</code> inside <code>performBatchUpdates</code> — never call <code>reloadData()</code> for an appended page, since it rebuilds all cells, kills the insert animation, and can jump scroll position. Guard with <code>isLoadingPage</code>/<code>hasMorePages</code> flags to avoid duplicate concurrent fetches.</p>
+
+<div class="codehilite"><pre><code><span class="kw">func</span> tableView(_ tableView: <span class="type">UITableView</span>, willDisplay cell: <span class="type">UITableViewCell</span>, forRowAt indexPath: <span class="type">IndexPath</span>) {
+    <span class="kw">let</span> thresholdIndex = items.count - <span class="num">5</span>
+    <span class="kw">if</span> indexPath.row &gt;= thresholdIndex {
+        loadNextPageIfNeeded()
+    }
+}
+
+<span class="kw">private</span> <span class="kw">func</span> loadNextPageIfNeeded() {
+    <span class="kw">guard</span> !isLoadingPage, hasMorePages <span class="kw">else</span> { <span class="kw">return</span> }
+    isLoadingPage = <span class="kw">true</span>
+
+    <span class="type">Task</span> {
+        <span class="kw">let</span> newItems = <span class="kw">try</span> <span class="kw">await</span> api.fetchItems(offset: items.count, limit: pageSize)
+        <span class="kw">await</span> <span class="type">MainActor</span>.run { self.applyPage(newItems) }
+    }
+}
+
+<span class="cm">// Mutate model first, then describe the matching delta — never reloadData() here.</span>
+<span class="kw">private</span> <span class="kw">func</span> applyPage(_ newItems: [<span class="type">Item</span>]) {
+    <span class="kw">let</span> startIndex = items.count
+    items.append(contentsOf: newItems)
+    <span class="kw">let</span> indexPaths = (startIndex..&lt;items.count).map { <span class="type">IndexPath</span>(row: $0, section: <span class="num">0</span>) }
+
+    tableView.performBatchUpdates {
+        tableView.insertRows(at: indexPaths, with: .automatic)
+    }
+    isLoadingPage = <span class="kw">false</span>
+}
+</code></pre></div>
+
+<p><strong>Q: If the user scrolls too quickly, what should happen to pending loads (images, prefetch, pagination requests)?</strong> A: Cancel work tied to cells/rows that are no longer relevant instead of letting it complete into the wrong place. Cancel per-cell async loads in <code>prepareForReuse()</code> (recycled) and <code>didEndDisplaying cell:forRowAt:</code> (scrolled off-screen); cancel queued prefetch work in <code>cancelPrefetchingForRowsAt</code>; and guard pagination with an <code>isLoadingPage</code> flag so rapid <code>willDisplay</code> calls don't fire duplicate page requests. The most common cancellation mechanism is keeping a handle to the in-flight work — a <code>URLSessionTask</code>/<code>Task</code> reference or a request token — and calling <code>.cancel()</code> on it (or comparing the token) when the cell is reused or removed.</p>
 
 </main>
 </body>
