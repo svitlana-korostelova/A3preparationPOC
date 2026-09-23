@@ -79,27 +79,99 @@ ul.toc li a{font-size:1.05em}
 
 <div class="codehilite"><pre><code><span class="kw">func</span> makeLayout() -&gt; <span class="type">UICollectionViewCompositionalLayout</span> {
     <span class="kw">let</span> smallItem = <span class="type">NSCollectionLayoutItem</span>(
-        layoutSize: <span class="type">NSCollectionLayoutSize</span>(widthDimension: .fractionalWidth(<span class="m">1.0</span>),
-                                              heightDimension: .fractionalHeight(<span class="m">1.0</span>)))
-    smallItem.contentInsets = <span class="type">NSDirectionalEdgeInsets</span>(top: <span class="m">4</span>, leading: <span class="m">4</span>, bottom: <span class="m">4</span>, trailing: <span class="m">4</span>)
+        layoutSize: <span class="type">NSCollectionLayoutSize</span>(widthDimension: .fractionalWidth(<span class="num">1.0</span>),
+                                              heightDimension: .fractionalHeight(<span class="num">1.0</span>)))
+    smallItem.contentInsets = <span class="type">NSDirectionalEdgeInsets</span>(top: <span class="num">4</span>, leading: <span class="num">4</span>, bottom: <span class="num">4</span>, trailing: <span class="num">4</span>)
 
     <span class="cm">// two stacked small items next to one large item</span>
     <span class="kw">let</span> pairGroup = <span class="type">NSCollectionLayoutGroup</span>.vertical(
-        layoutSize: <span class="type">NSCollectionLayoutSize</span>(widthDimension: .fractionalWidth(<span class="m">0.3</span>),
-                                              heightDimension: .fractionalHeight(<span class="m">1.0</span>)),
+        layoutSize: <span class="type">NSCollectionLayoutSize</span>(widthDimension: .fractionalWidth(<span class="num">0.3</span>),
+                                              heightDimension: .fractionalHeight(<span class="num">1.0</span>)),
         subitems: [smallItem, smallItem])
 
     <span class="kw">let</span> bigItem = <span class="type">NSCollectionLayoutItem</span>(
-        layoutSize: <span class="type">NSCollectionLayoutSize</span>(widthDimension: .fractionalWidth(<span class="m">0.7</span>),
-                                              heightDimension: .fractionalHeight(<span class="m">1.0</span>)))
+        layoutSize: <span class="type">NSCollectionLayoutSize</span>(widthDimension: .fractionalWidth(<span class="num">0.7</span>),
+                                              heightDimension: .fractionalHeight(<span class="num">1.0</span>)))
 
     <span class="kw">let</span> rowGroup = <span class="type">NSCollectionLayoutGroup</span>.horizontal(
-        layoutSize: <span class="type">NSCollectionLayoutSize</span>(widthDimension: .fractionalWidth(<span class="m">1.0</span>),
-                                              heightDimension: .absolute(<span class="m">200</span>)),
+        layoutSize: <span class="type">NSCollectionLayoutSize</span>(widthDimension: .fractionalWidth(<span class="num">1.0</span>),
+                                              heightDimension: .absolute(<span class="num">200</span>)),
         subitems: [bigItem, pairGroup])
 
     <span class="kw">let</span> section = <span class="type">NSCollectionLayoutSection</span>(group: rowGroup)
     <span class="kw">return</span> <span class="type">UICollectionViewCompositionalLayout</span>(section: section)
+}
+</code></pre></div>
+
+<p><strong>Wiring <code>makeLayout()</code> into a view controller</strong></p>
+<ul>
+<li>Pass the layout to <code>UICollectionView(frame:collectionViewLayout:)</code> (or set <code>collectionView.collectionViewLayout</code> later); register the cell class; hand the collection view to a <code>UICollectionViewDiffableDataSource</code>; apply a snapshot to populate it.</li>
+</ul>
+
+<div class="codehilite"><pre><code><span class="kw">struct</span> <span class="type">GalleryItem</span>: <span class="type">Hashable</span> {
+    <span class="kw">let</span> title: <span class="type">String</span>
+    <span class="kw">let</span> isFeatured: <span class="type">Bool</span>
+}
+
+<span class="kw">final class</span> <span class="type">GalleryCell</span>: <span class="type">UICollectionViewCell</span> {
+    <span class="kw">static let</span> reuseID = <span class="str">"GalleryCell"</span>
+    <span class="kw">private let</span> label = <span class="type">UILabel</span>()
+
+    <span class="kw">override init</span>(frame: <span class="type">CGRect</span>) {
+        <span class="kw">super</span>.init(frame: frame)
+        contentView.backgroundColor = .secondarySystemBackground
+        label.translatesAutoresizingMaskIntoConstraints = <span class="kw">false</span>
+        contentView.addSubview(label)
+        <span class="type">NSLayoutConstraint</span>.activate([
+            label.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: contentView.centerYAnchor)
+        ])
+    }
+
+    <span class="kw">required init?</span>(coder: <span class="type">NSCoder</span>) { fatalError(<span class="str">"init(coder:) has not been implemented"</span>) }
+
+    <span class="kw">func</span> configure(with item: <span class="type">GalleryItem</span>) {
+        label.text = item.title
+    }
+}
+
+<span class="kw">final class</span> <span class="type">GalleryViewController</span>: <span class="type">UIViewController</span> {
+    <span class="kw">private enum</span> <span class="type">Section</span> { <span class="kw">case</span> main }
+
+    <span class="kw">private var</span> collectionView: <span class="type">UICollectionView</span>!
+    <span class="kw">private var</span> dataSource: <span class="type">UICollectionViewDiffableDataSource</span>&lt;<span class="type">Section</span>, <span class="type">GalleryItem</span>&gt;!
+    <span class="kw">private let</span> items: [<span class="type">GalleryItem</span>] = [
+        <span class="type">GalleryItem</span>(title: <span class="str">"Featured"</span>, isFeatured: <span class="kw">true</span>),
+        <span class="type">GalleryItem</span>(title: <span class="str">"A"</span>, isFeatured: <span class="kw">false</span>),
+        <span class="type">GalleryItem</span>(title: <span class="str">"B"</span>, isFeatured: <span class="kw">false</span>)
+    ]
+
+    <span class="kw">override func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
+
+        <span class="cm">// 1. Create the collection view with the layout built above.</span>
+        collectionView = <span class="type">UICollectionView</span>(frame: view.bounds, collectionViewLayout: makeLayout())
+        collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        collectionView.register(<span class="type">GalleryCell</span>.self, forCellWithReuseIdentifier: <span class="type">GalleryCell</span>.reuseID)
+        view.addSubview(collectionView)
+
+        <span class="cm">// 2. Connect a diffable data source that dequeues and configures cells.</span>
+        dataSource = <span class="type">UICollectionViewDiffableDataSource</span>&lt;<span class="type">Section</span>, <span class="type">GalleryItem</span>&gt;(
+            collectionView: collectionView
+        ) { collectionView, indexPath, item <span class="kw">in</span>
+            <span class="kw">let</span> cell = collectionView.dequeueReusableCell(
+                withReuseIdentifier: <span class="type">GalleryCell</span>.reuseID, for: indexPath
+            ) <span class="kw">as!</span> <span class="type">GalleryCell</span>
+            cell.configure(with: item)
+            <span class="kw">return</span> cell
+        }
+
+        <span class="cm">// 3. Push the initial data through a snapshot to populate the grid.</span>
+        <span class="kw">var</span> snapshot = <span class="type">NSDiffableDataSourceSnapshot</span>&lt;<span class="type">Section</span>, <span class="type">GalleryItem</span>&gt;()
+        snapshot.appendSections([.main])
+        snapshot.appendItems(items)
+        dataSource.apply(snapshot, animatingDifferences: <span class="kw">false</span>)
+    }
 }
 </code></pre></div>
 
@@ -112,8 +184,8 @@ ul.toc li a{font-size:1.05em}
 <div class="codehilite"><pre><code><span class="kw">func</span> collectionView(_ collectionView: <span class="type">UICollectionView</span>, layout: <span class="type">UICollectionViewLayout</span>,
                     sizeForItemAt indexPath: <span class="type">IndexPath</span>) -&gt; <span class="type">CGSize</span> {
     <span class="kw">let</span> item = items[indexPath.item]
-    <span class="kw">let</span> width = item.isFeatured ? collectionView.bounds.width : collectionView.bounds.width / <span class="m">2</span>
-    <span class="kw">return</span> <span class="type">CGSize</span>(width: width, height: item.isFeatured ? <span class="m">240</span> : <span class="m">140</span>)
+    <span class="kw">let</span> width = item.isFeatured ? collectionView.bounds.width : collectionView.bounds.width / <span class="num">2</span>
+    <span class="kw">return</span> <span class="type">CGSize</span>(width: width, height: item.isFeatured ? <span class="num">240</span> : <span class="num">140</span>)
 }
 </code></pre></div>
 
@@ -122,6 +194,108 @@ ul.toc li a{font-size:1.05em}
 <li>Override <code>prepare()</code> to compute and cache an <code>[UICollectionViewLayoutAttributes]</code> per index path (tracking a running height per column), override <code>collectionViewContentSize</code>, and <code>layoutAttributesForElements(in:)</code>/<code>layoutAttributesForItem(at:)</code> to return the cached frames.</li>
 <li>Needed when item placement isn't expressible as rows/columns of fixed proportions — e.g. masonry layouts where the next item's column is chosen by "shortest column so far".</li>
 </ul>
+
+<div class="codehilite"><pre><code><span class="kw">protocol</span> <span class="type">PinterestLayoutDelegate</span>: <span class="type">AnyObject</span> {
+    <span class="kw">func</span> collectionView(_ collectionView: <span class="type">UICollectionView</span>, heightForItemAt indexPath: <span class="type">IndexPath</span>, width: <span class="type">CGFloat</span>) -&gt; <span class="type">CGFloat</span>
+}
+
+<span class="kw">final class</span> <span class="type">PinterestLayout</span>: <span class="type">UICollectionViewLayout</span> {
+    <span class="kw">weak var</span> delegate: <span class="type">PinterestLayoutDelegate</span>?
+    <span class="kw">var</span> numberOfColumns = <span class="num">2</span>
+    <span class="kw">var</span> cellPadding: <span class="type">CGFloat</span> = <span class="num">6</span>
+
+    <span class="kw">private var</span> cache: [<span class="type">UICollectionViewLayoutAttributes</span>] = []
+    <span class="kw">private var</span> contentHeight: <span class="type">CGFloat</span> = <span class="num">0</span>
+    <span class="kw">private var</span> contentWidth: <span class="type">CGFloat</span> {
+        <span class="kw">guard</span> <span class="kw">let</span> collectionView = collectionView <span class="kw">else</span> { <span class="kw">return</span> <span class="num">0</span> }
+        <span class="kw">let</span> insets = collectionView.contentInset
+        <span class="kw">return</span> collectionView.bounds.width - (insets.left + insets.right)
+    }
+
+    <span class="kw">override var</span> collectionViewContentSize: <span class="type">CGSize</span> {
+        <span class="type">CGSize</span>(width: contentWidth, height: contentHeight)
+    }
+
+    <span class="cm">// Required: builds and caches layout attributes for every item once.</span>
+    <span class="kw">override func</span> prepare() {
+        <span class="kw">guard</span> cache.isEmpty, <span class="kw">let</span> collectionView = collectionView <span class="kw">else</span> { <span class="kw">return</span> }
+
+        <span class="kw">let</span> columnWidth = contentWidth / <span class="type">CGFloat</span>(numberOfColumns)
+        <span class="kw">var</span> yOffsets = [<span class="type">CGFloat</span>](repeating: <span class="num">0</span>, count: numberOfColumns)
+
+        <span class="kw">for</span> item <span class="kw">in</span> <span class="num">0</span>..&lt;collectionView.numberOfItems(inSection: <span class="num">0</span>) {
+            <span class="kw">let</span> indexPath = <span class="type">IndexPath</span>(item: item, section: <span class="num">0</span>)
+
+            <span class="cm">// Waterfall rule: place the next item in the currently shortest column.</span>
+            <span class="kw">let</span> column = yOffsets.firstIndex(of: yOffsets.min()!) ?? <span class="num">0</span>
+
+            <span class="kw">let</span> itemWidth = columnWidth - cellPadding * <span class="num">2</span>
+            <span class="kw">let</span> itemHeight = delegate?.collectionView(collectionView, heightForItemAt: indexPath, width: itemWidth) ?? <span class="num">100</span>
+
+            <span class="kw">let</span> frame = <span class="type">CGRect</span>(x: <span class="type">CGFloat</span>(column) * columnWidth, y: yOffsets[column],
+                              width: columnWidth, height: itemHeight + cellPadding * <span class="num">2</span>)
+            <span class="kw">let</span> insetFrame = frame.insetBy(dx: cellPadding, dy: cellPadding)
+
+            <span class="kw">let</span> attributes = <span class="type">UICollectionViewLayoutAttributes</span>(forCellWith: indexPath)
+            attributes.frame = insetFrame
+            cache.append(attributes)
+
+            contentHeight = max(contentHeight, frame.maxY)
+            yOffsets[column] = frame.maxY
+        }
+    }
+
+    <span class="cm">// Required: which cached attributes intersect the visible rect (drives what's actually drawn).</span>
+    <span class="kw">override func</span> layoutAttributesForElements(in rect: <span class="type">CGRect</span>) -&gt; [<span class="type">UICollectionViewLayoutAttributes</span>]? {
+        cache.filter { $0.frame.intersects(rect) }
+    }
+
+    <span class="cm">// Required: attributes for one index path (used for insert/delete/move animations).</span>
+    <span class="kw">override func</span> layoutAttributesForItem(at indexPath: <span class="type">IndexPath</span>) -&gt; <span class="type">UICollectionViewLayoutAttributes</span>? {
+        cache[indexPath.item]
+    }
+
+    <span class="cm">// Recompute when the width changes (rotation, split view resize, size class change).</span>
+    <span class="kw">override func</span> shouldInvalidateLayout(forBoundsChange newBounds: <span class="type">CGRect</span>) -&gt; <span class="type">Bool</span> {
+        newBounds.width != collectionView?.bounds.width
+    }
+
+    <span class="cm">// Clears the cache so prepare() rebuilds it after an invalidation (bounds change, reloadData).</span>
+    <span class="kw">override func</span> invalidateLayout() {
+        cache.removeAll()
+        contentHeight = <span class="num">0</span>
+        <span class="kw">super</span>.invalidateLayout()
+    }
+}
+</code></pre></div>
+
+<p><strong>Using it:</strong> assign the layout, set the delegate, and return each item's target height (e.g. from an image's aspect ratio).</p>
+
+<div class="codehilite"><pre><code><span class="kw">final class</span> <span class="type">WaterfallViewController</span>: <span class="type">UIViewController</span> {
+    <span class="kw">private var</span> collectionView: <span class="type">UICollectionView</span>!
+    <span class="kw">private let</span> photos: [<span class="type">Photo</span>] = <span class="type">Photo</span>.samples
+
+    <span class="kw">override func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
+
+        <span class="kw">let</span> layout = <span class="type">PinterestLayout</span>()
+        layout.delegate = <span class="kw">self</span>
+        layout.numberOfColumns = <span class="num">2</span>
+
+        collectionView = <span class="type">UICollectionView</span>(frame: view.bounds, collectionViewLayout: layout)
+        collectionView.dataSource = <span class="kw">self</span>
+        collectionView.register(<span class="type">PhotoCell</span>.self, forCellWithReuseIdentifier: <span class="type">PhotoCell</span>.reuseID)
+        view.addSubview(collectionView)
+    }
+}
+
+<span class="kw">extension</span> <span class="type">WaterfallViewController</span>: <span class="type">PinterestLayoutDelegate</span> {
+    <span class="kw">func</span> collectionView(_ collectionView: <span class="type">UICollectionView</span>, heightForItemAt indexPath: <span class="type">IndexPath</span>, width: <span class="type">CGFloat</span>) -&gt; <span class="type">CGFloat</span> {
+        <span class="kw">let</span> aspectRatio = photos[indexPath.item].size.height / photos[indexPath.item].size.width
+        <span class="kw">return</span> width * aspectRatio   <span class="cm">// preserves each photo's natural proportions</span>
+    }
+}
+</code></pre></div>
 
 <table>
 <thead>
