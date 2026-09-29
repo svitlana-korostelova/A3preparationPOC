@@ -76,7 +76,7 @@ ul.toc li a{font-size:1.05em}
 <ul>
 <li><strong>No overlapping/z-order layouts:</strong> can't position views on top of each other (e.g., a badge overlay) — falls back to plain Auto Layout or a `ZStack` equivalent.</li>
 <li><strong>Performance in hot paths:</strong> internally it still generates/updates constraints; deeply nested stacks or frequent `isHidden` toggling inside table/collection view cells triggers extra layout passes and can hurt scroll performance — flatten constraints for perf-critical cells.</li>
-<li><strong>No wrapping:</strong> unlike CSS flex-wrap, a stack view won't wrap overflow content to a new line/column; needs a custom `UICollectionViewCompositionalLayout`/flow layout for tag/chip-style UI.</li>
+<li><strong>No wrapping:</strong> a horizontal stack keeps every arranged subview in one single row (a vertical stack keeps them in one single column) — there's no "second row." If the row runs out of horizontal space, items just shrink, get compressed, or clip; the last item is never automatically pushed down to a new line the way it would with CSS `flex-wrap`. For tag/chip-style UI that must wrap onto multiple rows, use a custom `UICollectionViewCompositionalLayout`/flow layout instead.</li>
 <li><strong>Harder debugging:</strong> Auto Layout ambiguity/ conflict warnings reference stack view's internally generated constraints, not the ones you wrote, making root-causing harder.</li>
 <li><strong>Distribution nuances:</strong> `.fillEqually` vs `.equalSpacing` vs `.fill` behave differently under content hugging/compression resistance — easy to misconfigure and get unexpected sizing.</li>
 </ul>

@@ -26,6 +26,6 @@ targets:
       properties:
         CFBundleDisplayName: A3 PoC iOS
         UILaunchScreen:
-          UIColorName: ""
+          UIColorName: "LaunchScreenBackground"
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

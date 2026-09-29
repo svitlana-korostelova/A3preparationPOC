@@ -66,14 +66,26 @@ ul.toc li a{font-size:1.05em}
 <main>
 <h1>2.2.2.10. What are the advantages of using Auto Layout programmatically versus Interface Builder?</h1>
 
+<p><strong>Short answer:</strong> code-based Auto Layout is easier to review, reuse, and change at runtime. Interface Builder (IB) is faster for visual prototyping. Most teams use both — IB for simple screens, code for reusable or dynamic UI.</p>
+
+<p><strong>Advantages of writing constraints in code</strong></p>
 <ul>
-<li><strong>Code review / VCS:</strong> Storyboards/XIBs are large XML blobs — diffs are unreadable and merge conflicts are common and painful to resolve by hand. Swift constraint code diffs and merges like any other source file.</li>
-<li><strong>Reusability & DI:</strong> Programmatic views are easier to parameterize (generics, dependency injection, configuration structs) and reuse across screens without duplicating a XIB per variant.</li>
-<li><strong>Dynamic layout logic:</strong> When constraints depend on runtime state (feature flags, data-driven number of rows, conditional sections), branching in code is far cleaner than IB's static canvas + endless `IBOutlet` wiring.</li>
-<li><strong>Compiler/tooling safety:</strong> Typos in code are caught by the compiler; broken `IBOutlet`/`IBAction` connections in IB only fail at runtime (or silently disconnect).</li>
-<li><strong>No load overhead:</strong> No NIB/Storyboard deserialization cost; views are built directly.</li>
-<li><strong>IB's counterpoint (still valid):</strong> faster visual prototyping, live constraint preview, easier designer/dev collaboration, built-in localization (Base Internationalization). Many teams use a hybrid — IB for quick prototyping/simple screens, code for reusable components and complex/conditional UI.</li>
+<li><strong>Reviewable diffs:</strong> storyboards and XIBs are large XML files. Diffs are hard to read and merges often break silently. Swift constraint code diffs and merges like any other source file.</li>
+<li><strong>Reusable:</strong> a view built in code can be parameterized (init arguments, dependency injection) and reused across screens. A XIB usually needs a copy per variant.</li>
+<li><strong>Handles dynamic layout:</strong> when constraints depend on runtime state (feature flags, data-driven row counts, conditional sections), branching in code is simpler than wiring conditions through IB's static canvas.</li>
+<li><strong>Compiler safety:</strong> typos in code fail to build. A broken <code>IBOutlet</code>/<code>IBAction</code> connection in IB only fails — or silently disconnects — at runtime.</li>
+<li><strong>No load overhead:</strong> views are built directly, skipping storyboard/NIB deserialization.</li>
 </ul>
+
+<p><strong>Advantages of Interface Builder</strong></p>
+<ul>
+<li><strong>Faster prototyping:</strong> drag, drop, and see the layout instantly, without a build.</li>
+<li><strong>Live constraint preview:</strong> spot layout issues on the canvas before running the app.</li>
+<li><strong>Designer/dev collaboration:</strong> non-engineers can adjust simple, static screens visually.</li>
+<li><strong>Built-in localization:</strong> Base Internationalization ships translated strings per storyboard for free.</li>
+</ul>
+
+<p><strong>In practice:</strong> a common hybrid is IB for quick prototypes and simple static screens, code for reusable components and screens with complex or conditional layout.</p>
 
 <div class="codehilite"><pre><code><span class="kw">let</span> label = <span class="type">UILabel</span>()
 label.translatesAutoresizingMaskIntoConstraints = <span class="kw">false</span>
@@ -86,11 +98,11 @@ view.addSubview(label)
 
 <p><strong>Common Interview Questions</strong></p>
 
-<p><strong>Q: Why do teams still keep a Storyboard for the app entry point or launch screen?</strong> A: Historical Xcode project templates wire `Main.storyboard` as the initial scene; launch screen can now be a plain `Info.plist`-driven storyboard, but many legacy projects still ship one XIB for it. It's convention, not a technical requirement of Auto Layout itself.</p>
+<p><strong>Q: Why do teams still keep a storyboard for the app entry point or launch screen?</strong> A: these are two different cases. The <strong>main storyboard</strong> is just a template default: <code>Info.plist</code>'s <code>UIMainStoryboardFile</code> key (or <code>UISceneStoryboardFile</code> per scene) tells UIKit which storyboard to load before <code>AppDelegate</code>/<code>SceneDelegate</code> runs its own setup — clear "Main Interface" in target settings and build the window/root view controller in code, and it's gone. The <strong>launch screen</strong> is not optional in the same way: it's rendered by the OS before your app's process has even finished launching, so no app code has run yet to draw it. Apple requires either a <code>LaunchScreen.storyboard</code> or, since iOS 14, an equivalent declarative <code>UILaunchScreen</code> entry in <code>Info.plist</code> — there's no code hook to replace it with.</p>
 
-<p><strong>Q: What's the biggest practical downside of 100% programmatic UI?</strong> A: No live visual canvas — you must build & run (or use SwiftUI Previews / `@available` Xcode Previews for UIKit) to see the result, slowing down pure visual iteration.</p>
+<p><strong>Q: What's the biggest practical downside of 100% programmatic UI?</strong> A: no live visual canvas. You must build and run, or use Xcode Previews for UIKit, just to see the result — that slows down visual iteration.</p>
 
-<p><strong>Q: How do you review a Storyboard change in a PR?</strong> A: You mostly can't review the XML diff meaningfully; rely on screenshots, manual QA, or Xcode's storyboard diff view rather than line-by-line code review.</p>
+<p><strong>Q: How do you review a storyboard change in a PR?</strong> A: you mostly can't review the XML diff meaningfully. Teams rely on screenshots, manual QA, or Xcode's storyboard diff view instead of line-by-line code review.</p>
 </main>
 </body>
 </html>
