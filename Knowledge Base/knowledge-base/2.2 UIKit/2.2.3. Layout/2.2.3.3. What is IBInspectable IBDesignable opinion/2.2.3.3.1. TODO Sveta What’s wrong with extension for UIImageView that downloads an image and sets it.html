@@ -56,71 +56,82 @@ ul.toc li a{font-size:1.05em}
 .codehilite .na{color:#22863a}
 .codehilite .nt{color:#22863a}
 .codehilite .nv{color:#e36209}
+
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../../index.html">⌂ Knowledge Base</a> › <a href="../../index.html">2.2 UIKit</a> › <a href="../index.html">3. Layout</a> › <a href="index.html">2.2.3.3. What is IBInspectable / IBDesignable opinion</a></nav>
 <main>
 <h1>2.2.3.3.1. // TODO: Sveta What’s wrong with extension for UIImageView that downloads an image and sets it</h1>
-<ul>
-<li>
-<ol>
-<li><strong>no Caching:</strong> every time you set an image, it downloads again, wasting bandwidth and slowing down your app.</li>
-<li><strong>no Cancellation:</strong> if the cell/image view is reused (e.g., in a table view), the old download might finish after reuse, setting the wrong image.</li>
-<li><strong>no Error Handling</strong>: it often ignores errors (e.g., network failures), so you can't show placeholders or retry.</li>
-<li>
-<p><strong>runs on Main Thread</strong>: if not handled properly, it can block the UI, making the app feel laggy.
-- <strong>❌ BAD</strong> example</p>
-<p>```swift
-// BAD EXAMPLE</p>
-<p>extension UIImageView {
-    func setImage(from url: URL) {
-        URLSession.shared.dataTask(with: url) { data, _, _ in
-            if let data = data {
-                DispatchQueue.main.async {
-                    self.image = UIImage(data: data)
+
+<h2>❌ Bad example</h2>
+<p>A naive <code>UIImageView</code> extension that downloads an image straight into a completion handler looks convenient, but it has several problems:</p>
+<div class="codehilite"><pre><code><span class="kw">extension</span> <span class="type">UIImageView</span> {
+    <span class="kw">func</span> setImage(from url: <span class="type">URL</span>) {
+        <span class="type">URLSession</span>.shared.dataTask(with: url) { data, _, _ <span class="kw">in</span>
+            <span class="kw">if let</span> data = data {
+                <span class="type">DispatchQueue</span>.main.async {
+                    self.image = <span class="type">UIImage</span>(data: data)
                 }
             }
         }.resume()
     }
 }
-```</p>
-</li>
-</ol>
-<ul>
-<li>
-<p><strong>✅ GOOD</strong> example</p>
-<p>```swift
-let imageCache = NSCache<NSURL, UIImage>()</p>
-<p>extension UIImageView {
-    func setImage(from url: URL, placeholder: UIImage? = nil) {
-        self.image = placeholder</p>
-<div class="codehilite"><pre><span></span><code>    if let cached = imageCache.object(forKey: url as NSURL) {
-        self.image = cached
-        return
-    }
+</code></pre></div>
 
-    URLSession.shared.dataTask(with: url) { data, _, error in
-        guard let data = data, let img = UIImage(data: data), error == nil else { return }
-        imageCache.setObject(img, forKey: url as NSURL)
-        DispatchQueue.main.async {
-            self.image = img
+<p>What's wrong with it:</p>
+<ul>
+<li><strong>No caching</strong>: every time you set an image, it downloads again, wasting bandwidth and slowing down your app.</li>
+<li><strong>No cancellation</strong>: if the cell/image view is reused (e.g., in a table view), the old download might finish after reuse, setting the wrong image.</li>
+<li><strong>No error handling</strong>: it often ignores errors (e.g., network failures), so you can't show placeholders or retry.</li>
+<li><strong>Runs on the main thread implicitly</strong>: <code>self.image</code> is only set on the main thread here, but nothing guards against calling <code>setImage</code> itself from a background thread or blocks the UI while the request is in flight.</li>
+</ul>
+
+<h2>✅ Good example</h2>
+<div class="codehilite"><pre><code><span class="kw">let</span> imageCache = <span class="type">NSCache</span>&lt;<span class="type">NSURL</span>, <span class="type">UIImage</span>&gt;()
+
+<span class="kw">extension</span> <span class="type">UIImageView</span> {
+    <span class="kw">func</span> setImage(from url: <span class="type">URL</span>, placeholder: <span class="type">UIImage</span>? = <span class="kw">nil</span>) {
+        self.image = placeholder
+
+        <span class="kw">if let</span> cached = imageCache.object(forKey: url <span class="kw">as</span> <span class="type">NSURL</span>) {
+            self.image = cached
+            <span class="kw">return</span>
         }
-    }.resume()
+
+        <span class="type">URLSession</span>.shared.dataTask(with: url) { data, _, error <span class="kw">in</span>
+            <span class="kw">guard let</span> data = data, <span class="kw">let</span> img = <span class="type">UIImage</span>(data: data), error == <span class="kw">nil</span> <span class="kw">else</span> { <span class="kw">return</span> }
+            imageCache.setObject(img, forKey: url <span class="kw">as</span> <span class="type">NSURL</span>)
+            <span class="type">DispatchQueue</span>.main.async {
+                self.image = img
+            }
+        }.resume()
+    }
 }
 </code></pre></div>
 
-<p>}
-```</p>
-<p><strong>How does this work?</strong></p>
+<p><strong>How does this fix it?</strong></p>
 <ul>
 <li>Shows a placeholder while loading.</li>
-<li>Uses cache to avoid re-downloading images.</li>
-<li>Sets the image on the main thread.</li>
-</ul>
-</li>
-</ul>
-</li>
+<li>Uses <code>NSCache</code> to avoid re-downloading images that were already fetched.</li>
+<li>Sets the image back on the main thread once the download completes.</li>
 </ul>
 </main>
 </body>

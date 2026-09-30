@@ -79,9 +79,10 @@ ul.toc li a{font-size:1.05em}
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.3. Layout</a></nav>
 <main>
 <h1>2.2.3.1. What is Auto Layout</h1>
-<ul>
-<li>
-<p>Auto Layout is a <strong>constraint-based layout system</strong> in UIKit that automatically calculates the size and position of views based on rules (constraints) you define. Instead of setting fixed frames, you describe <strong>relationships between views</strong>.</p>
+
+<p>Auto Layout is a <strong>constraint-based layout system</strong> in UIKit that automatically calculates the size and position of views based on rules (<strong>constraints</strong>) you define, instead of fixed frames. You describe <strong>relationships between views</strong> — e.g. "center this button in its superview" or "pin this label 20pt from the leading edge" — and a constraint solver (built on the <strong>Cassowary</strong> algorithm) resolves those relationships into concrete frames, recalculating automatically whenever screen size, orientation, or content changes.</p>
+
+<h2>Basic Example</h2>
 <div class="codehilite"><pre><code class="language-swift"><span class="kw">let</span> button = <span class="type">UIButton</span>()
 button.translatesAutoresizingMaskIntoConstraints = <span class="kw">false</span>
 view.addSubview(button)
@@ -93,23 +94,46 @@ view.addSubview(button)
     button.heightAnchor.constraint(equalToConstant: <span class="num">50</span>)
 ])
 
-<span class="cm">// Modern Approach with Layout Anchors</span>
-
-<span class="cm">// Make button fill width with padding</span>
+<span class="cm">// Modern approach with layout anchors:</span>
+<span class="cm">// make the button fill the width, with padding on both sides</span>
 button.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: <span class="num">20</span>).isActive = <span class="kw">true</span>
 button.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -<span class="num">20</span>).isActive = <span class="kw">true</span></code></pre></div>
+
+<h2>Common Interview "Why" Questions</h2>
 <ul>
-<li>
-<p><strong>Common Interview "Why" Questions:</strong></p>
-<p><strong>Q: Why set <code>translatesAutoresizingMaskIntoConstraints = false</code>?</strong> A: By default, UIKit creates automatic constraints from the view's frame. Setting this to <strong><code>false</code></strong> lets you use your own constraints.</p>
-<p><strong>Q: Why use Safe Area?</strong> A: Safe Area respects notches, home indicators, and navigation bars, ensuring content isn't hidden.</p>
-<p><strong>Q: Why prefer Layout Anchors over NSLayoutConstraint?</strong> A: Layout Anchors are more readable, type-safe, and less verbose than the old NSLayoutConstraint syntax.</p>
-<p><strong>Q: Why use Stack Views?</strong> A: They automatically manage spacing and distribution of subviews, reducing constraint complexity by 80%.</p>
-</li>
+<li><p><strong>Q: Why set <code>translatesAutoresizingMaskIntoConstraints = false</code>?</strong><br>
+A: By default, UIKit auto-generates constraints from a view's <code>frame</code>/autoresizing mask. Setting this to <strong><code>false</code></strong> disables that auto-generated set so your own explicit constraints aren't fighting the automatic ones (which would otherwise cause an "unsatisfiable constraints" conflict at runtime).</p></li>
+<li><p><strong>Q: Why use Safe Area instead of the superview's edges?</strong><br>
+A: Safe Area anchors (<code>safeAreaLayoutGuide</code>) respect notches, the Dynamic Island, status bar, navigation/tab bars, and the home indicator, so content isn't clipped or hidden behind system UI.</p></li>
+<li><p><strong>Q: Why prefer Layout Anchors over raw <code>NSLayoutConstraint</code>?</strong><br>
+A: Anchors (<code>leadingAnchor</code>, <code>widthAnchor</code>, etc.) are type-safe — the compiler stops you from constraining, say, an X-axis anchor to a Y-axis anchor — and read closer to natural language than the older <code>NSLayoutConstraint(item:attribute:relatedBy:toItem:attribute:multiplier:constant:)</code> initializer or Visual Format Language.</p></li>
+<li><p><strong>Q: Why use Stack Views (<code>UIStackView</code>)?</strong><br>
+A: A stack view manages the spacing, alignment, and distribution of its arranged subviews for you, generating the constraints internally. It removes most of the boilerplate constraint code for common row/column layouts.</p></li>
+<li><p><strong>Q: What happens if constraints are ambiguous or conflicting?</strong><br>
+A: <strong>Ambiguous</strong> means the system doesn't have enough constraints to determine a unique frame (e.g. missing width/height); Auto Layout picks an arbitrary valid value and logs a warning. <strong>Conflicting</strong> means two or more required (priority 1000) constraints can't be satisfied simultaneously; the engine breaks the constraint it considers least important, logs an "Unable to simultaneously satisfy constraints" error, and you should fix it before shipping.</p></li>
+<li><p><strong>Q: What are constraint priorities for?</strong><br>
+A: Every constraint has a priority (1–1000). Required constraints use <code>1000</code>; anything lower is optional and can be broken if it can't be satisfied. This lets you express "preferences" (e.g. a label's <code>contentHuggingPriority</code>/<code>contentCompressionResistancePriority</code>) so the engine knows which view should grow or shrink first when space is tight.</p></li>
 </ul>
-<p>//TODO: compare with SwitUI shortly.</p>
-</li>
-</ul>
+
+<h2>Auto Layout vs. SwiftUI Layout</h2>
+<p>A frequent interview trap: SwiftUI does <strong>not</strong> run on top of Auto Layout. It has an entirely different, purpose-built layout engine, even though both ultimately position <code>UIView</code>/<code>CALayer</code> instances on screen.</p>
+<table>
+<thead>
+<tr><th>Aspect</th><th>Auto Layout (UIKit)</th><th>SwiftUI</th></tr>
+</thead>
+<tbody>
+<tr><td>Paradigm</td><td>Imperative — you build a list of constraints</td><td>Declarative — you describe the view tree; the framework derives layout</td></tr>
+<tr><td>Algorithm</td><td>Constraint solver (Cassowary) resolving a system of linear equations</td><td>Two-pass size negotiation: a parent <em>proposes</em> a size to each child, the child <em>returns</em> the size it wants, then the parent places it</td></tr>
+<tr><td>Core API</td><td><code>NSLayoutConstraint</code>, layout anchors, Visual Format Language, <code>UIStackView</code></td><td><code>VStack</code>/<code>HStack</code>/<code>ZStack</code>, modifiers like <code>.padding</code>, <code>.frame</code>, <code>.fixedSize</code></td></tr>
+<tr><td>Ambiguity/conflicts</td><td>Possible — under/over-constrained layouts log runtime warnings</td><td>Not possible — every view always resolves to exactly one size deterministically</td></tr>
+<tr><td>Priorities</td><td>Explicit numeric priorities (1–1000) plus hugging/compression resistance</td><td>Implicit, driven by layout priority modifiers (<code>.layoutPriority(_:)</code>) and each view's intrinsic "flexibility"</td></tr>
+<tr><td>Debugging</td><td>Console constraint-conflict logs, Xcode's Auto Layout debugger/preview</td><td>Xcode previews, <code>._printChanges()</code>, layout inspector overlays</td></tr>
+<tr><td>Interop</td><td>Can be embedded in SwiftUI via <code>UIViewRepresentable</code></td><td>Can be embedded in UIKit via <code>UIHostingController</code> (which internally still lays out its root view using SwiftUI's engine, then reports one final size back to Auto Layout as a single opaque box)</td></tr>
+</tbody>
+</table>
+<p><strong>Q: If I put a SwiftUI view inside a UIKit screen, whose layout system wins?</strong><br>
+A: Both are involved, but they don't mix constraints. <code>UIHostingController</code>'s view participates in Auto Layout like any other <code>UIView</code> (you can pin its edges with constraints). Internally, everything <em>inside</em> that hosting view is laid out purely by SwiftUI's proposal/response system — Auto Layout only ever sees the hosting view's outer frame.</p>
+
 </main>
 </body>
 </html>
