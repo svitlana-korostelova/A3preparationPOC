@@ -65,19 +65,19 @@ ul.toc li a{font-size:1.05em}
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.4. User Interaction &amp; Animations</a></nav>
 <main>
 <h1>2.2.4.7. How do gesture recognizers interact with the responder chain?</h1>
-<p>Gesture recognizers sit <strong>alongside</strong> the responder chain, not inside it - they attach to a view and receive raw touches from UIKit's touch dispatch in parallel with (and typically before) the view's own <code>touchesBegan/Moved/Ended</code>.</p>
+<p>Gesture recognizers are not part of the responder chain. They observe touches on their view and its subviews while UIKit also sends the touch sequence to the hit-test view.</p>
 <ul>
-<li>UIKit hit-tests once per touch to find the hit-test view, then delivers the touch both to that view and to every gesture recognizer attached to it <em>or any of its superviews</em>.</li>
-<li>A recognizer that reaches "recognized" can <strong>cancel</strong> touch delivery to the view (and thus the responder chain) via <code>cancelsTouchesInView</code> (default <code>true</code>) - why a cell's <code>touchesBegan</code> can "disappear" once a pan/swipe recognizes.</li>
-<li><code>delaysTouchesBegan</code>/<code>delaysTouchesEnded</code> control whether touches are held back from the view while the recognizer decides.</li>
-<li>Multiple recognizers negotiate via <code>UIGestureRecognizerDelegate</code>: <code>shouldRecognizeSimultaneouslyWith</code>, <code>shouldRequireFailureOf</code>, <code>shouldBeRequiredToFailBy</code>.</li>
+<li>Recognizers attached to the hit-test view or one of its ancestors can observe the same touch.</li>
+<li>By default, when a recognizer succeeds, <code>cancelsTouchesInView</code> is <code>true</code>. UIKit then cancels touch delivery to the view; this can explain why a view's <code>touchesBegan</code> or later touch methods do not receive the full sequence.</li>
+<li><code>delaysTouchesBegan</code> and <code>delaysTouchesEnded</code> control whether the recognizer delays sending those touch phases to the view while it decides.</li>
+<li>Use <code>UIGestureRecognizerDelegate</code> methods or <code>require(toFail:)</code> to control whether recognizers can succeed together or one must fail first.</li>
 </ul>
-<p>So the responder chain (<code>UIResponder</code> → next responder → ... → <code>UIApplication</code>) decides who handles an event <em>after</em> hit-testing; gesture recognizers are a separate, competing consumer of the same raw touch stream, and typically win by cancelling the responder chain's delivery.</p>
+<p>Hit-testing chooses the view that receives the touch. Gesture recognizers separately examine that touch and can recognize a gesture or cancel delivery to the view. If the view receives an event, the responder chain can then pass it to the next responder.</p>
 <h2>Follow-up questions</h2>
 <ul>
-<li>Why might a custom <code>touchesBegan</code> override never fire even though the view is hit-testable?</li>
-<li>How does <code>UIScrollView</code>'s pan gesture coexist with a child button's tap without conflict?</li>
-<li>What happens to an in-flight gesture recognizer if its view is removed from the hierarchy mid-gesture?</li>
+<li><strong>Why might <code>touchesBegan</code> not fire?</strong> The view may not be the hit-test result, interaction may be disabled, or a gesture recognizer may delay or cancel the touch delivery.</li>
+<li><strong>How can a scroll view pan while a child button still receives taps?</strong> A short touch activates the button. If the finger moves enough to start scrolling, the pan recognizer takes over and cancels the button touch.</li>
+<li><strong>What if the recognizer's view is removed during a gesture?</strong> UIKit cancels the in-progress touch sequence. Handle the recognizer's cancelled state to clean up any temporary UI or state.</li>
 </ul>
 </main>
 </body>

@@ -56,47 +56,62 @@ ul.toc li a{font-size:1.05em}
 .codehilite .na{color:#22863a}
 .codehilite .nt{color:#22863a}
 .codehilite .nv{color:#e36209}
+pre {
+  border-radius: 8px;
+  padding: 1em;
+  overflow-x: auto;
+  font-size: 0.88em;
+  line-height: 1.55;
+  background: #f7f8fa;
+  color: #1d1d1f;
+}
+pre code { background: none; padding: 0; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+
+@media (prefers-color-scheme: dark) {
+  pre { background: #1c1c1e; color: #e8e8e8; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.4. User Interaction &amp; Animations</a></nav>
 <main>
 <h1>2.2.4.3. What is BezierPath?</h1>
-<ul>
-<li>
-<p>UIBezierPath is a UIKit class that lets you <strong>create and draw custom shapes</strong>, lines, and curves programmatically.</p>
-<p><strong>Path vs Drawing</strong>: BezierPath creates the "instructions" for what to draw, but doesn't actually draw anything until you stroke or fill it.</p>
-<p>```swift
-class TriangleView: UIView {
-    override func draw(_ rect: CGRect) {
-        let path = UIBezierPath()</p>
-<div class="codehilite"><pre><span></span><code>    // Start at top center
-    path.move(to: CGPoint(x: rect.midX, y: 20))
-    // Draw to bottom left
-    path.addLine(to: CGPoint(x: 20, y: rect.height - 20))
-    // Draw to bottom right
-    path.addLine(to: CGPoint(x: rect.width - 20, y: rect.height - 20))
-    // Close the path (back to start)
-    path.close()
+<p><code>UIBezierPath</code> describes lines, curves, and shapes. It does not draw on screen by itself. In a custom <code>UIView</code>, create the path in <code>draw(_:)</code> — UIKit calls this method when the view needs drawing — then call <code>fill()</code> or <code>stroke()</code> to draw it.</p>
+<p>This example draws a filled triangle:</p>
+<pre><code><span class="kw">import</span> <span class="type">UIKit</span>
 
-    UIColor.blue.setFill()
-    path.fill()
-}
-</code></pre></div>
+<span class="kw">final</span> <span class="kw">class</span> <span class="type">TriangleView</span>: <span class="type">UIView</span> {
+    <span class="kw">override</span> <span class="kw">func</span> draw(_ rect: <span class="type">CGRect</span>) {
+        <span class="kw">let</span> path = <span class="type">UIBezierPath</span>()
+        path.move(to: <span class="type">CGPoint</span>(x: rect.midX, y: rect.minY + <span class="num">20</span>))
+        path.addLine(to: <span class="type">CGPoint</span>(x: rect.minX + <span class="num">20</span>, y: rect.maxY - <span class="num">20</span>))
+        path.addLine(to: <span class="type">CGPoint</span>(x: rect.maxX - <span class="num">20</span>, y: rect.maxY - <span class="num">20</span>))
+        path.close()
 
-<p>}
-```</p>
+        <span class="type">UIColor</span>.systemBlue.setFill()
+        path.fill()
+    }
+}</code></pre>
+<h2>Common path methods</h2>
 <ul>
-<li><strong>Key Methods</strong><ul>
-<li><strong><code>move(to:)</code></strong> - Move without drawing</li>
-<li><strong><code>addCurve(to:controlPoint1:controlPoint2:)</code></strong> - Draw curves</li>
-<li><strong><code>addArc()</code></strong> - Draw circular arcs</li>
-<li><strong><code>close()</code></strong> - Connect back to start point</li>
-<li><strong><code>addLine(to:)</code></strong> - Draw straight line</li>
-</ul>
-</li>
-</ul>
-</li>
+<li><code>move(to:)</code> moves the current point without drawing a line.</li>
+<li><code>addLine(to:)</code> adds a straight segment.</li>
+<li><code>addCurve(to:controlPoint1:controlPoint2:)</code> adds a smooth curve.</li>
+<li><code>addArc(withCenter:radius:startAngle:endAngle:clockwise:)</code> adds a circular arc.</li>
+<li><code>close()</code> joins the current point back to the start of the shape.</li>
+<li><code>fill()</code> fills the path; <code>stroke()</code> draws its outline.</li>
 </ul>
 </main>
 </body>

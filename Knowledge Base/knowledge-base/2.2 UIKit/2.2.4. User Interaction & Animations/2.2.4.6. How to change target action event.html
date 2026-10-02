@@ -65,20 +65,28 @@ ul.toc li a{font-size:1.05em}
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.4. User Interaction &amp; Animations</a></nav>
 <main>
 <h1>2.2.4.6. How to change target action event?</h1>
-<p><code>UIControl</code> supports multiple target/action pairs per control event, and they can be swapped at runtime:</p>
-<div class="codehilite"><pre><code><span class="cm">// Remove a previous pair (nil action removes all actions for that target/event)</span>
-button.removeTarget(oldTarget, action: #selector(oldTarget.oldHandler), for: .touchUpInside)
+<p>A <code>UIControl</code> can send actions for control events such as <code>.touchUpInside</code>. Remove the old target/action pair, then add the new one:</p>
+<div class="codehilite"><pre><code><span class="cm">// Remove the previous target/action pair</span>
+<span class="kw">let</span> oldTarget = <span class="type">Handler</span>()
+<span class="kw">let</span> newTarget = <span class="type">Handler</span>()
+button.removeTarget(oldTarget, action: #selector(Handler.didTap(_:)), for: .touchUpInside)
 
 <span class="cm">// Add a new one</span>
-button.addTarget(newTarget, action: #selector(newTarget.newHandler), for: .touchUpInside)
+button.addTarget(newTarget, action: #selector(Handler.didTap(_:)), for: .touchUpInside)
 
-<span class="cm">// Query what&#39;s currently attached</span>
-<span class="kw">let</span> actions = button.actions(forTarget: someTarget, forControlEvent: .touchUpInside)
+<span class="cm">// Check which actions are registered for this target and event</span>
+<span class="kw">let</span> actions = button.actions(forTarget: newTarget, forControlEvent: .touchUpInside)
 </code></pre></div>
-<p>Notes:</p>
+<p>The handler must be exposed to Objective-C, for example:</p>
+<div class="codehilite"><pre><code><span class="kw">final class</span> <span class="type">Handler</span>: <span class="type">NSObject</span> {
+    <span class="kw">@objc</span> <span class="kw">func</span> didTap(_ sender: <span class="type">UIButton</span>) {
+        <span class="cm">// Handle the tap</span>
+    }
+}
+</code></pre></div>
 <ul>
-<li><code>addTarget</code> is additive - calling it twice with the same target/action/event registers the handler twice (fires twice per tap). Always <code>removeTarget</code> before re-adding, or guard against duplicates.</li>
-<li>Prefer closures over target-action when you don't need Interface Builder or multiple observers - avoids <code>@objc</code>/selector boilerplate and weak-target bugs.</li>
+<li>Adding the same target/action/event more than once is safe; UIKit calls that action once for the event. Remove the old pair when replacing it with a different target or action.</li>
+<li>The control does not own its target. Keep the target alive while it should handle events; passing <code>nil</code> as the target asks UIKit to search the responder chain.</li>
 </ul>
 <div class="codehilite"><pre><code><span class="cm">// iOS 14+: closure-based, no target/selector needed</span>
 <span class="kw">let</span> action = <span class="type">UIAction</span> { _ <span class="kw">in</span> print(<span class="str">&quot;tapped&quot;</span>) }
@@ -87,9 +95,9 @@ button.removeAction(action, for: .touchUpInside)
 </code></pre></div>
 <h2>Follow-up questions</h2>
 <ul>
-<li>Why does target-action hold a weak reference to the target, and what happens if it deallocates?</li>
-<li>What's the difference between <code>.touchUpInside</code> and <code>.primaryActionTriggered</code>?</li>
-<li>How would you unit test that tapping a button invokes the correct handler?</li>
+<li><strong>What if the target is deallocated?</strong> The control does not keep the target alive, so don't rely on that object receiving the action. Remove its registration when it is no longer needed. Passing <code>nil</code> intentionally asks UIKit to search the responder chain.</li>
+<li><strong><code>.touchUpInside</code> vs. <code>.primaryActionTriggered</code>?</strong> <code>.touchUpInside</code> is for a touch released inside the control. <code>.primaryActionTriggered</code> represents its primary action and can support other input methods, such as keyboard activation, depending on the control and platform.</li>
+<li><strong>How can you test a button action?</strong> Call <code>button.sendActions(for: .touchUpInside)</code> and assert that the expected handler or callback ran. No physical tap is needed.</li>
 </ul>
 </main>
 </body>

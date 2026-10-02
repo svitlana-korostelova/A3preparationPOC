@@ -65,28 +65,36 @@ ul.toc li a{font-size:1.05em}
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.4. User Interaction &amp; Animations</a></nav>
 <main>
 <h1>2.2.4.4. How to define on which view did we tapped? hit test, point inside</h1>
-<p>UIKit resolves the topmost view under a touch via a top-down recursive walk starting at the window:</p>
+<p>UIKit finds the view for a touch by hit-testing, starting at the window:</p>
 <ol>
-<li><code>hitTest(_:with:)</code> is called on a view; it first checks <code>point(inside:with:)</code> and returns <code>nil</code> if the point is outside, or the view is hidden, has <code>alpha &lt; 0.01</code>, or <code>isUserInteractionEnabled == false</code>.</li>
-<li>If inside, it recurses into subviews <strong>back-to-front (topmost first)</strong>, converting the point into each subview's coordinate space via <code>convert(_:to:)</code>.</li>
-<li>The deepest view whose <code>point(inside:)</code> returns true becomes the hit-test view for that touch.</li>
+<li>A view is skipped if it is hidden, has <code>alpha &lt; 0.01</code>, has interaction disabled, or the touch is outside its bounds.</li>
+<li>If eligible, UIKit checks its subviews from front to back, converting the touch point into each view's coordinate space.</li>
+<li>The deepest eligible view containing the point is returned as the hit-test view.</li>
 </ol>
-<p>Overriding both lets you customize tappable regions:</p>
+<p>Override <code>point(inside:with:)</code> to enlarge the area UIKit checks for this view and its subviews. Override <code>hitTest(_:with:)</code> only when you need to change which view receives a touch. In this pass-through overlay example, <code>super.hitTest</code> returns the deepest child that contains the touch, or the overlay itself if no child matches. Returning <code>nil</code> when only the overlay was hit lets a view behind it receive the touch. To make the overlay receive that touch, return <code>self</code> instead.</p>
+<p>The comments above the code explain what each method returns:</p>
+<ul>
+<li><code>point(inside:with:)</code> returns <code>true</code> if the touch is in the expanded bounds; otherwise it returns <code>false</code>.</li>
+<li><code>hitTest(_:with:)</code> returns a child view, or <code>nil</code> to let a view behind this overlay receive the touch.</li>
+</ul>
 <div class="codehilite"><pre><code><span class="kw">override func</span> point(inside point: <span class="type">CGPoint</span>, with event: <span class="type">UIEvent?</span>) -&gt; <span class="type">Bool</span> {
-    <span class="cm">// expand the tappable area beyond the view&#39;s bounds</span>
-    bounds.insetBy(dx: -<span class="num">20</span>, dy: -<span class="num">20</span>).contains(point)
+    <span class="cm">// Return true when the touch is inside the expanded tap area.</span>
+    <span class="kw">let</span> expandedBounds = bounds.insetBy(dx: -<span class="num">20</span>, dy: -<span class="num">20</span>)
+    <span class="kw">return</span> expandedBounds.contains(point)
 }
 
 <span class="kw">override func</span> hitTest(_ point: <span class="type">CGPoint</span>, with event: <span class="type">UIEvent?</span>) -&gt; <span class="type">UIView?</span> {
-    <span class="kw">guard</span> isUserInteractionEnabled, !isHidden, alpha &gt; <span class="num">0.01</span> <span class="kw">else</span> { <span class="kw">return nil</span> }
-    <span class="kw">return super</span>.hitTest(point, with: event)
+    <span class="cm">// Returns the deepest child that contains the touch, or this view if no child matches.</span>
+    <span class="kw">let</span> hitView = <span class="kw">super</span>.hitTest(point, with: event)
+    <span class="cm">// Return the child; return nil when only this overlay was hit, passing through to what's behind.</span>
+    <span class="kw">return</span> hitView === <span class="kw">self</span> ? <span class="kw">nil</span> : hitView
 }
 </code></pre></div>
 <h2>Follow-up questions</h2>
 <ul>
-<li>Why would a button not respond to a tap that visually overlaps it?</li>
-<li>How does hit-testing behave differently for views with <code>CALayer</code> transforms vs Auto Layout frames?</li>
-<li>How would you make a view "pass through" touches to whatever is behind it?</li>
+<li><strong>Why might a button not respond where it appears on screen?</strong> Its tappable bounds may not cover that point, a parent may reject the touch first, or another view may be in front of it.</li>
+<li><strong>How do transforms and Auto Layout affect hit-testing?</strong> Auto Layout sets the view's layout; transforms change its displayed geometry and UIKit accounts for them during hit-testing. A view's <code>frame</code> is not reliable to inspect after applying a transform.</li>
+<li><strong>How can a view pass touches through?</strong> For an overlay, return <code>nil</code> from <code>hitTest(_:with:)</code> when the result is the overlay itself, as shown above. Its interactive subviews can still receive touches.</li>
 </ul>
 </main>
 </body>

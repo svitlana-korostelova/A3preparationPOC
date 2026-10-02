@@ -65,21 +65,31 @@ ul.toc li a{font-size:1.05em}
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.4. User Interaction &amp; Animations</a></nav>
 <main>
 <h1>2.2.4.1. Have you worked with CoreAnimations? Why it for? Pros of it</h1>
-<p>Yes - Core Animation underlies every <code>UIView</code> animation: each <code>UIView</code> is backed by a <code>CALayer</code>, and animating frame/alpha/transform is Core Animation interpolating layer properties on a separate render server, off the main thread.</p>
-<p><strong>Why reach for it directly</strong> (<code>CALayer</code>/<code>CABasicAnimation</code>) instead of <code>UIView.animate</code>:</p>
+<p>Yes — Core Animation is what actually runs every <code>UIView</code> animation. Every <code>UIView</code> has a <code>CALayer</code> underneath it, and when you animate things like frame, alpha, or transform, Core Animation calculates each step and draws it on a separate process (the render server), not on the main thread.</p>
+<p><strong>Why use it directly</strong> (<code>CALayer</code>/<code>CABasicAnimation</code>) instead of <code>UIView.animate</code>:</p>
 <ul>
-<li>Fine-grained control: keyframes, timing functions, springs, groups, explicit vs implicit animations.</li>
-<li>Animate properties <code>UIView</code> doesn't expose (<code>shadowPath</code>, <code>cornerRadius</code>, <code>strokeEnd</code> on <code>CAShapeLayer</code>).</li>
-<li>GPU-driven via the render server - stays smooth even if the main thread briefly stalls.</li>
-<li><code>CAGradientLayer</code>, <code>CAReplicatorLayer</code>, <code>CAEmitterLayer</code> for effects that would be expensive to hand-draw.</li>
+<li>More control: keyframes, custom timing curves, springs, grouped animations, and the choice between explicit and implicit animations.</li>
+<li>Can animate properties <code>UIView.animate</code> can't touch, like <code>shadowPath</code>, <code>cornerRadius</code>, or <code>strokeEnd</code> on a <code>CAShapeLayer</code>.</li>
+<li>Runs on the GPU through the render server, so it stays smooth even if the main thread is briefly busy.</li>
+<li>Special layers like <code>CAGradientLayer</code>, <code>CAReplicatorLayer</code>, and <code>CAEmitterLayer</code> make effects easy that would be slow to draw by hand.</li>
 </ul>
-<p><strong>Pros:</strong> declarative (describe start/end/timing, not per-frame logic), hardware accelerated, decoupled model/presentation layers enable mid-flight introspection.</p>
-<p><strong>Trade-offs:</strong> layer-tree debugging is harder than view debugging; mixing Auto Layout (constraint-driven) with direct layer animation (frame-driven) can fight each other; the presentation layer doesn't update the model layer automatically, so final state must be set explicitly.</p>
+<p><strong>Pros:</strong></p>
+<ul>
+<li>Declarative: you just describe the start, end, and timing — no per-frame code to write.</li>
+<li>Hardware accelerated, so it stays smooth even when the main thread is busy.</li>
+<li>Keeps two versions of the layer (model and presentation), so you can check the current on-screen value while the animation is still running.</li>
+</ul>
+<p><strong>Trade-offs:</strong></p>
+<ul>
+<li>Harder to debug than views, since you're inspecting layers instead of the view hierarchy.</li>
+<li>Auto Layout (works with constraints) and direct layer animation (works with frames) can fight each other if mixed carelessly.</li>
+<li>The presentation layer doesn't update the model layer for you — you must set the final value yourself, or the layer snaps back once the animation ends.</li>
+</ul>
 <h2>Follow-up questions</h2>
 <ul>
-<li>What's the difference between the presentation layer and the model layer during an animation?</li>
-<li>Why is <code>isRemovedOnCompletion = false</code> + <code>fillMode = .forwards</code> often a code smell?</li>
-<li>How would you animate a property that isn't implicitly animatable on <code>CALayer</code>?</li>
+<li><strong>Presentation layer vs. model layer?</strong> The model layer holds the value you set in code (the final state). The presentation layer holds what's actually on screen right now, including the in-between values while the animation runs — that's what <code>layer.presentation()</code> reads.</li>
+<li><strong>Why is <code>isRemovedOnCompletion = false</code> + <code>fillMode = .forwards</code> often a code smell?</strong> It only freezes the old look on the presentation layer; the model layer still holds the pre-animation value. The screen and the real data disagree, so a later layout pass, snapshot, or new animation can snap back to the wrong state. Setting the model value directly is usually safer.</li>
+<li><strong>How do you animate a property that isn't implicitly animatable on <code>CALayer</code>?</strong> Wrap it in an explicit <code>CABasicAnimation</code> with that key path, set <code>fromValue</code>/<code>toValue</code>, add it to the layer, and also set the model property to the final value yourself.</li>
 </ul>
 </main>
 </body>

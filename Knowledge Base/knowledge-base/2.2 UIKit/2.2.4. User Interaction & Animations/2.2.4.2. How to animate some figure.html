@@ -65,12 +65,12 @@ ul.toc li a{font-size:1.05em}
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.4. User Interaction &amp; Animations</a></nav>
 <main>
 <h1>2.2.4.2. How to animate some figure?</h1>
-<p>Depends on what's being animated:</p>
+<p>It depends on what you're animating:</p>
 <ul>
-<li><strong>A <code>UIView</code> property</strong> (position, scale, alpha, rotation) → <code>UIView.animate(withDuration:)</code> or, for pausable/reversible/interruptible control, <code>UIViewPropertyAnimator</code>.</li>
-<li><strong>A custom shape</strong> (circle, progress ring, path) → draw with <code>UIBezierPath</code> on a <code>CAShapeLayer</code> and animate <code>strokeEnd</code>/<code>path</code>/<code>lineWidth</code> via <code>CABasicAnimation</code>.</li>
+<li><strong>A <code>UIView</code> property</strong> (position, scale, alpha, rotation) → use <code>UIView.animate(withDuration:)</code>, or <code>UIViewPropertyAnimator</code> if you need to pause, reverse, or interrupt it.</li>
+<li><strong>A custom shape</strong> (circle, progress ring, path) → draw it with <code>UIBezierPath</code> on a <code>CAShapeLayer</code>, then animate <code>strokeEnd</code>, <code>path</code>, or <code>lineWidth</code> with <code>CABasicAnimation</code>.</li>
 </ul>
-<p>Example - animating a circular progress ring:</p>
+<p>Example — circular progress ring:</p>
 <div class="codehilite"><pre><code><span class="kw">let</span> circleLayer = <span class="type">CAShapeLayer</span>()
 circleLayer.path = <span class="type">UIBezierPath</span>(arcCenter: center, radius: <span class="num">50</span>,
                                  startAngle: -.pi/<span class="num">2</span>, endAngle: <span class="num">1.5</span> * .pi,
@@ -89,7 +89,7 @@ animation.timingFunction = <span class="type">CAMediaTimingFunction</span>(name:
 circleLayer.strokeEnd = <span class="num">1</span> <span class="cm">// set model value so it doesn&#39;t snap back</span>
 circleLayer.add(animation, forKey: <span class="str">&quot;strokeEndAnimation&quot;</span>)
 </code></pre></div>
-<p>Simple spring transform on a plain view:</p>
+<p>Example — spring transform on a plain view:</p>
 <div class="codehilite"><pre><code><span class="type">UIView</span>.animate(withDuration: <span class="num">0.3</span>, delay: <span class="num">0</span>, usingSpringWithDamping: <span class="num">0.6</span>,
                initialSpringVelocity: <span class="num">0.8</span>, options: [], animations: {
     figureView.transform = <span class="type">CGAffineTransform</span>(scaleX: <span class="num">1.2</span>, y: <span class="num">1.2</span>)
@@ -99,9 +99,9 @@ circleLayer.add(animation, forKey: <span class="str">&quot;strokeEndAnimation&qu
 </code></pre></div>
 <h2>Follow-up questions</h2>
 <ul>
-<li>Why set the model-layer value (<code>strokeEnd = 1</code>) even though the animation already renders it?</li>
-<li>How would you make this animation interruptible if retriggered mid-flight?</li>
-<li>SwiftUI equivalent: how would you build the same ring with <code>Shape</code> + <code>.trim(from:to:)</code>?</li>
+<li><strong>Why set the model-layer value (<code>strokeEnd = 1</code>) even though the animation already renders it?</strong> The animation only drives the presentation layer. By default it's removed when it finishes, so without the model value the layer would snap back to its old <code>strokeEnd</code> (<code>0</code>).</li>
+<li><strong>How would you make this animation interruptible if retriggered mid-flight?</strong> Read the current on-screen value from <code>circleLayer.presentation()?.strokeEnd</code> and use it as the new animation's <code>fromValue</code>, so the retrigger continues smoothly instead of jumping.</li>
+<li><strong>SwiftUI equivalent: how would you build the same ring with <code>Shape</code> + <code>.trim(from:to:)</code>?</strong> Draw a <code>Circle()</code> (or custom <code>Shape</code>), apply <code>.trim(from: 0, to: progress)</code>, style it with <code>.stroke(style:)</code>, and drive <code>progress</code> with <code>withAnimation</code> on a <code>@State</code> value.</li>
 </ul>
 </main>
 </body>

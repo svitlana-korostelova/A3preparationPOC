@@ -65,20 +65,29 @@ ul.toc li a{font-size:1.05em}
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.4. User Interaction &amp; Animations</a></nav>
 <main>
 <h1>2.2.4.8. What are best practices for handling multiple gestures on the same view?</h1>
+<p>Decide which gestures may happen together and which should take priority:</p>
 <ul>
-<li><strong>Use the delegate, not ordering tricks</strong>: implement <code>gestureRecognizer(_:shouldRecognizeSimultaneouslyWith:)</code> to explicitly allow/deny simultaneous recognition (e.g. pinch + rotate together, but not pan + tap).</li>
-<li><strong>Model conflicts with <code>require(toFail:)</code></strong> for mutually exclusive gestures (e.g. single tap waiting for double-tap to fail).</li>
-<li><strong>One recognizer per concern</strong> - compose behavior instead of overloading a single recognizer's state machine with unrelated logic.</li>
-<li><strong>Set <code>cancelsTouchesInView</code>/<code>delaysTouchesBegan</code> deliberately</strong> so a container gesture doesn't swallow touches meant for a subview's control.</li>
-<li><strong>Scope gestures to the smallest view that needs them</strong> to reduce accidental overlap with parent/scroll view gestures.</li>
-<li><strong>Use <code>gestureRecognizer(_:shouldReceive:)</code></strong> to exclude specific touches/subviews (e.g. don't let a container's tap fire when tapping a nested button).</li>
-<li><strong>Prefer built-in gestures</strong> (<code>UIPanGestureRecognizer</code> already reports velocity/translation) over hand-rolled touch tracking; reserve raw <code>touchesBegan</code> overrides for genuinely custom multi-touch logic.</li>
+<li>Use one recognizer for each distinct gesture. Add a delegate only when you need custom rules.</li>
+<li>Allow simultaneous recognition only for pairs that should work together, such as pinch and rotation.</li>
+<li>Use <code>require(toFail:)</code> when one gesture should wait for another, such as a single tap waiting for a double tap.</li>
+<li>Use <code>gestureRecognizer(_:shouldReceive:)</code> to ignore touches on controls that should handle their own taps.</li>
+<li>Set <code>cancelsTouchesInView</code> and <code>delaysTouchesBegan</code> deliberately; they affect when the view receives touches.</li>
+<li>Attach each recognizer to the smallest view that needs it. Prefer UIKit's built-in recognizers over custom touch tracking when they fit.</li>
 </ul>
+<p>For example, a delegate can allow pinch and rotation together while returning <code>false</code> for pairs involving a pan recognizer:</p>
+<div class="codehilite"><pre><code><span class="kw">func</span> gestureRecognizer(
+    _ gestureRecognizer: <span class="type">UIGestureRecognizer</span>,
+    shouldRecognizeSimultaneouslyWith other: <span class="type">UIGestureRecognizer</span>
+) -&gt; <span class="type">Bool</span> {
+    (gestureRecognizer === pinchRecognizer &amp;&amp; other === rotationRecognizer) ||
+    (gestureRecognizer === rotationRecognizer &amp;&amp; other === pinchRecognizer)
+}
+</code></pre></div>
 <h2>Follow-up questions</h2>
 <ul>
-<li>How would you let pinch and rotation run simultaneously but keep pan exclusive?</li>
-<li>How do you debug which gesture recognizer "won" when a tap seems to go missing?</li>
-<li>In SwiftUI, how do <code>.simultaneousGesture</code>, <code>.gesture</code>, and <code>.highPriorityGesture</code> map to these UIKit concepts?</li>
+<li><strong>How can pinch and rotation run together while pan stays exclusive?</strong> Return <code>true</code> only for the pinch/rotation pair in <code>gestureRecognizer(_:shouldRecognizeSimultaneouslyWith:)</code>, as shown above. Ensure no other delegate rule allows pan to run with them.</li>
+<li><strong>How can you find which recognizer handled a missing tap?</strong> Inspect recognizers on the hit view and its ancestors. Log their states and check <code>cancelsTouchesInView</code>, <code>delaysTouchesBegan</code>, and delegate decisions.</li>
+<li><strong>How do SwiftUI gesture modifiers compare?</strong> <code>.simultaneousGesture</code> allows gestures to run together; <code>.highPriorityGesture</code> gives a gesture precedence over the view's normal gesture; <code>.gesture</code> adds a gesture at normal priority. These are similar ideas, not exact matches for UIKit's delegate and failure rules.</li>
 </ul>
 </main>
 </body>
