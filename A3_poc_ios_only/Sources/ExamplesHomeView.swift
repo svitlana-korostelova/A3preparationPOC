@@ -15,6 +15,10 @@ struct ExamplesHomeView: View {
                     } label: {
                         Label("Example1 – Custom VC Transition", systemImage: "rectangle.on.rectangle.angled")
                     }
+
+                    NavigationLink(destination: CoreAnimationView()) {
+                        Label("Core Animation – Progress Ring & Spring", systemImage: "circle.dashed")
+                    }
                 }
             }
             .navigationTitle("Examples")

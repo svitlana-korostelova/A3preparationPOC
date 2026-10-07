@@ -23,6 +23,7 @@
 		C754A6370FA5D6A1F6558E64 /* MVVMView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64C2A83A1C680DDD7C1732A8 /* MVVMView.swift */; };
 		C8B42483968C964DBD34E3CB /* UIKitVCTransitionExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1678445FE1965EDCC59B02AA /* UIKitVCTransitionExample.swift */; };
 		CA212DBA2158073C1B0DCFF6 /* LocksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9EE4525F4E19396299BE5FD /* LocksView.swift */; };
+		DA9972D21855F179800C0ECD /* CoreAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA68DDE5B10A1F07AFF3CBB8 /* CoreAnimationView.swift */; };
 		EA99EE6E999E4B6230D7DA51 /* A3PocIOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CE47FA062F87F3D51520AE7 /* A3PocIOSApp.swift */; };
 		EEE0917F8C07CEEEBCD3354B /* VIPERView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB4E79AC11A0F6A94A888939 /* VIPERView.swift */; };
 /* End PBXBuildFile section */
@@ -48,6 +49,7 @@
 		E06F87B52C8212A5DF74CB28 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E21362FDE3260DEEC2987E75 /* CombineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CombineView.swift; sourceTree = "<group>"; };
 		F9EE4525F4E19396299BE5FD /* LocksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocksView.swift; sourceTree = "<group>"; };
+		FA68DDE5B10A1F07AFF3CBB8 /* CoreAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAnimationView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -75,6 +77,7 @@
 				1D0768A1FFA5252FA00E1E55 /* Assets.xcassets */,
 				98780648DF36130F0E25FD73 /* CleanArchitectureView.swift */,
 				E21362FDE3260DEEC2987E75 /* CombineView.swift */,
+				FA68DDE5B10A1F07AFF3CBB8 /* CoreAnimationView.swift */,
 				32C5ABADD099B15D61631AF3 /* DependencyInjectionView.swift */,
 				69F8E857F18BB7FBDA7FC0F3 /* ExamplesHomeView.swift */,
 				2A39A49D26B7F6D0F43BDF00 /* GCDView.swift */,
@@ -164,6 +167,7 @@
 				82076EEBED4261DAA86733B9 /* ArchitectureHomeView.swift in Sources */,
 				42C8E70E89EE0AFAD27A4F13 /* CleanArchitectureView.swift in Sources */,
 				42A71E0C4F6A4B6C0A7D888D /* CombineView.swift in Sources */,
+				DA9972D21855F179800C0ECD /* CoreAnimationView.swift in Sources */,
 				6D8ED1F54088AF1501653488 /* DependencyInjectionView.swift in Sources */,
 				AB9EC341A21A73D5AFF67C6C /* ExamplesHomeView.swift in Sources */,
 				85093C8E80934E9C79508169 /* GCDView.swift in Sources */,

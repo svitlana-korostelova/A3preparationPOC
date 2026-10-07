@@ -87,10 +87,18 @@ ul.toc li a{font-size:1.05em}
 </ul>
 <h2>Follow-up questions</h2>
 <ul>
-<li><strong>Presentation layer vs. model layer?</strong> The model layer holds the value you set in code (the final state). The presentation layer holds what's actually on screen right now, including the in-between values while the animation runs — that's what <code>layer.presentation()</code> reads.</li>
-<li><strong>Why is <code>isRemovedOnCompletion = false</code> + <code>fillMode = .forwards</code> often a code smell?</strong> It only freezes the old look on the presentation layer; the model layer still holds the pre-animation value. The screen and the real data disagree, so a later layout pass, snapshot, or new animation can snap back to the wrong state. Setting the model value directly is usually safer.</li>
-<li><strong>How do you animate a property that isn't implicitly animatable on <code>CALayer</code>?</strong> Wrap it in an explicit <code>CABasicAnimation</code> with that key path, set <code>fromValue</code>/<code>toValue</code>, add it to the layer, and also set the model property to the final value yourself.</li>
+<li><strong>How do you animate a property that isn't implicitly animatable on <code>CALayer</code>?</strong> Wrap it in an explicit <code>CABasicAnimation</code> with that key path, set <code>fromValue</code>/<code>toValue</code>, add it to the layer, and also set the model property to the final value yourself. Example for <code>shadowPath</code>, which <code>UIView.animate</code> snaps instead of animating:</li>
 </ul>
+<div class="codehilite"><pre><code><span class="kw">let</span> oldPath = <span class="type">UIBezierPath</span>(rect: view.bounds)
+<span class="kw">let</span> newPath = <span class="type">UIBezierPath</span>(roundedRect: view.bounds, cornerRadius: <span class="num">16</span>)
+
+<span class="kw">let</span> animation = <span class="type">CABasicAnimation</span>(keyPath: <span class="str">&quot;shadowPath&quot;</span>)
+animation.fromValue = oldPath.cgPath
+animation.toValue = newPath.cgPath
+animation.duration = <span class="num">0.3</span>
+layer.add(animation, forKey: <span class="str">&quot;shadowPath&quot;</span>)
+layer.shadowPath = newPath.cgPath <span class="cm">// set model value so it doesn&#39;t snap back</span>
+</code></pre></div>
 </main>
 </body>
 </html>
