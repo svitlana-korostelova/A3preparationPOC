@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.2.4.9. How to implement a custom UI control?</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.4. User Interaction &amp; Animations</a></nav>
+<main>
+<h1>2.2.4.9. How to implement a custom UI control?</h1>
+<p>Subclass <code>UIControl</code> instead of <code>UIView</code> when you want a reusable component that behaves like a built-in control (button, switch, slider) and works with the standard target-action pattern. <code>UIControl</code> gives you touch tracking and <code>sendActions(for:)</code> for free, so callers can attach handlers with <code>addTarget(_:action:for:)</code> exactly like they do with <code>UIButton</code>.</p>
+<p>Steps to build one:</p>
+<ol>
+<li>Subclass <code>UIControl</code> and draw the control's appearance (with <code>CALayer</code>s, <code>UIView</code> subviews, or <code>draw(_:)</code>).</li>
+<li>Override <code>beginTracking(_:with:)</code>, <code>continueTracking(_:with:)</code>, and <code>endTracking(_:with:)</code> to read touch locations and update internal state.</li>
+<li>Whenever the control's value changes, call <code>sendActions(for:)</code> with the matching <code>UIControl.Event</code> (e.g. <code>.valueChanged</code>, <code>.touchUpInside</code>) so every registered target gets notified.</li>
+<li>Expose the current value as a public property so consumers can read it outside of the action callback.</li>
+</ol>
+<p>The comments in the code below mark where tracking starts, where the value updates while dragging, and where the action fires:</p>
+<div class="codehilite"><pre><code><span class="kw">final class</span> KnobControl: <span class="type">UIControl</span> {
+    <span class="cm">// Current value in 0...1, clamped on every update.</span>
+    <span class="kw">private(set) var</span> value: <span class="type">CGFloat</span> = <span class="num">0</span>
+
+    <span class="kw">private let</span> trackLayer = <span class="type">CAShapeLayer</span>()
+    <span class="kw">private let</span> knobLayer = <span class="type">CAShapeLayer</span>()
+
+    <span class="kw">override init</span>(frame: <span class="type">CGRect</span>) {
+        <span class="kw">super.init</span>(frame: frame)
+        layer.addSublayer(trackLayer)
+        layer.addSublayer(knobLayer)
+    }
+
+    <span class="kw">required init?</span>(coder: <span class="type">NSCoder</span>) { <span class="kw">fatalError</span>(<span class="str">"init(coder:) has not been implemented"</span>) }
+
+    <span class="kw">override func</span> beginTracking(_ touch: <span class="type">UITouch</span>, with event: <span class="type">UIEvent?</span>) -&gt; <span class="type">Bool</span> {
+        <span class="cm">// Update immediately so a single tap moves the knob to that point.</span>
+        updateValue(with: touch)
+        <span class="kw">return true</span>
+    }
+
+    <span class="kw">override func</span> continueTracking(_ touch: <span class="type">UITouch</span>, with event: <span class="type">UIEvent?</span>) -&gt; <span class="type">Bool</span> {
+        <span class="cm">// Called repeatedly while the finger drags across the control.</span>
+        updateValue(with: touch)
+        <span class="kw">return true</span>
+    }
+
+    <span class="kw">override func</span> endTracking(_ touch: <span class="type">UITouch?</span>, with event: <span class="type">UIEvent?</span>) {
+        <span class="cm">// Fire a final action so observers know dragging has stopped.</span>
+        sendActions(for: .touchUpInside)
+    }
+
+    <span class="kw">private func</span> updateValue(with touch: <span class="type">UITouch</span>) {
+        <span class="kw">let</span> location = touch.location(in: <span class="kw">self</span>)
+        <span class="kw">let</span> newValue = <span class="kw">min</span>(<span class="num">1</span>, <span class="kw">max</span>(<span class="num">0</span>, location.x / bounds.width))
+        <span class="kw">guard</span> newValue != value <span class="kw">else</span> { <span class="kw">return</span> }
+        value = newValue
+        setNeedsLayout()
+        <span class="cm">// Notify every target registered for .valueChanged, e.g. via addTarget(_:action:for:).</span>
+        sendActions(for: .valueChanged)
+    }
+}
+</code></pre></div>
+<h2>Follow-up questions</h2>
+<ul>
+<li><strong>Why subclass <code>UIControl</code> instead of <code>UIView</code> with a gesture recognizer?</strong> <code>UIControl</code> gives you the standard target-action API, built-in <code>isEnabled</code>/<code>isSelected</code>/<code>isHighlighted</code> states, and touch-tracking hooks, so the control behaves consistently with other UIKit controls and is easier for other developers to adopt.</li>
+<li><strong>When should <code>continueTracking(_:with:)</code> return <code>false</code>?</strong> Return <code>false</code> to cancel tracking, for example when the touch moves far outside the control's bounds and you want to treat the gesture as abandoned.</li>
+<li><strong>How do you support accessibility for a custom control?</strong> Set <code>isAccessibilityElement = true</code>, provide <code>accessibilityLabel</code>/<code>accessibilityValue</code>, and update <code>accessibilityValue</code> whenever <code>value</code> changes so VoiceOver announces the new state.</li>
+</ul>
+</main>
+</body>
+</html>

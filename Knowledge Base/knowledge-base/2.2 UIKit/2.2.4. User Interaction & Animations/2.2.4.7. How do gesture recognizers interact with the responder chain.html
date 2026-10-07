@@ -72,7 +72,64 @@ ul.toc li a{font-size:1.05em}
 <li><code>delaysTouchesBegan</code> and <code>delaysTouchesEnded</code> control whether the recognizer delays sending those touch phases to the view while it decides.</li>
 <li>Use <code>UIGestureRecognizerDelegate</code> methods or <code>require(toFail:)</code> to control whether recognizers can succeed together or one must fail first.</li>
 </ul>
+<p><code>touchesBegan(_:with:)</code>, <code>touchesMoved(_:with:)</code>, <code>touchesEnded(_:with:)</code>, and <code>touchesCancelled(_:with:)</code> are <code>UIResponder</code> methods you override directly on a <code>UIView</code> (or view controller) subclass, rather than attaching a separate gesture-recognizer object. Reach for them when you need the raw touch stream — for example free-hand drawing, custom multi-touch handling, or tracking several simultaneous touches — cases a built-in gesture recognizer does not cover. Because a successful gesture recognizer on the same view cancels delivery by default (<code>cancelsTouchesInView == true</code>), avoid mixing both approaches on one view unless that setting is turned off.</p>
+<p>The comments mark each phase of the touch sequence:</p>
+<div class="codehilite"><pre><code><span class="kw">final class</span> DrawingView: <span class="type">UIView</span> {
+    <span class="kw">private var</span> currentPath: <span class="type">UIBezierPath?</span>
+
+    <span class="kw">override func</span> touchesBegan(_ touches: <span class="type">Set&lt;UITouch&gt;</span>, with event: <span class="type">UIEvent?</span>) {
+        <span class="cm">// Called once when a finger first touches this view; start a new path at that point.</span>
+        <span class="kw">guard let</span> touch = touches.first <span class="kw">else</span> { <span class="kw">return</span> }
+        <span class="kw">let</span> path = <span class="type">UIBezierPath</span>()
+        path.move(to: touch.location(in: <span class="kw">self</span>))
+        currentPath = path
+    }
+
+    <span class="kw">override func</span> touchesMoved(_ touches: <span class="type">Set&lt;UITouch&gt;</span>, with event: <span class="type">UIEvent?</span>) {
+        <span class="cm">// Called repeatedly while the finger drags; extend the path and redraw.</span>
+        <span class="kw">guard let</span> touch = touches.first <span class="kw">else</span> { <span class="kw">return</span> }
+        currentPath?.addLine(to: touch.location(in: <span class="kw">self</span>))
+        setNeedsDisplay()
+    }
+
+    <span class="kw">override func</span> touchesEnded(_ touches: <span class="type">Set&lt;UITouch&gt;</span>, with event: <span class="type">UIEvent?</span>) {
+        <span class="cm">// Called when the finger lifts up normally; the stroke is complete.</span>
+        currentPath = <span class="kw">nil</span>
+    }
+
+    <span class="kw">override func</span> touchesCancelled(_ touches: <span class="type">Set&lt;UITouch&gt;</span>, with event: <span class="type">UIEvent?</span>) {
+        <span class="cm">// Called when the system interrupts the touch (e.g. an incoming call or a gesture recognizer taking over).
+        // Treat this like an abrupt touchesEnded: discard the in-progress stroke instead of keeping it.</span>
+        currentPath = <span class="kw">nil</span>
+    }
+}
+</code></pre></div>
 <p>Hit-testing chooses the view that receives the touch. Gesture recognizers separately examine that touch and can recognize a gesture or cancel delivery to the view. If the view receives an event, the responder chain can then pass it to the next responder.</p>
+<p>The comments below show where each setting changes touch delivery:</p>
+<div class="codehilite"><pre><code><span class="kw">let</span> tapRecognizer = <span class="type">UITapGestureRecognizer</span>(target: <span class="kw">self</span>, action: <span class="attr">#selector</span>(handleTap))
+<span class="cm">// Let the underlying view still receive touchesBegan/Ended even after the tap recognizes.</span>
+tapRecognizer.cancelsTouchesInView = <span class="kw">false</span>
+view.addGestureRecognizer(tapRecognizer)
+
+<span class="kw">let</span> doubleTapRecognizer = <span class="type">UITapGestureRecognizer</span>(target: <span class="kw">self</span>, action: <span class="attr">#selector</span>(handleDoubleTap))
+doubleTapRecognizer.numberOfTapsRequired = <span class="num">2</span>
+view.addGestureRecognizer(doubleTapRecognizer)
+
+<span class="cm">// Make the single tap wait: it only succeeds once the double tap has failed.</span>
+tapRecognizer.require(toFail: doubleTapRecognizer)
+</code></pre></div>
+<p>Use <code>UIGestureRecognizerDelegate</code> when two recognizers should be allowed to recognize at the same time, such as a pan on a child view running together with a pinch on its parent:</p>
+<div class="codehilite"><pre><code><span class="kw">extension</span> ViewController: <span class="type">UIGestureRecognizerDelegate</span> {
+    <span class="kw">func</span> gestureRecognizer(
+        _ gestureRecognizer: <span class="type">UIGestureRecognizer</span>,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: <span class="type">UIGestureRecognizer</span>
+    ) -&gt; <span class="type">Bool</span> {
+        <span class="cm">// Allow the pan and the pinch recognizer to recognize together instead of one blocking the other.</span>
+        <span class="kw">return</span> (gestureRecognizer <span class="kw">is</span> <span class="type">UIPanGestureRecognizer</span> &amp;&amp; otherGestureRecognizer <span class="kw">is</span> <span class="type">UIPinchGestureRecognizer</span>)
+            || (gestureRecognizer <span class="kw">is</span> <span class="type">UIPinchGestureRecognizer</span> &amp;&amp; otherGestureRecognizer <span class="kw">is</span> <span class="type">UIPanGestureRecognizer</span>)
+    }
+}
+</code></pre></div>
 <h2>Follow-up questions</h2>
 <ul>
 <li><strong>Why might <code>touchesBegan</code> not fire?</strong> The view may not be the hit-test result, interaction may be disabled, or a gesture recognizer may delay or cancel the touch delivery.</li>

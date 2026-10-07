@@ -42,26 +42,64 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.5. Customization &amp; Appearance</a></nav>
 <main>
 <h1>2.2.5.2. How would you use UIAppearance to theme an app?</h1>
+
+<p><code>UIAppearance</code> is a proxy that lets you set default values for properties of a view class, applied whenever an instance of that class (or subclass) is added to a window.</p>
+
+<h2>Global theming</h2>
+<div class="codehilite"><pre><code><span class="type">UINavigationBar</span>.appearance().barTintColor = <span class="type">UIColor</span>.brand
+<span class="type">UINavigationBar</span>.appearance().titleTextAttributes = [.foregroundColor: <span class="type">UIColor</span>.white]
+<span class="type">UIBarButtonItem</span>.appearance().tintColor = .white
+<span class="type">UISwitch</span>.appearance().onTintColor = .brand</code></pre></div>
+<p>This is normally set once at launch, before any affected view is created and added to a window — e.g. in <code>application(_:didFinishLaunchingWithOptions:)</code>.</p>
+
+<h2>Scoped theming with containment</h2>
+<p><code>appearance(whenContainedInInstancesOf:)</code> scopes the proxy to views nested inside a specific container, instead of changing every instance app-wide.</p>
+<div class="codehilite"><pre><code><span class="type">UILabel</span>.appearance(whenContainedInInstancesOf: [<span class="type">SettingsCell</span>.<span class="kw">self</span>])
+    .textColor = .secondaryLabel</code></pre></div>
+
+<h2>Making a custom view themeable</h2>
+<p>Only <code>@objc dynamic</code> properties are eligible for appearance proxying — mark the property accordingly on your own <code>UIView</code> subclasses.</p>
+<div class="codehilite"><pre><code><span class="kw">final class</span> <span class="type">BadgeView</span>: <span class="type">UIView</span> {
+    <span class="attr">@objc dynamic</span> <span class="kw">var</span> badgeColor: <span class="type">UIColor</span> = .systemRed {
+        <span class="kw">didSet</span> { setNeedsDisplay() }
+    }
+}
+
+<span class="type">BadgeView</span>.appearance().badgeColor = .brand</code></pre></div>
+
+<h2>Limitations</h2>
+<ul>
+  <li>Only affects views <strong>not yet</strong> added to a window when the appearance call runs — it will not restyle views already on screen.</li>
+  <li>Only works on <code>@objc dynamic</code> properties; plain Swift properties are invisible to the appearance proxy mechanism.</li>
+  <li>Hard to reason about with multiple proxies/containment rules — debugging "why is this view styled like that" means tracing every `appearance()` call site.</li>
+  <li>No compile-time safety or preview support — mistakes only show up at runtime.</li>
+</ul>
+
+<h2>Practical take</h2>
+<p>For small, app-wide tweaks (nav bar tint, switch color) <code>UIAppearance</code> is a quick win. For anything bigger, most teams prefer an explicit <code>Theme</code>/<code>ColorPalette</code> type injected into view controllers and cells — it's testable, debuggable, and doesn't depend on view-hierarchy timing.</p>
 
 </main>
 </body>

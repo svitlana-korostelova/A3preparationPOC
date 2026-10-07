@@ -95,7 +95,7 @@ button.removeAction(action, for: .touchUpInside)
 </code></pre></div>
 <h2>Follow-up questions</h2>
 <ul>
-<li><strong>What if the target is deallocated?</strong> The control does not keep the target alive, so don't rely on that object receiving the action. Remove its registration when it is no longer needed. Passing <code>nil</code> intentionally asks UIKit to search the responder chain.</li>
+<li><strong>What if the target is deallocated?</strong> The control does not keep the target alive, so don't rely on that object receiving the action. Remove its registration when it is no longer needed, e.g. <code>control.removeTarget(target, action: #selector(handler), for: .touchUpInside)</code>, typically in <code>deinit</code>. Passing <code>nil</code> intentionally asks UIKit to search the responder chain.</li>
 <li><strong><code>.touchUpInside</code> vs. <code>.primaryActionTriggered</code>?</strong> <code>.touchUpInside</code> is for a touch released inside the control. <code>.primaryActionTriggered</code> represents its primary action and can support other input methods, such as keyboard activation, depending on the control and platform.</li>
 <li><strong>How can you test a button action?</strong> Call <code>button.sendActions(for: .touchUpInside)</code> and assert that the expected handler or callback ran. No physical tap is needed.</li>
 </ul>

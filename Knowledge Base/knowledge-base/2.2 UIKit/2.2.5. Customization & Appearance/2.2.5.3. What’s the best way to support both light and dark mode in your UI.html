@@ -42,26 +42,72 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.5. Customization &amp; Appearance</a></nav>
 <main>
 <h1>2.2.5.3. What’s the best way to support both light and dark mode in your UI?</h1>
+
+<p>Lean on the system's dynamic color/image infrastructure instead of branching on the current appearance — UIKit then handles switching automatically, including live updates when the user changes Settings or uses an app-specific override.</p>
+
+<h2>1. Use semantic system colors first</h2>
+<p><code>.label</code>, <code>.secondaryLabel</code>, <code>.systemBackground</code>, <code>.separator</code>, etc. already adapt to light/dark (and high-contrast) automatically — prefer them over hardcoded hex values.</p>
+<div class="codehilite"><pre><code>view.backgroundColor = .systemBackground
+titleLabel.textColor = .label
+divider.backgroundColor = .separator</code></pre></div>
+
+<h2>2. Define custom dynamic colors</h2>
+<p>For brand colors, add them to the Asset Catalog with "Any, Dark" appearance variants, or build them in code with a dynamic provider.</p>
+<div class="codehilite"><pre><code><span class="kw">extension</span> <span class="type">UIColor</span> {
+    <span class="kw">static let</span> brandBackground = <span class="type">UIColor</span> { traits <span class="kw">in</span>
+        traits.userInterfaceStyle == .dark
+            ? <span class="type">UIColor</span>(red: <span class="num">0.11</span>, green: <span class="num">0.11</span>, blue: <span class="num">0.12</span>, alpha: <span class="num">1</span>)
+            : <span class="type">UIColor</span>(red: <span class="num">0.98</span>, green: <span class="num">0.98</span>, blue: <span class="num">0.96</span>, alpha: <span class="num">1</span>)
+    }
+}</code></pre></div>
+
+<h2>3. Images</h2>
+<p>Give imageset assets separate "Any Appearance" / "Dark Appearance" variants in the catalog so <code>UIImage(named:)</code> resolves the right one automatically — no code changes needed.</p>
+
+<h2>4. React to appearance changes where needed</h2>
+<p>Anything outside UIKit's automatic handling — <code>CALayer.backgroundColor</code> (CGColor, not dynamic), Core Graphics drawing, cached snapshots — must be refreshed manually.</p>
+<div class="codehilite"><pre><code><span class="kw">override func</span> traitCollectionDidChange(<span class="kw">_</span> previous: <span class="type">UITraitCollection</span>?) {
+    <span class="kw">super</span>.traitCollectionDidChange(previous)
+    <span class="kw">guard</span> traitCollection.hasDifferentColorAppearance(comparedTo: previous) <span class="kw">else</span> { <span class="kw">return</span> }
+    layer.borderColor = <span class="type">UIColor</span>.separator.cgColor <span class="cm">// CGColor doesn't auto-update</span>
+}</code></pre></div>
+
+<h2>5. Test both modes</h2>
+<ul>
+  <li>Simulator/device: Settings → Developer → Dark Appearance, or the Xcode debug bar's appearance toggle.</li>
+  <li><code>overrideUserInterfaceStyle</code> on a view/window to force a mode for testing or per-screen opt-out.</li>
+  <li>Check Xcode's Color Assets preview and SwiftUI/UIKit previews in both appearances before shipping.</li>
+</ul>
+
+<h2>Quick rules</h2>
+<ul>
+  <li>Never hardcode light-only hex colors for UI chrome — always go through semantic or custom dynamic colors.</li>
+  <li>Remember <code>CGColor</code>/<code>CGImage</code> are snapshots, not dynamic — refresh them in <code>traitCollectionDidChange</code>.</li>
+  <li>Test dark mode as a first-class configuration, not an afterthought.</li>
+</ul>
 
 </main>
 </body>

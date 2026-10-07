@@ -93,7 +93,7 @@ ul.toc li a{font-size:1.05em}
 <h2>Follow-up questions</h2>
 <ul>
 <li><strong>Why might a button not respond where it appears on screen?</strong> Its tappable bounds may not cover that point, a parent may reject the touch first, or another view may be in front of it.</li>
-<li><strong>How do transforms and Auto Layout affect hit-testing?</strong> Auto Layout sets the view's layout; transforms change its displayed geometry and UIKit accounts for them during hit-testing. A view's <code>frame</code> is not reliable to inspect after applying a transform.</li>
+<li><strong>How do transforms and Auto Layout affect hit-testing?</strong> Auto Layout only computes the view's untransformed <code>bounds</code> and center. If a <code>transform</code> (scale, rotation, translation) is applied afterward, UIKit hit-tests against the view as it actually appears on screen, not its original layout rectangle. Because of this, a view's <code>frame</code> becomes unreliable once a transform is applied — check <code>bounds</code> and <code>center</code> instead, or convert points with <code>convert(_:to:)</code>/<code>convert(_:from:)</code> to get accurate coordinates.</li>
 <li><strong>How can a view pass touches through?</strong> For an overlay, return <code>nil</code> from <code>hitTest(_:with:)</code> when the result is the overlay itself, as shown above. Its interactive subviews can still receive touches.</li>
 </ul>
 </main>
