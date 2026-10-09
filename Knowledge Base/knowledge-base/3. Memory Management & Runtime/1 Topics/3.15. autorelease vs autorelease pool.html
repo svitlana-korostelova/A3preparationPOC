@@ -5,64 +5,122 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>3.15. autorelease vs autorelease pool</title>
 <style>
-body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+pre { border-radius:8px; padding:1em; overflow-x:auto; font-size:0.88em; line-height:1.55; background:#f7f8fa; color:#1d1d1f; }
+pre code { background:none; padding:0; }
+.kw   { color:#ad3da4; font-weight:bold; }
+.type { color:#0b4f79; }
+.str  { color:#c41a16; }
+.num  { color:#1c00cf; }
+.cm   { color:#5d6c79; font-style:italic; }
+.attr { color:#643820; }
+@media (prefers-color-scheme:dark) {
+  pre { background:#1c1c1e; color:#e8e8e8; }
+  .kw { color:#fc5fa3; } .type { color:#5dd8ff; } .str { color:#fc6a5d; }
+  .num { color:#d0bf69; } .cm { color:#7f8c98; } .attr { color:#bf86c8; }
+}
+table { border-collapse:collapse; width:100%; margin:1em 0; }
+th,td { border:1px solid #ccc; padding:0.45em 0.7em; text-align:left; vertical-align:top; }
+th { background:#eef0f3; }
+@media (prefers-color-scheme:dark) { th { background:#2c2c2e; } td,th { border-color:#444; } }
+body { box-sizing:border-box; max-width:980px; margin:0 auto; padding:32px 45px;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
-.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
-  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
-.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
-.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
-.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
-.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
-  background-color:rgba(175,184,193,.2);border-radius:6px;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
-  background-color:#f6f8fa;border-radius:6px}
-.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
-.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
-.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
-.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
-.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
-.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
-.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
-.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
-.markdown-body ul,.markdown-body ol{padding-left:2em}
-nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
-  border-bottom:1px solid #eaeef2;margin-bottom:24px}
-nav.breadcrumbs a{color:#0969da;text-decoration:none}
-nav.breadcrumbs a:hover{text-decoration:underline}
-ul.toc{list-style:none;padding:0}
-ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
-ul.toc li a{font-size:1.05em}
-.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
-  margin-left:8px;vertical-align:middle}
-.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
-  border-radius:4px;color:#7d4e00;font-size:90%}
-
-.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+  font-size:16px; line-height:1.5; color:#1f2328; background:#fff; }
+@media (prefers-color-scheme:dark) { body { color:#e6edf3; background:#0d1117; } }
+h1 { font-size:2em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; font-weight:600; }
+h2 { font-size:1.5em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; font-weight:600; }
+h3 { font-size:1.25em; margin-top:24px; margin-bottom:16px; font-weight:600; }
+p,ul,ol { margin-top:0; margin-bottom:16px; }
+code { padding:.2em .4em; font-size:85%; background:rgba(175,184,193,.2); border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; }
+pre code { padding:0; background:transparent; font-size:100%; }
+nav.breadcrumbs { font-size:14px; color:#656d76; padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2; margin-bottom:24px; }
+nav.breadcrumbs a { color:#0969da; text-decoration:none; }
+nav.breadcrumbs a:hover { text-decoration:underline; }
+ul,ol { padding-left:2em; }
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">3. Memory Management &amp; Runtime</a> › <a href="index.html">Topics</a></nav>
 <main>
 <h1>3.15. autorelease vs autorelease pool</h1>
-<p>notes: </p>
+
+<h2>Historical Context (MRC Era)</h2>
+<p>Before ARC, Objective-C programmers managed retain/release manually. <code>autorelease</code> was a way to say "release this object, but not yet — defer until the pool drains." This let a method return an object it no longer owns without an immediate crash: the caller got a valid pointer for long enough to retain it if desired.</p>
+<pre><code><span class="cm">// Old MRC Obj-C pattern (not ARC)</span>
+- (<span class="type">NSString</span> *)greet {
+    <span class="type">NSString</span> *s = [[[<span class="type">NSString</span> alloc] initWithFormat:<span class="str">@"Hello"</span>] autorelease];
+    <span class="kw">return</span> s;  <span class="cm">// safe: will be released when pool drains, not now</span>
+}</code></pre>
+
+<h2>autorelease vs autorelease pool — Definitions</h2>
+<table>
+<tr><th>Concept</th><th>What it is</th></tr>
+<tr><td><strong><code>autorelease</code></strong> (the message)</td><td>Registers an object with the current autorelease pool. The pool will send it <code>release</code> when the pool is drained.</td></tr>
+<tr><td><strong>Autorelease pool</strong></td><td>A stack-based collection that holds autoreleased objects. <em>Draining</em> the pool sends <code>release</code> to every object it holds, then destroys the pool.</td></tr>
+<tr><td><strong><code>@autoreleasepool { }</code></strong></td><td>Modern syntax. Creates a pool on entry, drains it on exit (even on <code>throw</code>).</td></tr>
+</table>
+
+<h2>Modern Swift / ARC — When Does It Matter?</h2>
+<p>Under ARC, the compiler inserts retain/release automatically. For <em>pure Swift objects</em> ARC uses direct release — no autorelease pool needed. However, you still interact with the pool when calling <strong>Obj-C APIs</strong> that return autoreleased objects (most of Foundation/UIKit), because those APIs were written against the Obj-C convention.</p>
+<p>The <strong>main thread</strong> is covered automatically: UIKit and AppKit wrap each run-loop iteration in an <code>@autoreleasepool</code>, so objects autoreleased during normal UI events are cleaned up between frames.</p>
+
+<h2>When You Must Use @autoreleasepool</h2>
+<h3>1. Tight loops creating many Obj-C temporaries</h3>
+<pre><code><span class="cm">// Bad — all UIImages accumulate until run loop ends (huge peak RSS)</span>
+<span class="kw">for</span> path <span class="kw">in</span> imagePaths {
+    <span class="kw">let</span> img = <span class="type">UIImage</span>(contentsOfFile: path)
+    process(img)
+}
+
+<span class="cm">// Good — pool drains every iteration; memory stays flat</span>
+<span class="kw">for</span> path <span class="kw">in</span> imagePaths {
+    autoreleasepool {
+        <span class="kw">let</span> img = <span class="type">UIImage</span>(contentsOfFile: path)
+        process(img)
+    }
+}</code></pre>
+
+<h3>2. Background threads</h3>
+<p>Threads you create (GCD, <code>Thread</code>, <code>OperationQueue</code>) have <strong>no implicit pool</strong>. If Obj-C APIs are called on them, autoreleased objects accumulate indefinitely. The runtime will log a warning and will eventually create a pool, but relying on that is fragile.</p>
+<pre><code><span class="type">DispatchQueue</span>.global().async {
+    autoreleasepool {
+        <span class="cm">// Any Obj-C APIs (NSData, NSString, Foundation) called here</span>
+        <span class="cm">// are safely drained when the block returns</span>
+        <span class="kw">let</span> data = <span class="type">NSData</span>(contentsOfFile: heavyFile)
+        parseData(data)
+    }
+}</code></pre>
+
+<h3>3. Unit tests and command-line tools</h3>
+<p>Test runners and non-AppKit/UIKit executables (Swift scripts, CLIs) have no run-loop pool. Wrap <code>main</code> or test bodies in <code>@autoreleasepool</code> if they use Foundation.</p>
+
+<h2>NSAutoreleasePool vs @autoreleasepool</h2>
+<table>
+<tr><th></th><th><code>NSAutoreleasePool</code></th><th><code>@autoreleasepool { }</code></th></tr>
+<tr><td><strong>Era</strong></td><td>MRC-era Obj-C</td><td>Modern ARC (Obj-C and Swift)</td></tr>
+<tr><td><strong>Exception safety</strong></td><td>Manual <code>drain</code> — skipped on exception</td><td>Always drains (compiler inserts cleanup)</td></tr>
+<tr><td><strong>Nesting</strong></td><td>Manual stack management</td><td>Automatic (LIFO stack per thread)</td></tr>
+<tr><td><strong>Swift</strong></td><td>Cannot be used</td><td>Fully supported</td></tr>
+</table>
+<p>Always use <code>@autoreleasepool { }</code> in new code. <code>NSAutoreleasePool</code> is unavailable in Swift.</p>
+
+<h2>ARC Return Value Optimization</h2>
+<p>The Swift/Obj-C compiler can elide the autorelease entirely when the caller and callee are compiled together (same module, LTO, or direct call). This is the <em>autoreleasepool elision</em> / <em>retain-release elimination</em> optimization. The object is returned directly with a strong reference, bypassing the pool. You cannot rely on an object being autoreleased — it may or may not be, depending on optimization level and call context.</p>
+
+<h2>Thread Safety</h2>
+<p>Each thread has its own <strong>stack of autorelease pools</strong>. Pools are per-thread — you cannot drain another thread's pool. Objects can only be released on the thread that autoreleased them (because that thread owns the pool). This is one reason passing autoreleased objects between threads is unsafe without an explicit <code>retain</code>.</p>
+
+<h2>Quick Reference</h2>
+<table>
+<tr><th>Scenario</th><th>Pool needed?</th></tr>
+<tr><td>Main thread UI code</td><td>No — UIKit provides one per run loop iteration</td></tr>
+<tr><td>GCD global queue with Obj-C APIs</td><td>Yes — wrap the async block</td></tr>
+<tr><td>Loop loading 1000+ images</td><td>Yes — wrap each iteration</td></tr>
+<tr><td>Pure Swift value types only</td><td>No — no autorelease in pure Swift ARC</td></tr>
+<tr><td>XCTest / command-line tools</td><td>Yes — no implicit pool</td></tr>
+</table>
+
 </main>
 </body>
 </html>

@@ -5,64 +5,153 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>3.16. Run loop</title>
 <style>
-body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+pre { border-radius:8px; padding:1em; overflow-x:auto; font-size:0.88em; line-height:1.55; background:#f7f8fa; color:#1d1d1f; }
+pre code { background:none; padding:0; }
+.kw   { color:#ad3da4; font-weight:bold; }
+.type { color:#0b4f79; }
+.str  { color:#c41a16; }
+.num  { color:#1c00cf; }
+.cm   { color:#5d6c79; font-style:italic; }
+.attr { color:#643820; }
+@media (prefers-color-scheme:dark) {
+  pre { background:#1c1c1e; color:#e8e8e8; }
+  .kw { color:#fc5fa3; } .type { color:#5dd8ff; } .str { color:#fc6a5d; }
+  .num { color:#d0bf69; } .cm { color:#7f8c98; } .attr { color:#bf86c8; }
+}
+table { border-collapse:collapse; width:100%; margin:1em 0; }
+th,td { border:1px solid #ccc; padding:0.45em 0.7em; text-align:left; vertical-align:top; }
+th { background:#eef0f3; }
+@media (prefers-color-scheme:dark) { th { background:#2c2c2e; } td,th { border-color:#444; } }
+body { box-sizing:border-box; max-width:980px; margin:0 auto; padding:32px 45px;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
-.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
-  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
-.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
-.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
-.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
-.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
-  background-color:rgba(175,184,193,.2);border-radius:6px;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
-  background-color:#f6f8fa;border-radius:6px}
-.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
-.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
-.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
-.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
-.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
-.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
-.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
-.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
-.markdown-body ul,.markdown-body ol{padding-left:2em}
-nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
-  border-bottom:1px solid #eaeef2;margin-bottom:24px}
-nav.breadcrumbs a{color:#0969da;text-decoration:none}
-nav.breadcrumbs a:hover{text-decoration:underline}
-ul.toc{list-style:none;padding:0}
-ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
-ul.toc li a{font-size:1.05em}
-.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
-  margin-left:8px;vertical-align:middle}
-.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
-  border-radius:4px;color:#7d4e00;font-size:90%}
-
-.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+  font-size:16px; line-height:1.5; color:#1f2328; background:#fff; }
+@media (prefers-color-scheme:dark) { body { color:#e6edf3; background:#0d1117; } }
+h1 { font-size:2em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; font-weight:600; }
+h2 { font-size:1.5em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; font-weight:600; }
+h3 { font-size:1.25em; margin-top:24px; margin-bottom:16px; font-weight:600; }
+p,ul,ol { margin-top:0; margin-bottom:16px; }
+code { padding:.2em .4em; font-size:85%; background:rgba(175,184,193,.2); border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; }
+pre code { padding:0; background:transparent; font-size:100%; }
+nav.breadcrumbs { font-size:14px; color:#656d76; padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2; margin-bottom:24px; }
+nav.breadcrumbs a { color:#0969da; text-decoration:none; }
+nav.breadcrumbs a:hover { text-decoration:underline; }
+ul,ol { padding-left:2em; }
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">3. Memory Management &amp; Runtime</a> › <a href="index.html">Topics</a></nav>
 <main>
 <h1>3.16. Run loop</h1>
-<p>notes: </p>
+
+<h2>What is a Run Loop?</h2>
+<p>A <em>run loop</em> is an event-processing loop tied to a thread. It sleeps when there is nothing to do (no active events) and wakes up to process events as they arrive, then returns to sleep. This "smart sleep" pattern prevents the thread from spinning and burning CPU while idle.</p>
+<p>The main thread's run loop is started automatically by UIKit/AppKit on app launch. Background threads do <em>not</em> have a run loop by default — you must start one manually if needed.</p>
+
+<h2>Two APIs: CFRunLoop and NSRunLoop</h2>
+<table>
+<tr><th></th><th><code>CFRunLoop</code> (Core Foundation)</th><th><code>NSRunLoop</code> / <code>RunLoop</code> (Foundation)</th></tr>
+<tr><td><strong>Language</strong></td><td>C API</td><td>Swift / Obj-C wrapper</td></tr>
+<tr><td><strong>Thread safety</strong></td><td>Thread-safe for some operations</td><td>Not thread-safe — use only from the owning thread</td></tr>
+<tr><td><strong>Access</strong></td><td><code>CFRunLoopGetMain()</code>, <code>CFRunLoopGetCurrent()</code></td><td><code>RunLoop.main</code>, <code>RunLoop.current</code></td></tr>
+<tr><td><strong>Relationship</strong></td><td>Underlying implementation</td><td>Thin wrapper around <code>CFRunLoop</code></td></tr>
+</table>
+
+<h2>What the Run Loop Processes</h2>
+<ul>
+  <li><strong>Input sources</strong>: port-based (Mach ports, sockets) and custom sources (e.g., <code>perform(_:on:)</code>)</li>
+  <li><strong>Timer sources</strong>: <code>Timer</code> / <code>CFRunLoopTimer</code> — fire at scheduled times</li>
+  <li><strong>Touch / UI events</strong>: delivered by the system via Mach ports to the main run loop</li>
+  <li><strong>CADisplayLink</strong>: display-sync callbacks (registered as a timer-like source)</li>
+  <li><strong>Network callbacks</strong>: <code>URLSession</code> delegates, <code>CFStream</code></li>
+  <li><strong>Autorelease pool drain</strong>: the main run loop drains the pool at the end of each iteration</li>
+</ul>
+
+<h2>Run Loop Modes</h2>
+<p>A run loop runs in exactly one <em>mode</em> at a time. Sources and timers are registered for specific modes; they only fire when the loop is running in a matching mode.</p>
+<table>
+<tr><th>Mode constant</th><th>When active</th><th>What fires</th></tr>
+<tr><td><code>.default</code> (<code>NSDefaultRunLoopMode</code>)</td><td>Normal idle / waiting</td><td>Most timers, network, perform calls</td></tr>
+<tr><td><code>.tracking</code> (<code>UITrackingRunLoopMode</code>)</td><td>User is scrolling / dragging</td><td>Only tracking-registered sources</td></tr>
+<tr><td><code>.common</code> (<code>NSRunLoopCommonModes</code>)</td><td>Pseudo-mode — union of tagged modes</td><td>Sources registered here fire in <em>all</em> tagged modes</td></tr>
+</table>
+
+<h3>Classic Bug: Timer Stops During Scroll</h3>
+<pre><code><span class="cm">// Bug: fires only when not scrolling</span>
+<span class="kw">let</span> timer = <span class="type">Timer</span>.scheduledTimer(withTimeInterval: <span class="num">1</span>, repeats: <span class="kw">true</span>) { _ <span class="kw">in</span>
+    updateClock()
+}
+<span class="cm">// scheduledTimer adds to .default mode only</span>
+<span class="cm">// UIScrollView switches run loop to .tracking → timer is silent during scroll</span>
+
+<span class="cm">// Fix: register in .common so it fires in both modes</span>
+<span class="type">RunLoop</span>.main.add(timer, forMode: .common)</code></pre>
+
+<h2>Run Loop Iteration Pseudocode</h2>
+<pre><code><span class="cm">// Simplified run loop internals</span>
+<span class="kw">while</span> <span class="kw">true</span> {
+    <span class="cm">// 1. Notify observers: about to process timers</span>
+    notifyObservers(.beforeTimers)
+
+    <span class="cm">// 2. Fire any timers whose fire date has passed</span>
+    fireExpiredTimers()
+
+    <span class="cm">// 3. Notify observers: about to process sources</span>
+    notifyObservers(.beforeSources)
+
+    <span class="cm">// 4. Process pending source0 (non-port) events</span>
+    processPendingSource0Events()
+
+    <span class="cm">// 5. If a port (source1) event is ready, handle it immediately</span>
+    <span class="kw">if</span> hasSource1Events() {
+        processSource1Event()
+        <span class="kw">continue</span>  <span class="cm">// restart without sleeping</span>
+    }
+
+    <span class="cm">// 6. Notify observers: going to sleep</span>
+    notifyObservers(.beforeWaiting)
+
+    <span class="cm">// 7. Sleep — mach_msg blocks until a port fires or timer expires</span>
+    sleepUntilWoken()
+
+    <span class="cm">// 8. Woken up — notify observers</span>
+    notifyObservers(.afterWaiting)
+
+    <span class="cm">// 9. Process the event that woke us, then loop</span>
+}</code></pre>
+
+<h2>Starting a Run Loop on a Background Thread</h2>
+<pre><code><span class="kw">class</span> <span class="type">Worker</span>: <span class="type">NSObject</span> {
+    <span class="kw">func</span> startPersistentThread() {
+        <span class="kw">let</span> thread = <span class="type">Thread</span> {
+            <span class="cm">// Must add at least one source before calling run()</span>
+            <span class="cm">// otherwise the run loop exits immediately (nothing to do)</span>
+            <span class="type">RunLoop</span>.current.add(<span class="type">Port</span>(), forMode: .default)
+            <span class="type">RunLoop</span>.current.run()  <span class="cm">// blocks until no more sources</span>
+        }
+        thread.start()
+    }
+}</code></pre>
+<p>GCD manages threads internally and you generally never need to start a run loop on a GCD thread. The pattern above is for <code>Thread</code>-based code that needs persistent callbacks (CADisplayLink on a background thread, legacy <code>NSURLConnection</code>, etc.).</p>
+
+<h2>Memory Management Relevance</h2>
+<p>The main run loop's autorelease pool is drained at the end of each iteration. This means objects autoreleased during event handling (UIKit returns many objects autoreleased) are freed before the next frame starts. If you create many autoreleased objects <em>within</em> a single run loop iteration (e.g., a synchronous loop that processes images in a touch handler), they all accumulate until the iteration ends — that is when you need an explicit inner <code>@autoreleasepool</code>.</p>
+
+<h2>Run Loop Observers</h2>
+<pre><code><span class="cm">// Observe run loop activity (e.g. to detect main thread idle)</span>
+<span class="kw">let</span> observer = <span class="type">CFRunLoopObserverCreateWithHandler</span>(
+    <span class="kw">nil</span>,
+    <span class="type">CFRunLoopActivity</span>.beforeWaiting.rawValue,
+    <span class="kw">true</span>,   <span class="cm">// repeats</span>
+    <span class="num">0</span>,      <span class="cm">// order</span>
+    { observer, activity <span class="kw">in</span>
+        <span class="cm">// Called each time the main thread is about to sleep</span>
+        <span class="cm">// Good place for: FPS monitoring, deferred work, ANR detection</span>
+    }
+)
+<span class="type">CFRunLoopAddObserver</span>(<span class="type">CFRunLoopGetMain</span>(), observer, .commonModes)</code></pre>
+
 </main>
 </body>
 </html>

@@ -5,64 +5,191 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>3.17. Detect memory issues</title>
 <style>
-body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+pre { border-radius:8px; padding:1em; overflow-x:auto; font-size:0.88em; line-height:1.55; background:#f7f8fa; color:#1d1d1f; }
+pre code { background:none; padding:0; }
+.kw   { color:#ad3da4; font-weight:bold; }
+.type { color:#0b4f79; }
+.str  { color:#c41a16; }
+.num  { color:#1c00cf; }
+.cm   { color:#5d6c79; font-style:italic; }
+.attr { color:#643820; }
+@media (prefers-color-scheme:dark) {
+  pre { background:#1c1c1e; color:#e8e8e8; }
+  .kw { color:#fc5fa3; } .type { color:#5dd8ff; } .str { color:#fc6a5d; }
+  .num { color:#d0bf69; } .cm { color:#7f8c98; } .attr { color:#bf86c8; }
+}
+table { border-collapse:collapse; width:100%; margin:1em 0; }
+th,td { border:1px solid #ccc; padding:0.45em 0.7em; text-align:left; vertical-align:top; }
+th { background:#eef0f3; }
+@media (prefers-color-scheme:dark) { th { background:#2c2c2e; } td,th { border-color:#444; } }
+body { box-sizing:border-box; max-width:980px; margin:0 auto; padding:32px 45px;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
-.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
-  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
-.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
-.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
-.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
-.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
-  background-color:rgba(175,184,193,.2);border-radius:6px;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
-  background-color:#f6f8fa;border-radius:6px}
-.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
-.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
-.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
-.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
-.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
-.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
-.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
-.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
-.markdown-body ul,.markdown-body ol{padding-left:2em}
-nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
-  border-bottom:1px solid #eaeef2;margin-bottom:24px}
-nav.breadcrumbs a{color:#0969da;text-decoration:none}
-nav.breadcrumbs a:hover{text-decoration:underline}
-ul.toc{list-style:none;padding:0}
-ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
-ul.toc li a{font-size:1.05em}
-.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
-  margin-left:8px;vertical-align:middle}
-.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
-  border-radius:4px;color:#7d4e00;font-size:90%}
-
-.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+  font-size:16px; line-height:1.5; color:#1f2328; background:#fff; }
+@media (prefers-color-scheme:dark) { body { color:#e6edf3; background:#0d1117; } }
+h1 { font-size:2em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; font-weight:600; }
+h2 { font-size:1.5em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; font-weight:600; }
+h3 { font-size:1.25em; margin-top:24px; margin-bottom:16px; font-weight:600; }
+p,ul,ol { margin-top:0; margin-bottom:16px; }
+code { padding:.2em .4em; font-size:85%; background:rgba(175,184,193,.2); border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; }
+pre code { padding:0; background:transparent; font-size:100%; }
+nav.breadcrumbs { font-size:14px; color:#656d76; padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2; margin-bottom:24px; }
+nav.breadcrumbs a { color:#0969da; text-decoration:none; }
+nav.breadcrumbs a:hover { text-decoration:underline; }
+ul,ol { padding-left:2em; }
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">3. Memory Management &amp; Runtime</a> › <a href="index.html">Topics</a></nav>
 <main>
 <h1>3.17. Detect memory issues</h1>
-<p>notes: </p>
+
+<h2>Tool Overview</h2>
+<table>
+<tr><th>Tool</th><th>What it finds</th><th>When to use</th></tr>
+<tr><td><strong>Xcode Memory Graph Debugger</strong></td><td>Live objects, reference cycles (purple arrows)</td><td>First stop — fast, no profiling session needed</td></tr>
+<tr><td><strong>Instruments — Leaks</strong></td><td>Leaked objects (cycles not freed at all)</td><td>After memory graph, to confirm and locate leaks in production flows</td></tr>
+<tr><td><strong>Instruments — Allocations</strong></td><td>Growth over time, object histograms, heap snapshots</td><td>Diagnosing unbounded growth, finding what's accumulating</td></tr>
+<tr><td><strong>Address Sanitizer (ASan)</strong></td><td>Use-after-free, heap overflows, stack overflows</td><td>Crashes or corruptions with unclear cause</td></tr>
+<tr><td><strong>MallocStackLogging</strong></td><td>Allocation call stacks for any live object</td><td>Pairing with Memory Graph to find <em>where</em> an object was created</td></tr>
+<tr><td><strong>Xcode runtime warnings</strong></td><td>Main-thread violations, binding issues, etc.</td><td>Always-on during debug builds</td></tr>
+</table>
+
+<h2>1. Xcode Memory Graph Debugger</h2>
+<p>The fastest way to catch retain cycles. While the app is running in the debugger:</p>
+<ol>
+  <li>Click the <strong>Memory Graph</strong> button in the debug bar (icon: three connected nodes).</li>
+  <li>Xcode pauses execution and renders the object graph.</li>
+  <li><strong>Purple arrows</strong> mark retain cycles (objects that reference each other in a cycle, preventing dealloc).</li>
+  <li>Click any object to see its backtrace (requires <em>Malloc Stack Logging</em> enabled in Scheme → Diagnostics).</li>
+</ol>
+<p>Enable <strong>Malloc Stack Logging</strong> beforehand: Scheme → Run → Diagnostics → Malloc Stack → "Live Allocations Only". Without it, you see the cycle but not where the objects were created.</p>
+
+<h2>2. Instruments — Leaks</h2>
+<p>Runs a live leak detector that scans the heap periodically for objects with no path from GC roots (unreachable objects that are still allocated).</p>
+<ol>
+  <li>Product → Profile → choose <strong>Leaks</strong> template.</li>
+  <li>Exercise the app — navigate screens, trigger the suspected flow.</li>
+  <li>Red bars in the Leaks track indicate leaked objects at that moment.</li>
+  <li>Select a leak → <strong>Cycles &amp; Roots</strong> view shows the retain cycle graph.</li>
+  <li>Switch to <strong>Call Tree</strong> view with "Invert Call Tree" to find the allocation site.</li>
+</ol>
+
+<h2>3. Instruments — Allocations</h2>
+<p>Tracks every heap allocation and deallocation over time.</p>
+<ul>
+  <li><strong>"Mark Generation"</strong>: snapshot allocations at a point in time. Navigate away and back; new generation shows what wasn't released. Repeated generations that grow = leak.</li>
+  <li><strong>Heap Snapshot</strong>: compare before/after a flow to see net allocations.</li>
+  <li><strong>Statistics view</strong>: sort by "Persistent" (currently live) to find dominant object types.</li>
+</ul>
+<pre><code><span class="cm">// Pattern to watch for in Allocations: steady growth</span>
+<span class="cm">// Navigate to ScreenA → mark gen 1</span>
+<span class="cm">// Navigate to ScreenB → mark gen 2</span>
+<span class="cm">// Navigate back to ScreenA → mark gen 3</span>
+<span class="cm">// Gen 3 should look like gen 1 if ScreenB was properly released</span></code></pre>
+
+<h2>4. Address Sanitizer (ASan)</h2>
+<p>A compiler instrumentation tool that catches memory safety violations at runtime. Enabled per-scheme, not per-run; it adds ~2x runtime overhead.</p>
+<p>Enable: Scheme → Run → Diagnostics → Address Sanitizer ✓</p>
+<ul>
+  <li><strong>Use-after-free</strong>: accessing deallocated memory</li>
+  <li><strong>Heap buffer overflow</strong>: writing past an allocated region</li>
+  <li><strong>Stack buffer overflow</strong>: writing past a stack array</li>
+  <li><strong>Use of uninitialized memory</strong> (with <code>-fsanitize=memory</code>)</li>
+</ul>
+<p>ASan cannot detect retain cycles — use the Memory Graph for those.</p>
+
+<h2>5. MallocStackLogging</h2>
+<p>Records the call stack at every allocation. Combined with the Memory Graph Debugger, it shows <em>where</em> leaked objects were created, not just that they exist.</p>
+<pre><code><span class="cm">// Enable via environment variable (Scheme → Run → Arguments → Environment)</span>
+<span class="cm">// MallocStackLogging = 1        (record all allocs)</span>
+<span class="cm">// MallocStackLogging = lite     (record only allocation events, less overhead)</span>
+
+<span class="cm">// Or in Xcode Scheme → Diagnostics → Malloc Stack → Live Allocations Only</span></code></pre>
+<p>On the command line, <code>malloc_history &lt;pid&gt; &lt;address&gt;</code> prints the allocation backtrace for a specific address.</p>
+
+<h2>6. Xcode Runtime Warnings</h2>
+<p>These appear as purple runtime issues in the debug navigator without any extra configuration:</p>
+<ul>
+  <li><strong>"Publishing changes from background threads"</strong> — mutating <code>@Published</code> / <code>@State</code> off main thread in SwiftUI</li>
+  <li><strong>"UI API called from background thread"</strong> — UIKit access off main</li>
+  <li><strong>Main actor violations</strong> — in Swift Concurrency strict mode</li>
+</ul>
+<p>These warnings don't catch memory leaks but catch the kind of concurrency bugs that often cause use-after-free crashes.</p>
+
+<h2>Common Code Patterns That Leak</h2>
+<pre><code><span class="cm">// 1. Missing [weak self] in closure that captures self strongly</span>
+<span class="kw">class</span> <span class="type">ViewModel</span> {
+    <span class="kw">var</span> onUpdate: (() -> <span class="type">Void</span>)?
+
+    <span class="kw">func</span> setup() {
+        onUpdate = {            <span class="cm">// ← captures self strongly</span>
+            <span class="kw">self</span>.reload()       <span class="cm">// ← cycle: ViewModel → closure → ViewModel</span>
+        }
+    }
+    <span class="kw">func</span> reload() {}
+}
+
+<span class="cm">// Fix:</span>
+<span class="kw">func</span> setup() {
+    onUpdate = { [<span class="kw">weak self</span>] <span class="kw">in</span>
+        <span class="kw">self</span>?.reload()
+    }
+}
+
+<span class="cm">// 2. NotificationCenter observer not removed</span>
+<span class="kw">class</span> <span class="type">BadVC</span>: <span class="type">UIViewController</span> {
+    <span class="kw">override func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
+        <span class="type">NotificationCenter</span>.default.addObserver(
+            <span class="kw">self</span>, selector: #selector(handle), name: .someNote, object: <span class="kw">nil</span>
+        )
+        <span class="cm">// ↑ old API keeps a strong reference — VC never deallocates</span>
+        <span class="cm">// Fix: call removeObserver in deinit, OR use block-based API with [weak self]</span>
+    }
+}
+
+<span class="cm">// 3. Timer not invalidated → Timer holds strong ref to target</span>
+<span class="kw">class</span> <span class="type">BadVC</span>: <span class="type">UIViewController</span> {
+    <span class="kw">var</span> timer: <span class="type">Timer</span>?
+
+    <span class="kw">override func</span> viewDidLoad() {
+        timer = <span class="type">Timer</span>.scheduledTimer(
+            target: <span class="kw">self</span>,             <span class="cm">// ← Timer retains self strongly</span>
+            selector: #selector(tick),
+            userInfo: <span class="kw">nil</span>, repeats: <span class="kw">true</span>
+        )
+    }
+    <span class="kw">deinit</span> {
+        timer?.invalidate()  <span class="cm">// ← must call; invalidate() releases target reference</span>
+    }
+}</code></pre>
+
+<h2>Delegate as Strong Reference</h2>
+<pre><code><span class="cm">// Common pattern that leaks:</span>
+<span class="kw">class</span> <span class="type">NetworkClient</span> {
+    <span class="kw">var</span> delegate: <span class="type">NetworkDelegate</span>?  <span class="cm">// should be `weak`</span>
+}
+
+<span class="cm">// ViewController creates NetworkClient and sets itself as delegate:</span>
+<span class="cm">// ViewController → (strong) NetworkClient → (strong) ViewController</span>
+<span class="cm">// Fix: make delegate weak</span>
+<span class="kw">class</span> <span class="type">NetworkClient</span> {
+    <span class="kw">weak var</span> delegate: <span class="type">NetworkDelegate</span>?
+}</code></pre>
+
+<h2>Quick Checklist Before Shipping</h2>
+<ul>
+  <li>Run Memory Graph after major navigation flows — no purple arrows</li>
+  <li>Run Instruments Leaks after exercising all screens</li>
+  <li>Check Allocations for unbounded growth across back-forward navigation</li>
+  <li>Review all closures stored as properties: do they capture <code>self</code> strongly?</li>
+  <li>Review all delegates: are they <code>weak</code>?</li>
+  <li>Confirm every <code>Timer</code> / <code>CADisplayLink</code> has a matching <code>invalidate()</code></li>
+  <li>Confirm <code>NotificationCenter</code> old-style observers are removed in <code>deinit</code></li>
+</ul>
+
 </main>
 </body>
 </html>

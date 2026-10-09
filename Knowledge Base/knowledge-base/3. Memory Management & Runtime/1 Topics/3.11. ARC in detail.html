@@ -5,64 +5,114 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>3.11. ARC in detail</title>
 <style>
-body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
-.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
-  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
-.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
-.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
-.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
-.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
-  background-color:rgba(175,184,193,.2);border-radius:6px;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
-  background-color:#f6f8fa;border-radius:6px}
-.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
-.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
-.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
-.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
-.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
-.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
-.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
-.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
-.markdown-body ul,.markdown-body ol{padding-left:2em}
-nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
-  border-bottom:1px solid #eaeef2;margin-bottom:24px}
-nav.breadcrumbs a{color:#0969da;text-decoration:none}
-nav.breadcrumbs a:hover{text-decoration:underline}
-ul.toc{list-style:none;padding:0}
-ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
-ul.toc li a{font-size:1.05em}
-.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
-  margin-left:8px;vertical-align:middle}
-.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
-  border-radius:4px;color:#7d4e00;font-size:90%}
-
-.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+pre { border-radius:8px; padding:1em; overflow-x:auto; font-size:0.88em; line-height:1.55; background:#f7f8fa; color:#1d1d1f; }
+pre code { background:none; padding:0; }
+.kw   { color:#ad3da4; font-weight:bold; }
+.type { color:#0b4f79; }
+.str  { color:#c41a16; }
+.num  { color:#1c00cf; }
+.cm   { color:#5d6c79; font-style:italic; }
+.attr { color:#643820; }
+@media (prefers-color-scheme:dark) {
+  pre { background:#1c1c1e; color:#e8e8e8; }
+  .kw { color:#fc5fa3; } .type { color:#5dd8ff; } .str { color:#fc6a5d; }
+  .num { color:#d0bf69; } .cm { color:#7f8c98; } .attr { color:#bf86c8; }
+}
+table { border-collapse:collapse; width:100%; margin:1em 0; }
+th,td { border:1px solid #ccc; padding:0.45em 0.7em; text-align:left; vertical-align:top; }
+th { background:#eef0f3; }
+@media (prefers-color-scheme:dark) { th { background:#2c2c2e; } td,th { border-color:#444; } }
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">3. Memory Management &amp; Runtime</a> › <a href="index.html">Topics</a></nav>
 <main>
 <h1>3.11. ARC in detail</h1>
-<p>notes: </p>
+
+<h2>What ARC is</h2>
+<p>Automatic Reference Counting is a <strong>compile-time transformation</strong>. The Swift compiler analyzes your code and inserts <code>swift_retain</code> and <code>swift_release</code> calls at the appropriate points. There is no garbage collector running at runtime, and no stop-the-world pauses. The only runtime cost is the atomic increment/decrement when a reference is copied or drops out of scope.</p>
+
+<h2>Compiler-inserted calls</h2>
+<pre><code><span class="cm">// Your Swift source:</span>
+<span class="kw">func</span> process() {
+    <span class="kw">let</span> obj = <span class="type">MyClass</span>()
+    use(obj)
+}
+
+<span class="cm">// What the compiler effectively generates (pseudo-code):</span>
+<span class="kw">func</span> process() {
+    <span class="kw">let</span> obj = swift_allocObject(<span class="type">MyClass</span>.self)  <span class="cm">// malloc + refCount=1</span>
+    swift_retain(obj)                            <span class="cm">// passing to `use` may need retain</span>
+    use(obj)
+    swift_release(obj)                           <span class="cm">// parameter ref done</span>
+    swift_release(obj)                           <span class="cm">// local `obj` done → count=0 → deinit</span>
+}</code></pre>
+<p>The compiler optimises redundant pairs away — it won't emit a retain+release if the lifetime is trivially bounded in the same basic block.</p>
+
+<h2>Object header and reference count encoding</h2>
+<p>On 64-bit Apple platforms, every heap object begins with two words:</p>
+<table>
+<tr><th>Word</th><th>Field</th><th>Details</th></tr>
+<tr><td>0 (8 bytes)</td><td><code>isa</code></td><td>Pointer to class metadata. On ARM64 the top bits encode type flags (is-pure-ObjC, has-custom-deinit, etc.) — "isa tagging".</td></tr>
+<tr><td>1 (8 bytes)</td><td>RefCounts</td><td>Bit-packed: strong count (30 bits), unowned count (7 bits), flags (immortal, deiniting, side-table present, etc.).</td></tr>
+</table>
+
+<h2>Side table</h2>
+<p>When the inline refcount bits overflow (strong count &gt; 2^30) or a weak reference is taken, ARC allocates a separate <em>side table</em> for that object. The RefCounts word is replaced with a pointer to the side table. The side table holds:</p>
+<ul>
+  <li>Full strong count (64-bit)</li>
+  <li>Weak count (64-bit)</li>
+  <li>Unowned count</li>
+  <li>The original object pointer</li>
+</ul>
+<p>This is rare in practice but explains why <code>weak</code> references have a small extra cost over <code>unowned</code>.</p>
+
+<h2>Retain/release atomicity</h2>
+<p>Both <code>swift_retain</code> and <code>swift_release</code> use atomic fetch-add/fetch-sub. On ARM64 this is a <code>ldadd</code> instruction (LSE) or an <code>stlxr</code>/<code>ldxr</code> loop on older CPUs. This is thread-safe but adds a memory barrier, which prevents CPU reordering and causes cache coherency traffic on multi-core.</p>
+<p>On the fast path (refcount in the inline bits and not overflowing), retain/release are a few nanoseconds each. That's why avoiding unnecessary class copies in tight loops matters.</p>
+
+<h2>Compiler optimisations</h2>
+<table>
+<tr><th>Optimisation</th><th>Effect</th></tr>
+<tr><td>ARC coalescing</td><td>Multiple retain/release pairs within one function collapsed into fewer operations</td></tr>
+<tr><td>Guaranteed bridging elision</td><td>Swift↔ObjC bridge casts that are provably no-ops skip retain/release</td></tr>
+<tr><td>Stack promotion</td><td>Short-lived objects with no escaping references allocated on the stack instead</td></tr>
+<tr><td>Devirtualization</td><td><code>final</code> class or non-overridden method → static dispatch → inlineable retain elision</td></tr>
+</table>
+
+<h2>Unowned retain/check</h2>
+<p><code>unowned</code> references use <code>swift_retainUnowned</code> — which checks that the unowned count hasn't been decremented to zero (i.e., the object still exists) without actually retaining. If the object is dead, it traps immediately. This is faster than <code>weak</code> (no side table write) but unsafe after deallocation.</p>
+
+<pre><code><span class="kw">class</span> <span class="type">Owner</span> {
+    <span class="kw">lazy var</span> child: <span class="type">Child</span> = <span class="type">Child</span>(owner: <span class="kw">self</span>)
+}
+<span class="kw">class</span> <span class="type">Child</span> {
+    <span class="kw">unowned let</span> owner: <span class="type">Owner</span>   <span class="cm">// no retain; traps if Owner is dead</span>
+    <span class="kw">init</span>(owner: <span class="type">Owner</span>) { self.owner = owner }
+}</code></pre>
+
+<h2>Deinit chain</h2>
+<p>When <code>swift_release</code> drops the strong count to zero:</p>
+<ol>
+  <li>The object's <code>deinit</code> runs (your Swift-defined cleanup)</li>
+  <li>Superclass <code>deinit</code> runs (if any), walking up the class hierarchy</li>
+  <li>At the root (<code>NSObject</code>), <code>dealloc</code> is called</li>
+  <li><code>free(ptr)</code> returns the memory to the heap</li>
+</ol>
+<p>Stored strong references inside the object are released during deinit, potentially triggering cascading deallocs.</p>
+
+<pre><code><span class="kw">class</span> <span class="type">Animal</span> {
+    <span class="kw">deinit</span> { print(<span class="str">"Animal deinit"</span>) }
+}
+<span class="kw">class</span> <span class="type">Dog</span>: <span class="type">Animal</span> {
+    <span class="kw">deinit</span> { print(<span class="str">"Dog deinit"</span>) }  <span class="cm">// runs first</span>
+    <span class="cm">// then Animal deinit runs automatically</span>
+}
+
+<span class="kw">var</span> d: <span class="type">Dog</span>? = <span class="type">Dog</span>()
+d = <span class="kw">nil</span>
+<span class="cm">// prints: "Dog deinit", then "Animal deinit"</span></code></pre>
+
 </main>
 </body>
 </html>

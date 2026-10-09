@@ -5,64 +5,135 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>3.21. Copy-on-write (COW)</title>
 <style>
-body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+pre { border-radius:8px; padding:1em; overflow-x:auto; font-size:0.88em; line-height:1.55; background:#f7f8fa; color:#1d1d1f; }
+pre code { background:none; padding:0; }
+.kw   { color:#ad3da4; font-weight:bold; }
+.type { color:#0b4f79; }
+.str  { color:#c41a16; }
+.num  { color:#1c00cf; }
+.cm   { color:#5d6c79; font-style:italic; }
+.attr { color:#643820; }
+@media (prefers-color-scheme:dark) {
+  pre { background:#1c1c1e; color:#e8e8e8; }
+  .kw { color:#fc5fa3; } .type { color:#5dd8ff; } .str { color:#fc6a5d; }
+  .num { color:#d0bf69; } .cm { color:#7f8c98; } .attr { color:#bf86c8; }
+}
+table { border-collapse:collapse; width:100%; margin:1em 0; }
+th,td { border:1px solid #ccc; padding:0.45em 0.7em; text-align:left; vertical-align:top; }
+th { background:#eef0f3; }
+@media (prefers-color-scheme:dark) { th { background:#2c2c2e; } td,th { border-color:#444; } }
+body { box-sizing:border-box; max-width:980px; margin:0 auto; padding:32px 45px;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
-.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
-  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
-.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
-.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
-.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
-.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
-  background-color:rgba(175,184,193,.2);border-radius:6px;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
-  background-color:#f6f8fa;border-radius:6px}
-.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
-.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
-.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
-.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
-.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
-.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
-.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
-.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
-.markdown-body ul,.markdown-body ol{padding-left:2em}
-nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
-  border-bottom:1px solid #eaeef2;margin-bottom:24px}
-nav.breadcrumbs a{color:#0969da;text-decoration:none}
-nav.breadcrumbs a:hover{text-decoration:underline}
-ul.toc{list-style:none;padding:0}
-ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
-ul.toc li a{font-size:1.05em}
-.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
-  margin-left:8px;vertical-align:middle}
-.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
-  border-radius:4px;color:#7d4e00;font-size:90%}
-
-.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+  font-size:16px; line-height:1.5; color:#1f2328; background:#fff; }
+@media (prefers-color-scheme:dark) { body { background:#0d1117; color:#e6edf3; } }
+h1 { font-size:2em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; }
+h2 { font-size:1.5em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; }
+h3 { font-size:1.25em; margin-top:24px; margin-bottom:16px; }
+p,ul,ol { margin-top:0; margin-bottom:16px; }
+ul,ol { padding-left:2em; }
+code { padding:.2em .4em; font-size:85%; background:rgba(175,184,193,.2); border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; }
+nav.breadcrumbs { font-size:14px; color:#656d76; padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2; margin-bottom:24px; }
+nav.breadcrumbs a { color:#0969da; text-decoration:none; }
+nav.breadcrumbs a:hover { text-decoration:underline; }
+blockquote { padding:0 1em; color:#656d76; border-left:.25em solid #d0d7de; margin:0 0 16px 0; }
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">3. Memory Management &amp; Runtime</a> › <a href="index.html">Topics</a></nav>
 <main>
 <h1>3.21. Copy-on-write (COW)</h1>
-<p>notes: </p>
+
+<h2>What is COW?</h2>
+<p>Copy-on-write is an optimisation that makes value-type copies cheap by deferring the actual data duplication until a mutation occurs. Swift's standard library types — <code>Array</code>, <code>Dictionary</code>, <code>Set</code>, <code>String</code>, <code>Data</code> — are value types with COW semantics.</p>
+<p>Internally each of these structs holds a reference to a class-backed heap buffer. When you copy the struct, only the reference (8 bytes) is copied, not the buffer. The copy and the original share the same buffer until one of them mutates.</p>
+
+<h2>How COW works step by step</h2>
+<table>
+<tr><th>Operation</th><th>Buffer refcount</th><th>What happens</th></tr>
+<tr><td><code>var a = [1, 2, 3]</code></td><td>1</td><td>Buffer allocated, owned by <code>a</code></td></tr>
+<tr><td><code>var b = a</code></td><td>2</td><td>Only the reference is copied; both share the buffer</td></tr>
+<tr><td><code>b.append(4)</code></td><td>1 (new) / 1 (old)</td><td>refcount &gt; 1 → new buffer allocated, data copied, then <code>4</code> appended; <code>a</code>'s buffer unchanged</td></tr>
+<tr><td><code>a.append(5)</code></td><td>1 (old)</td><td>refcount = 1 → mutate in place, no copy</td></tr>
+</table>
+
+<pre><code><span class="kw">var</span> a = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]
+<span class="kw">var</span> b = a              <span class="cm">// cheap: copies 8-byte pointer, refcount → 2</span>
+b.append(<span class="num">4</span>)            <span class="cm">// mutation: new buffer, b gets [1,2,3,4], a still [1,2,3]</span>
+print(a)               <span class="cm">// [1, 2, 3]</span>
+print(b)               <span class="cm">// [1, 2, 3, 4]</span></code></pre>
+
+<h2>isKnownUniquelyReferenced</h2>
+<p>The Swift standard library uses <code>isKnownUniquelyReferenced(_:)</code> on the buffer object to decide whether to copy. If the buffer is uniquely owned (refcount = 1), mutate in place. Otherwise, copy first.</p>
+<pre><code><span class="cm">// Simplified pseudocode of what Array.append does internally:</span>
+<span class="kw">mutating func</span> append(_ element: <span class="type">Element</span>) {
+    <span class="kw">if</span> !isKnownUniquelyReferenced(&amp;buffer) {
+        buffer = buffer.copy()   <span class="cm">// COW copy</span>
+    }
+    buffer.insert(element)
+}</code></pre>
+
+<h2>Implementing COW for a custom type</h2>
+<p>You can give your own struct the same behaviour by wrapping the data in a class and checking uniqueness before every mutation.</p>
+<pre><code><span class="cm">// Step 1: The heap-allocated storage class</span>
+<span class="kw">final class</span> <span class="type">_Storage</span> {
+    <span class="kw">var</span> items: [<span class="type">String</span>]
+    <span class="kw">init</span>(_ items: [<span class="type">String</span>] = []) { <span class="kw">self</span>.items = items }
+    <span class="kw">func</span> copy() -> <span class="type">_Storage</span> { <span class="type">_Storage</span>(items) }
+}
+
+<span class="cm">// Step 2: The public value type</span>
+<span class="kw">struct</span> <span class="type">TagList</span> {
+    <span class="kw">private var</span> storage = <span class="type">_Storage</span>()
+
+    <span class="cm">// Ensure unique ownership before any mutation</span>
+    <span class="kw">private mutating func</span> ensureUnique() {
+        <span class="kw">if</span> !isKnownUniquelyReferenced(&amp;storage) {
+            storage = storage.copy()
+        }
+    }
+
+    <span class="kw">var</span> count: <span class="type">Int</span> { storage.items.count }
+
+    <span class="kw">mutating func</span> add(_ tag: <span class="type">String</span>) {
+        ensureUnique()
+        storage.items.append(tag)
+    }
+}
+
+<span class="kw">var</span> list1 = <span class="type">TagList</span>()
+list1.add(<span class="str">"swift"</span>)
+<span class="kw">var</span> list2 = list1          <span class="cm">// cheap copy of struct (pointer only)</span>
+list2.add(<span class="str">"ios"</span>)           <span class="cm">// triggers COW — list2 gets its own storage</span>
+<span class="cm">// list1.count == 1, list2.count == 2</span></code></pre>
+
+<h2>Performance: passing large arrays is cheap</h2>
+<p>Because COW defers copying to the moment of mutation, passing a large array to a function that only reads it costs almost nothing — just a pointer copy and a temporary refcount increment.</p>
+<pre><code><span class="kw">func</span> analyse(_ data: [<span class="type">Double</span>]) -> <span class="type">Double</span> {
+    <span class="cm">// No copy of data happens here — only a pointer is passed</span>
+    data.reduce(<span class="num">0</span>, +) / <span class="type">Double</span>(data.count)
+}
+
+<span class="kw">let</span> measurements: [<span class="type">Double</span>] = <span class="cm">/* 100 000 items */</span> []
+<span class="kw">let</span> avg = analyse(measurements)   <span class="cm">// O(1) copy cost at call site</span></code></pre>
+
+<h2>Gotcha: wrapping a COW type in a class breaks COW</h2>
+<p>If you store an <code>Array</code> inside a class, the class is always uniquely referenced through its own variable — but the array's buffer is owned by that class object. When two class references point to the same object and you mutate the array through one of them, there is no copy — both see the mutation. You've lost value semantics.</p>
+<pre><code><span class="kw">class</span> <span class="type">Wrapper</span> {
+    <span class="kw">var</span> data: [<span class="type">Int</span>] = []
+}
+
+<span class="kw">let</span> w1 = <span class="type">Wrapper</span>()
+<span class="kw">let</span> w2 = w1              <span class="cm">// w1 and w2 point to the same Wrapper</span>
+w2.data.append(<span class="num">42</span>)
+<span class="cm">// w1.data is also [42] — COW is bypassed because the array is not</span>
+<span class="cm">// separately owned; both references reach the same Wrapper's storage</span></code></pre>
+<blockquote><p>Rule: COW works correctly only when the struct holding the buffer is the sole owner (or copies it on mutation). Putting that struct inside a shared class object defeats the uniqueness check.</p></blockquote>
+
+<h2>The <code>_modify</code> accessor</h2>
+<p>Swift's ownership model includes a <code>_modify</code> coroutine accessor for in-place mutation. When you write <code>array[0] += 1</code>, the compiler uses <code>_modify</code> to yield a mutable reference to the element directly, avoiding an extra copy-in / copy-out cycle that a plain getter + setter would cause. You don't write <code>_modify</code> yourself in normal code, but it is why subscript mutation on COW collections is efficient.</p>
+
 </main>
 </body>
 </html>

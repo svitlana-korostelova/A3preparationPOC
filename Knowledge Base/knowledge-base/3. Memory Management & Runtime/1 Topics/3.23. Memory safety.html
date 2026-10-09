@@ -5,64 +5,146 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>3.23. Memory safety</title>
 <style>
-body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+pre { border-radius:8px; padding:1em; overflow-x:auto; font-size:0.88em; line-height:1.55; background:#f7f8fa; color:#1d1d1f; }
+pre code { background:none; padding:0; }
+.kw   { color:#ad3da4; font-weight:bold; }
+.type { color:#0b4f79; }
+.str  { color:#c41a16; }
+.num  { color:#1c00cf; }
+.cm   { color:#5d6c79; font-style:italic; }
+.attr { color:#643820; }
+@media (prefers-color-scheme:dark) {
+  pre { background:#1c1c1e; color:#e8e8e8; }
+  .kw { color:#fc5fa3; } .type { color:#5dd8ff; } .str { color:#fc6a5d; }
+  .num { color:#d0bf69; } .cm { color:#7f8c98; } .attr { color:#bf86c8; }
+}
+table { border-collapse:collapse; width:100%; margin:1em 0; }
+th,td { border:1px solid #ccc; padding:0.45em 0.7em; text-align:left; vertical-align:top; }
+th { background:#eef0f3; }
+@media (prefers-color-scheme:dark) { th { background:#2c2c2e; } td,th { border-color:#444; } }
+body { box-sizing:border-box; max-width:980px; margin:0 auto; padding:32px 45px;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
-.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
-  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
-.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
-.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
-.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
-.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
-  background-color:rgba(175,184,193,.2);border-radius:6px;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
-  background-color:#f6f8fa;border-radius:6px}
-.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
-.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
-.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
-.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
-.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
-.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
-.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
-.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
-.markdown-body ul,.markdown-body ol{padding-left:2em}
-nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
-  border-bottom:1px solid #eaeef2;margin-bottom:24px}
-nav.breadcrumbs a{color:#0969da;text-decoration:none}
-nav.breadcrumbs a:hover{text-decoration:underline}
-ul.toc{list-style:none;padding:0}
-ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
-ul.toc li a{font-size:1.05em}
-.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
-  margin-left:8px;vertical-align:middle}
-.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
-  border-radius:4px;color:#7d4e00;font-size:90%}
-
-.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+  font-size:16px; line-height:1.5; color:#1f2328; background:#fff; }
+@media (prefers-color-scheme:dark) { body { background:#0d1117; color:#e6edf3; } }
+h1 { font-size:2em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; }
+h2 { font-size:1.5em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; }
+h3 { font-size:1.25em; margin-top:24px; margin-bottom:16px; }
+p,ul,ol { margin-top:0; margin-bottom:16px; }
+ul,ol { padding-left:2em; }
+code { padding:.2em .4em; font-size:85%; background:rgba(175,184,193,.2); border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; }
+nav.breadcrumbs { font-size:14px; color:#656d76; padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2; margin-bottom:24px; }
+nav.breadcrumbs a { color:#0969da; text-decoration:none; }
+nav.breadcrumbs a:hover { text-decoration:underline; }
+blockquote { padding:0 1em; color:#656d76; border-left:.25em solid #d0d7de; margin:0 0 16px 0; }
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">3. Memory Management &amp; Runtime</a> › <a href="index.html">Topics</a></nav>
 <main>
 <h1>3.23. Memory safety</h1>
-<p>notes:</p>
+
+<h2>Swift's four core memory-safety guarantees</h2>
+
+<h3>1. No uninitialized memory</h3>
+<p>Every variable must be initialized before it is read. The compiler enforces this statically. There is no equivalent of C's uninitialised stack variable that silently reads garbage.</p>
+<pre><code><span class="kw">var</span> count: <span class="type">Int</span>
+print(count)   <span class="cm">// ❌ compiler error: variable 'count' used before being initialized</span>
+
+<span class="kw">var</span> count: <span class="type">Int</span> = <span class="num">0</span>
+print(count)   <span class="cm">// ✅ always 0</span></code></pre>
+
+<h3>2. No dangling pointers</h3>
+<p>ARC ensures an object is kept alive as long as there is a strong reference to it. You cannot hold a raw pointer to memory that has been freed — there is no <code>free()</code> for Swift objects. Unsafe pointer APIs exist, but you must manage their lifetime explicitly (see below).</p>
+
+<h3>3. No buffer overflows (in safe code)</h3>
+<p>Array and collection accesses are bounds-checked at runtime. An out-of-bounds index triggers a runtime trap rather than silently reading adjacent memory.</p>
+<pre><code><span class="kw">let</span> arr = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]
+<span class="kw">let</span> x = arr[<span class="num">5</span>]   <span class="cm">// runtime trap: index 5 is out of bounds for array of size 3</span></code></pre>
+<p>In optimised builds the compiler may elide redundant bounds checks when it can prove safety statically, but the guarantee holds for all bounds it cannot prove.</p>
+
+<h3>4. Exclusive access law</h3>
+<p>Swift enforces that a variable cannot be read and written — or written twice — at the same time. This rule is checked at compile time where possible, and at runtime otherwise. It prevents a class of bugs common in C where a pointer alias lets two paths touch the same memory simultaneously.</p>
+
+<h2>Exclusive access in detail</h2>
+
+<h3>inout parameters</h3>
+<p>When you pass a variable as <code>inout</code>, Swift takes an exclusive write-access lock for the duration of the call. No other access to that variable is allowed while the function runs.</p>
+<pre><code><span class="kw">func</span> increment(<span class="kw">_</span> n: <span class="kw">inout</span> <span class="type">Int</span>) { n += <span class="num">1</span> }
+
+<span class="kw">var</span> score = <span class="num">0</span>
+increment(&amp;score)   <span class="cm">// exclusive write access during the call</span>
+
+<span class="cm">// ❌ conflict: passing the same variable twice</span>
+<span class="kw">func</span> swap(<span class="kw">_</span> a: <span class="kw">inout</span> <span class="type">Int</span>, <span class="kw">_</span> b: <span class="kw">inout</span> <span class="type">Int</span>) { <span class="kw">let</span> tmp = a; a = b; b = tmp }
+swap(&amp;score, &amp;score)   <span class="cm">// compile error: inout arguments alias each other</span></code></pre>
+
+<h3>mutating methods and captured variables</h3>
+<p>Calling a <code>mutating</code> method on a struct takes a write access for the entire duration of the call. Reading the struct inside the method is safe, but passing it elsewhere as <code>inout</code> simultaneously is not.</p>
+<pre><code><span class="kw">struct</span> <span class="type">Counter</span> {
+    <span class="kw">var</span> value = <span class="num">0</span>
+    <span class="kw">mutating func</span> reset() { value = <span class="num">0</span> }
+}
+
+<span class="kw">var</span> c = <span class="type">Counter</span>()
+c.reset()   <span class="cm">// exclusive write access; safe</span></code></pre>
+
+<h3>Runtime access conflict example</h3>
+<p>The compiler cannot always detect conflicts statically. For captured variables in closures, access tracking happens at runtime.</p>
+<pre><code><span class="kw">var</span> total = <span class="num">0</span>
+<span class="kw">func</span> modify(<span class="kw">_</span> body: (<span class="kw">inout</span> <span class="type">Int</span>) -> <span class="type">Void</span>) { body(&amp;total) }
+
+<span class="cm">// ❌ runtime exclusivity violation — total is simultaneously read and passed inout</span>
+modify { total += $<span class="num">0</span> }   <span class="cm">// closure reads `total` while `total` is inout</span></code></pre>
+
+<h2>Unsafe pointer APIs — opting out of safety</h2>
+<p>Swift provides unsafe pointer types for C interoperability and performance-critical code. Using them opts out of memory safety guarantees. You become responsible for lifetime, alignment, and bounds.</p>
+
+<table>
+<tr><th>Type</th><th>Semantics</th></tr>
+<tr><td><code>UnsafePointer&lt;T&gt;</code></td><td>Read-only typed pointer; no bounds checking</td></tr>
+<tr><td><code>UnsafeMutablePointer&lt;T&gt;</code></td><td>Read/write typed pointer; no bounds checking</td></tr>
+<tr><td><code>UnsafeRawPointer</code></td><td>Read-only untyped pointer (raw bytes)</td></tr>
+<tr><td><code>UnsafeMutableRawPointer</code></td><td>Read/write untyped pointer (raw bytes)</td></tr>
+<tr><td><code>UnsafeBufferPointer&lt;T&gt;</code></td><td>Typed pointer + count (still no bounds trap)</td></tr>
+</table>
+
+<pre><code><span class="cm">// Calling a C function that fills a buffer</span>
+<span class="kw">var</span> buffer = [<span class="type">UInt8</span>](repeating: <span class="num">0</span>, count: <span class="num">256</span>)
+buffer.withUnsafeMutableBytes { ptr <span class="kw">in</span>
+    fillBuffer(ptr.baseAddress!, <span class="type">Int32</span>(ptr.count))
+    <span class="cm">// Inside this scope ptr is valid. After the closure, it must not be used.</span>
+}
+
+<span class="cm">// Dangerous: storing a pointer beyond its safe lifetime</span>
+<span class="kw">var</span> dangling: <span class="type">UnsafePointer</span>&lt;<span class="type">Int</span>&gt;?
+<span class="kw">var</span> x = <span class="num">42</span>
+withUnsafePointer(to: &amp;x) { dangling = $<span class="num">0</span> }
+<span class="cm">// ❌ dangling now points to freed stack memory</span></code></pre>
+
+<h3>withUnsafeMutablePointer and withUnsafeBytes</h3>
+<p><code>withUnsafeMutablePointer(to:_:)</code> and <code>Array.withUnsafeBytes(_:)</code> are the safe entry points for unsafe access: they provide a pointer valid only for the lifetime of the closure, preventing you from storing it beyond its valid scope (at least, they make it obvious you shouldn't).</p>
+
+<h2>Undefined behaviour in unsafe code</h2>
+<p>When you cross into the unsafe zone and violate the rules, you get undefined behaviour — the same class of bugs as in C. The Swift compiler can assume safe code is well-behaved and may reorder, elide, or miscompile unsafe violations in optimised builds.</p>
+<p>Common sources of UB with unsafe Swift:</p>
+<ul>
+  <li>Dereferencing a pointer after the pointee's lifetime ends.</li>
+  <li>Writing through a <code>UnsafePointer</code> (read-only type) via a cast.</li>
+  <li>Accessing a buffer past its bounds through an <code>UnsafeBufferPointer</code>.</li>
+  <li>Violating strict aliasing by reinterpreting memory as the wrong type without using <code>UnsafeRawPointer</code> properly.</li>
+</ul>
+
+<h2>Best practices for unsafe code</h2>
+<ul>
+  <li><strong>Isolate it.</strong> Wrap unsafe code in a clearly-named function or extension. The surface area of unsafe code should be minimal.</li>
+  <li><strong>Document the invariants.</strong> Comment exactly what you are assuming about lifetimes, alignment, and bounds. Future readers (and the compiler) cannot check these for you.</li>
+  <li><strong>Use the withUnsafe* family</strong> over storing raw pointers — the closure-based API makes the valid lifetime explicit.</li>
+  <li><strong>Prefer <code>UnsafeBufferPointer</code></strong> over a bare pointer + length pair; it at least keeps them together.</li>
+  <li><strong>Test with Address Sanitizer (ASan)</strong> — Xcode's ASan detects use-after-free, buffer overflows, and other memory errors in unsafe code at runtime.</li>
+</ul>
+
 </main>
 </body>
 </html>

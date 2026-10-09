@@ -5,64 +5,163 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>3.13. Swift runtime</title>
 <style>
-body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+pre { border-radius:8px; padding:1em; overflow-x:auto; font-size:0.88em; line-height:1.55; background:#f7f8fa; color:#1d1d1f; }
+pre code { background:none; padding:0; }
+.kw   { color:#ad3da4; font-weight:bold; }
+.type { color:#0b4f79; }
+.str  { color:#c41a16; }
+.num  { color:#1c00cf; }
+.cm   { color:#5d6c79; font-style:italic; }
+.attr { color:#643820; }
+@media (prefers-color-scheme:dark) {
+  pre { background:#1c1c1e; color:#e8e8e8; }
+  .kw { color:#fc5fa3; } .type { color:#5dd8ff; } .str { color:#fc6a5d; }
+  .num { color:#d0bf69; } .cm { color:#7f8c98; } .attr { color:#bf86c8; }
+}
+table { border-collapse:collapse; width:100%; margin:1em 0; }
+th,td { border:1px solid #ccc; padding:0.45em 0.7em; text-align:left; vertical-align:top; }
+th { background:#eef0f3; }
+@media (prefers-color-scheme:dark) { th { background:#2c2c2e; } td,th { border-color:#444; } }
+body { box-sizing:border-box; max-width:980px; margin:0 auto; padding:32px 45px;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
-.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
-  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
-.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
-.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
-.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
-.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
-  background-color:rgba(175,184,193,.2);border-radius:6px;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
-  background-color:#f6f8fa;border-radius:6px}
-.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
-.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
-.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
-.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
-.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
-.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
-.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
-.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
-.markdown-body ul,.markdown-body ol{padding-left:2em}
-nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
-  border-bottom:1px solid #eaeef2;margin-bottom:24px}
-nav.breadcrumbs a{color:#0969da;text-decoration:none}
-nav.breadcrumbs a:hover{text-decoration:underline}
-ul.toc{list-style:none;padding:0}
-ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
-ul.toc li a{font-size:1.05em}
-.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
-  margin-left:8px;vertical-align:middle}
-.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
-  border-radius:4px;color:#7d4e00;font-size:90%}
-
-.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+  font-size:16px; line-height:1.5; color:#1f2328; background:#fff; }
+@media (prefers-color-scheme:dark) { body { color:#e6edf3; background:#0d1117; } }
+h1 { font-size:2em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; font-weight:600; }
+h2 { font-size:1.5em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; font-weight:600; }
+h3 { font-size:1.25em; margin-top:24px; margin-bottom:16px; font-weight:600; }
+p,ul,ol { margin-top:0; margin-bottom:16px; }
+code { padding:.2em .4em; font-size:85%; background:rgba(175,184,193,.2); border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; }
+pre code { padding:0; background:transparent; font-size:100%; }
+nav.breadcrumbs { font-size:14px; color:#656d76; padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2; margin-bottom:24px; }
+nav.breadcrumbs a { color:#0969da; text-decoration:none; }
+nav.breadcrumbs a:hover { text-decoration:underline; }
+ul { padding-left:2em; }
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">3. Memory Management &amp; Runtime</a> › <a href="index.html">Topics</a></nav>
 <main>
 <h1>3.13. Swift runtime</h1>
-<p>notes: </p>
+
+<h2>What is the Swift runtime?</h2>
+<p>The Swift runtime is a low-level library — <code>libswiftCore.dylib</code> — embedded into every Swift binary. It sits between your Swift code and the OS, providing services that cannot be resolved at compile time. As of Swift 5.7+, the runtime is <em>stable ABI</em> on Apple platforms, meaning OS versions ship a copy and apps link against it dynamically instead of bundling it.</p>
+
+<h2>Core Responsibilities</h2>
+<table>
+<tr><th>Responsibility</th><th>Entry points / types</th></tr>
+<tr><td><strong>ARC</strong> — retain, release, dealloc</td><td><code>swift_retain</code>, <code>swift_release</code>, <code>swift_deallocObject</code></td></tr>
+<tr><td><strong>Heap allocation</strong></td><td><code>swift_allocObject</code>, <code>swift_allocBox</code></td></tr>
+<tr><td><strong>Dynamic casting</strong></td><td><code>swift_dynamicCast</code>, <code>swift_dynamicCastClass</code></td></tr>
+<tr><td><strong>Protocol conformance lookup</strong></td><td>Protocol witness tables, conformance descriptors</td></tr>
+<tr><td><strong>Existential containers</strong></td><td>Inline buffer + metadata ptr + witness table ptr(s)</td></tr>
+<tr><td><strong>Type metadata</strong></td><td>Nominal type descriptors, vtables, field offsets</td></tr>
+<tr><td><strong>Reflection</strong></td><td><code>Mirror</code>, <code>_typeByName</code></td></tr>
+<tr><td><strong>Error handling</strong></td><td><code>swift_allocError</code>, error existential boxing</td></tr>
+</table>
+
+<h2>Object Allocation — swift_allocObject</h2>
+<p>When you write <code>SomeClass()</code>, the compiler emits a call to <code>swift_allocObject</code>:</p>
+<ol>
+  <li>Receives the type's metadata pointer and required size/alignment.</li>
+  <li>Calls <code>malloc</code> (or a custom allocator) to get raw memory.</li>
+  <li>Writes the <em>isa</em> (metadata pointer) and an initial <strong>strong ref count = 1</strong> into the first 16 bytes (the "HeapObject" header).</li>
+  <li>Returns the pointer; Swift calls the designated <code>init</code>.</li>
+</ol>
+<pre><code><span class="cm">// What the compiler emits for:  let obj = MyClass()</span>
+<span class="cm">// (pseudocode, not real Swift)</span>
+<span class="kw">let</span> raw = swift_allocObject(
+    metadata: &amp;MyClass.metadata,
+    requiredSize: <span class="kw">MemoryLayout</span>&lt;<span class="type">MyClass</span>&gt;.size,
+    requiredAlignment: <span class="kw">MemoryLayout</span>&lt;<span class="type">MyClass</span>&gt;.alignment
+)
+<span class="kw">let</span> obj = <span class="kw">UnsafeMutablePointer</span>&lt;<span class="type">MyClass</span>&gt;(raw)
+<span class="type">MyClass</span>.init(obj)  <span class="cm">// calls your init</span></code></pre>
+
+<h2>Type Metadata</h2>
+<p>Every Swift type has a <em>metadata record</em> in the binary — essentially a struct describing the type at runtime:</p>
+<ul>
+  <li><strong>Kind</strong>: class, struct, enum, protocol, etc.</li>
+  <li><strong>Nominal type descriptor</strong>: field names, field types, generic parameters.</li>
+  <li><strong>VTable</strong> (classes only): array of function pointers for overridable methods.</li>
+  <li><strong>Protocol conformance list</strong>: references to witness tables.</li>
+  <li><strong>Field offsets</strong>: used by <code>Mirror</code> for reflection.</li>
+</ul>
+<pre><code><span class="cm">// Swift type metadata is accessed via reflection</span>
+<span class="kw">let</span> m = <span class="type">Mirror</span>(reflecting: <span class="type">SomeStruct</span>())
+<span class="kw">for</span> child <span class="kw">in</span> m.children {
+    <span class="kw">print</span>(child.label ?? <span class="str">"?"</span>, child.value)
+}
+<span class="cm">// Internally Mirror reads the nominal type descriptor to enumerate fields</span></code></pre>
+
+<h2>Dynamic Dispatch — VTables vs Witness Tables</h2>
+<p><strong>VTable dispatch</strong> (classes): each class instance's metadata contains a vtable. An overridable method call compiles to <code>load metadata → index into vtable → call function ptr</code>. Sealed with <code>final</code> to let the compiler devirtualize.</p>
+<p><strong>Witness table dispatch</strong> (protocols): each conformance produces a witness table — a struct of function pointers, one per protocol requirement. Passing a value as a protocol type bundles the value with a pointer to its witness table (the existential container).</p>
+<pre><code><span class="kw">protocol</span> <span class="type">Drawable</span> {
+    <span class="kw">func</span> draw()
+}
+
+<span class="kw">struct</span> <span class="type">Circle</span>: <span class="type">Drawable</span> {
+    <span class="kw">func</span> draw() { <span class="cm">/* ... */</span> }
+}
+
+<span class="cm">// Compiler generates a witness table for Circle : Drawable</span>
+<span class="cm">// { draw: &Circle.draw }  — one entry per protocol requirement</span>
+
+<span class="kw">func</span> render(_ shape: any <span class="type">Drawable</span>) {
+    shape.draw()
+    <span class="cm">// ↑ load witness table ptr from existential → call draw slot</span>
+}</code></pre>
+
+<h2>Dynamic Casting — swift_dynamicCast</h2>
+<p><code>as?</code> and <code>is</code> compile to calls to <code>swift_dynamicCast</code> (and family). For class types it checks the isa chain. For protocol types it queries the runtime conformance cache. For value types inside existentials it compares type metadata pointers.</p>
+<pre><code><span class="kw">func</span> classify(_ obj: <span class="type">AnyObject</span>) {
+    <span class="kw">if let</span> vc = obj <span class="kw">as</span>? <span class="type">UIViewController</span> {
+        <span class="cm">// swift_dynamicCastClass checks the isa hierarchy</span>
+        _ = vc
+    }
+    <span class="kw">if let</span> d = obj <span class="kw">as</span>? any <span class="type">Equatable</span> {
+        <span class="cm">// swift_dynamicCast checks the conformance cache</span>
+        _ = d
+    }
+}</code></pre>
+
+<h2>Existential Containers</h2>
+<p>A variable of protocol type (e.g. <code>any Drawable</code>) is stored as an <em>existential container</em> — typically 5 words on the stack:</p>
+<ul>
+  <li><strong>3 words</strong>: inline value buffer (small values fit; large values heap-box and store a pointer here)</li>
+  <li><strong>1 word</strong>: pointer to type metadata</li>
+  <li><strong>1 word per protocol</strong>: pointer to witness table</li>
+</ul>
+<p>This layout explains why existential types have a performance cost — every call goes through an indirect witness table lookup, and large values require heap boxing.</p>
+
+<h2>Swift Runtime vs Objective-C Runtime</h2>
+<table>
+<tr><th></th><th>Swift runtime</th><th>Obj-C runtime</th></tr>
+<tr><td><strong>Library</strong></td><td><code>libswiftCore.dylib</code></td><td><code>libobjc.dylib</code></td></tr>
+<tr><td><strong>Dispatch</strong></td><td>Vtable / witness table (compile-time structured)</td><td>Message send (<code>objc_msgSend</code>) — fully dynamic</td></tr>
+<tr><td><strong>ARC counters</strong></td><td>Non-atomic (default) or atomic, stored in object header</td><td>Atomic retain/release always</td></tr>
+<tr><td><strong>Introspection</strong></td><td><code>Mirror</code> — limited by default</td><td>Full: <code>class_copyMethodList</code>, method swizzling, etc.</td></tr>
+<tr><td><strong>Interop</strong></td><td>Classes marked <code>@objc</code> or inheriting <code>NSObject</code> are registered with the Obj-C runtime too</td><td>—</td></tr>
+</table>
+
+<h2>@objc Bridging</h2>
+<p>When a Swift class inherits <code>NSObject</code> or its methods are marked <code>@objc</code>, the Swift compiler registers them with the Obj-C runtime via <code>objc_registerClassPair</code> and method lists. This allows Obj-C code, KVO, KVC, and <code>#selector</code> to work. The cost: every <code>@objc</code> method gets a Obj-C thunk plus an entry in the Obj-C method list.</p>
+<pre><code><span class="kw">class</span> <span class="type">MyView</span>: <span class="type">UIView</span> {
+    <span class="cm">// NSObject subclass → registered with Obj-C runtime automatically</span>
+
+    <span class="attr">@objc</span> <span class="kw">func</span> handleTap(_ gesture: <span class="type">UITapGestureRecognizer</span>) {
+        <span class="cm">// Obj-C runtime can call this via objc_msgSend</span>
+        <span class="cm">// Selector: "handleTap:"</span>
+    }
+}
+
+<span class="cm">// Pure Swift class — NOT registered with Obj-C runtime</span>
+<span class="kw">final class</span> <span class="type">ViewModel</span> {
+    <span class="kw">func</span> load() { }  <span class="cm">// vtable dispatch only</span>
+}</code></pre>
+
 </main>
 </body>
 </html>

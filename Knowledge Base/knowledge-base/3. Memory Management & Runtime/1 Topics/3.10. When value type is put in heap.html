@@ -3,66 +3,116 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>3.10. When value type is put in heap</title>
+<title>3.10. When is a value type put on the heap?</title>
 <style>
-body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
-.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
-  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
-.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
-.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
-.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
-.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
-  background-color:rgba(175,184,193,.2);border-radius:6px;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
-  background-color:#f6f8fa;border-radius:6px}
-.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
-.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
-.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
-.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
-.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
-.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
-.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
-.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
-.markdown-body ul,.markdown-body ol{padding-left:2em}
-nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
-  border-bottom:1px solid #eaeef2;margin-bottom:24px}
-nav.breadcrumbs a{color:#0969da;text-decoration:none}
-nav.breadcrumbs a:hover{text-decoration:underline}
-ul.toc{list-style:none;padding:0}
-ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
-ul.toc li a{font-size:1.05em}
-.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
-  margin-left:8px;vertical-align:middle}
-.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
-  border-radius:4px;color:#7d4e00;font-size:90%}
-
-.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+pre { border-radius:8px; padding:1em; overflow-x:auto; font-size:0.88em; line-height:1.55; background:#f7f8fa; color:#1d1d1f; }
+pre code { background:none; padding:0; }
+.kw   { color:#ad3da4; font-weight:bold; }
+.type { color:#0b4f79; }
+.str  { color:#c41a16; }
+.num  { color:#1c00cf; }
+.cm   { color:#5d6c79; font-style:italic; }
+.attr { color:#643820; }
+@media (prefers-color-scheme:dark) {
+  pre { background:#1c1c1e; color:#e8e8e8; }
+  .kw { color:#fc5fa3; } .type { color:#5dd8ff; } .str { color:#fc6a5d; }
+  .num { color:#d0bf69; } .cm { color:#7f8c98; } .attr { color:#bf86c8; }
+}
+table { border-collapse:collapse; width:100%; margin:1em 0; }
+th,td { border:1px solid #ccc; padding:0.45em 0.7em; text-align:left; vertical-align:top; }
+th { background:#eef0f3; }
+@media (prefers-color-scheme:dark) { th { background:#2c2c2e; } td,th { border-color:#444; } }
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">3. Memory Management &amp; Runtime</a> › <a href="index.html">Topics</a></nav>
 <main>
-<h1>3.10. When value type is put in heap</h1>
-<p>notes: </p>
+<h1>3.10. When is a value type put on the heap?</h1>
+
+<p>Value types (<code>struct</code>, <code>enum</code>, tuples) live on the stack by default. But Swift must move them to the heap in several specific situations. Knowing these cases prevents surprises in profiling and helps write allocaton-free hot paths.</p>
+
+<h2>1. Captured by an escaping closure</h2>
+<p>When a local variable is captured by an <code>@escaping</code> closure, its lifetime must outlive the current stack frame. Swift allocates a <em>capture box</em> — a small heap object — to hold the variable.</p>
+
+<pre><code><span class="kw">func</span> makeCounter() -> () -> <span class="type">Int</span> {
+    <span class="kw">var</span> count = <span class="num">0</span>                        <span class="cm">// Int (value type)</span>
+    <span class="kw">return</span> {
+        count += <span class="num">1</span>                       <span class="cm">// escaping capture</span>
+        <span class="kw">return</span> count
+    }
+    <span class="cm">// `count` is boxed on the heap so the returned closure can outlive this frame</span>
+}
+
+<span class="kw">let</span> next = makeCounter()
+next()   <span class="cm">// 1</span>
+next()   <span class="cm">// 2  — `count` is still alive on the heap</span></code></pre>
+
+<h2>2. Stored as a property of a class</h2>
+<p>A value type stored inside a <code>class</code> lives inside the class's heap allocation. The struct itself doesn't get a separate allocation — it's inline within the object's memory — but it is on the heap because the containing object is.</p>
+
+<pre><code><span class="kw">struct</span> <span class="type">Point</span> { <span class="kw">var</span> x, y: <span class="type">Double</span> }
+
+<span class="kw">class</span> <span class="type">Circle</span> {
+    <span class="kw">var</span> center: <span class="type">Point</span>    <span class="cm">// Point lives inside Circle's heap block</span>
+    <span class="kw">var</span> radius: <span class="type">Double</span>
+    <span class="kw">init</span>(center: <span class="type">Point</span>, radius: <span class="type">Double</span>) {
+        self.center = center; self.radius = radius
+    }
+}</code></pre>
+
+<h2>3. Existential container (large value types)</h2>
+<p>A protocol-typed variable (<code>any Protocol</code>) is stored in an <em>existential container</em> — a 5-word buffer. If the value type fits in 3 words (24 bytes on 64-bit), it lives inline in that buffer (on the stack). If it's larger, Swift allocates a heap buffer and stores a pointer in the container.</p>
+
+<pre><code><span class="kw">protocol</span> <span class="type">Drawable</span> { <span class="kw">func</span> draw() }
+
+<span class="kw">struct</span> <span class="type">SmallShape</span>: <span class="type">Drawable</span> {        <span class="cm">// ≤ 24 bytes — fits inline, no heap</span>
+    <span class="kw">var</span> x: <span class="type">Double</span>
+    <span class="kw">func</span> draw() {}
+}
+
+<span class="kw">struct</span> <span class="type">BigShape</span>: <span class="type">Drawable</span> {          <span class="cm">// > 24 bytes — heap allocation</span>
+    <span class="kw">var</span> a, b, c, d: <span class="type">Double</span>
+    <span class="kw">func</span> draw() {}
+}
+
+<span class="kw">let</span> shape: <span class="kw">any</span> <span class="type">Drawable</span> = <span class="type">BigShape</span>(a: <span class="num">1</span>, b: <span class="num">2</span>, c: <span class="num">3</span>, d: <span class="num">4</span>)
+<span class="cm">// BigShape is heap-allocated inside the existential container</span></code></pre>
+
+<h2>4. Indirect enum</h2>
+<p>A recursive enum must use <code>indirect</code> to break the infinite size cycle. <code>indirect</code> wraps the associated value in a heap allocation.</p>
+
+<pre><code><span class="kw">indirect enum</span> <span class="type">Tree</span> {
+    <span class="kw">case</span> leaf(<span class="type">Int</span>)
+    <span class="kw">case</span> node(<span class="type">Tree</span>, <span class="type">Tree</span>)   <span class="cm">// each branch is a heap-allocated box</span>
+}
+
+<span class="kw">let</span> t: <span class="type">Tree</span> = .node(.leaf(<span class="num">1</span>), .leaf(<span class="num">2</span>))
+<span class="cm">// t is a pointer to a heap box containing two heap boxes</span></code></pre>
+
+<h2>5. <code>inout</code> in async context</h2>
+<p>Inside an <code>async</code> function, the compiler cannot guarantee a local variable survives across a suspension point on the original stack frame. Variables referenced via <code>inout</code> (or captured by actors) may be promoted to the heap to maintain correctness across await calls.</p>
+
+<pre><code><span class="kw">func</span> asyncWork() <span class="kw">async</span> {
+    <span class="kw">var</span> buffer = [<span class="type">Int</span>]()       <span class="cm">// heap-allocated Array backing store anyway,</span>
+                                <span class="cm">// but local value variables can also be promoted</span>
+    <span class="kw">await</span> fetchData()           <span class="cm">// suspension point: stack frame may not be valid</span>
+    buffer.append(<span class="num">42</span>)          <span class="cm">// buffer must survive across the await</span>
+}</code></pre>
+
+<h2>Summary table</h2>
+<table>
+<tr><th>Situation</th><th>Where value type ends up</th></tr>
+<tr><td>Local variable, no capture</td><td>Stack (free)</td></tr>
+<tr><td>Captured by <code>@escaping</code> closure</td><td>Heap capture box</td></tr>
+<tr><td>Stored in a <code>class</code> property</td><td>Inline in class's heap block</td></tr>
+<tr><td>Protocol existential, type &gt; 24 bytes</td><td>Heap buffer inside existential</td></tr>
+<tr><td><code>indirect enum</code></td><td>Heap box per <code>indirect</code> case</td></tr>
+<tr><td><code>inout</code> across <code>await</code></td><td>Heap-promoted by compiler</td></tr>
+</table>
+
+<h2>Compiler optimisation: stack promotion</h2>
+<p>The compiler can also go the other direction: if it can prove a heap allocation's lifetime is bounded to the current stack frame (<em>escape analysis</em>), it may promote it onto the stack. This is an internal optimisation; you can observe it via the Allocations instrument showing fewer mallocs than expected.</p>
+
 </main>
 </body>
 </html>

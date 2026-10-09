@@ -5,64 +5,124 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>3.22. autoreleasepool</title>
 <style>
-body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+pre { border-radius:8px; padding:1em; overflow-x:auto; font-size:0.88em; line-height:1.55; background:#f7f8fa; color:#1d1d1f; }
+pre code { background:none; padding:0; }
+.kw   { color:#ad3da4; font-weight:bold; }
+.type { color:#0b4f79; }
+.str  { color:#c41a16; }
+.num  { color:#1c00cf; }
+.cm   { color:#5d6c79; font-style:italic; }
+.attr { color:#643820; }
+@media (prefers-color-scheme:dark) {
+  pre { background:#1c1c1e; color:#e8e8e8; }
+  .kw { color:#fc5fa3; } .type { color:#5dd8ff; } .str { color:#fc6a5d; }
+  .num { color:#d0bf69; } .cm { color:#7f8c98; } .attr { color:#bf86c8; }
+}
+table { border-collapse:collapse; width:100%; margin:1em 0; }
+th,td { border:1px solid #ccc; padding:0.45em 0.7em; text-align:left; vertical-align:top; }
+th { background:#eef0f3; }
+@media (prefers-color-scheme:dark) { th { background:#2c2c2e; } td,th { border-color:#444; } }
+body { box-sizing:border-box; max-width:980px; margin:0 auto; padding:32px 45px;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
-.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
-  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
-.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
-.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
-.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
-.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
-  background-color:rgba(175,184,193,.2);border-radius:6px;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
-  background-color:#f6f8fa;border-radius:6px}
-.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
-.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
-.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
-.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
-.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
-.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
-.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
-.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
-.markdown-body ul,.markdown-body ol{padding-left:2em}
-nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
-  border-bottom:1px solid #eaeef2;margin-bottom:24px}
-nav.breadcrumbs a{color:#0969da;text-decoration:none}
-nav.breadcrumbs a:hover{text-decoration:underline}
-ul.toc{list-style:none;padding:0}
-ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
-ul.toc li a{font-size:1.05em}
-.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
-  margin-left:8px;vertical-align:middle}
-.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
-  border-radius:4px;color:#7d4e00;font-size:90%}
-
-.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+  font-size:16px; line-height:1.5; color:#1f2328; background:#fff; }
+@media (prefers-color-scheme:dark) { body { background:#0d1117; color:#e6edf3; } }
+h1 { font-size:2em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; }
+h2 { font-size:1.5em; border-bottom:1px solid #d0d7de; padding-bottom:.3em; margin-top:24px; margin-bottom:16px; }
+h3 { font-size:1.25em; margin-top:24px; margin-bottom:16px; }
+p,ul,ol { margin-top:0; margin-bottom:16px; }
+ul,ol { padding-left:2em; }
+code { padding:.2em .4em; font-size:85%; background:rgba(175,184,193,.2); border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; }
+nav.breadcrumbs { font-size:14px; color:#656d76; padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2; margin-bottom:24px; }
+nav.breadcrumbs a { color:#0969da; text-decoration:none; }
+nav.breadcrumbs a:hover { text-decoration:underline; }
+blockquote { padding:0 1em; color:#656d76; border-left:.25em solid #d0d7de; margin:0 0 16px 0; }
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">3. Memory Management &amp; Runtime</a> › <a href="index.html">Topics</a></nav>
 <main>
 <h1>3.22. autoreleasepool</h1>
-<p>notes: </p>
+
+<h2>What autorelease is</h2>
+<p>In the Objective-C runtime, an object can be sent <code>autorelease</code> instead of <code>release</code>. Rather than decrementing the reference count immediately, <code>autorelease</code> registers the object in the current <strong>autorelease pool</strong>. When the pool drains, every registered object is sent <code>release</code> — their reference count decrements and, if it reaches zero, they are deallocated.</p>
+<p>This mechanism exists because many Obj-C factory methods need to return an object the caller can use but nobody currently owns. Instead of leaking it, the method autoreleases it and lets the pool's drain clean it up.</p>
+
+<h2>The main run loop and automatic drain</h2>
+<p>On the main thread the run loop wraps each event iteration in an autorelease pool. The cycle is:</p>
+<ol>
+  <li>Pool is pushed (created) at the start of the iteration.</li>
+  <li>Event is processed — UIKit, timers, notifications fire.</li>
+  <li>Pool is popped (drained) at the end of the iteration.</li>
+</ol>
+<p>For typical UI code this means autoreleased objects live for at most one run-loop turn — about one frame (≈ 16 ms). Under normal conditions you don't think about it.</p>
+
+<h2>When you need an explicit autoreleasepool</h2>
+
+<h3>1. Background threads</h3>
+<p>Threads you create with <code>Thread</code>, <code>DispatchQueue.global()</code>, or <code>OperationQueue</code> have <strong>no automatic autorelease pool</strong>. Autoreleased objects from Obj-C APIs accumulate without limit. When the thread ends or the pool is never drained, they leak.</p>
+<pre><code><span class="type">DispatchQueue</span>.global().async {
+    autoreleasepool {                     <span class="cm">// explicit pool on background thread</span>
+        <span class="kw">let</span> data = <span class="type">NSData</span>(contentsOfFile: path)   <span class="cm">// autoreleased NSData</span>
+        process(data)
+    }                                     <span class="cm">// data released here, not at thread end</span>
+}</code></pre>
+
+<h3>2. Tight loops creating many temporaries</h3>
+<p>If each loop iteration calls Obj-C APIs that return autoreleased objects, those objects accumulate in the pool until the run loop drains at the end of the current event. With thousands of iterations this causes a memory spike. Wrapping each iteration in <code>autoreleasepool</code> drains after each step.</p>
+<pre><code><span class="cm">// Without autoreleasepool — memory grows across all iterations</span>
+<span class="kw">for</span> url <span class="kw">in</span> imageURLs {
+    <span class="kw">let</span> image = <span class="type">UIImage</span>(contentsOfFile: url.path)
+    saveThumbnail(image)
+    <span class="cm">// image is autoreleased but won't be freed until run-loop drains</span>
+}
+
+<span class="cm">// With autoreleasepool — each UIImage freed after the iteration</span>
+<span class="kw">for</span> url <span class="kw">in</span> imageURLs {
+    autoreleasepool {
+        <span class="kw">let</span> image = <span class="type">UIImage</span>(contentsOfFile: url.path)
+        saveThumbnail(image)
+    }   <span class="cm">// pool drains → image freed immediately</span>
+}</code></pre>
+<p>The memory profile difference can be dramatic: without the pool, peak memory is proportional to the array size; with it, peak is proportional to one iteration.</p>
+
+<h3>3. Unit tests and command-line tools</h3>
+<p>XCTest test targets and command-line Swift programs may not have a run loop at all, or may have one that never drains. Wrap autorelease-heavy work in an explicit pool.</p>
+<pre><code><span class="kw">func</span> testImageProcessing() {
+    autoreleasepool {
+        <span class="kw">let</span> result = processLargeBatch()
+        <span class="type">XCTAssertEqual</span>(result.count, <span class="num">1000</span>)
+    }
+}</code></pre>
+
+<h2>Swift-native APIs and autorelease</h2>
+<p>Pure Swift types do not use <code>autorelease</code> — ARC deallocates them immediately when the reference count hits zero. The <code>autoreleasepool</code> block is only relevant when calling Obj-C APIs bridged into Swift: Foundation types (<code>NSData</code>, <code>NSString</code>, <code>NSArray</code>), UIKit, Core Graphics, Core Data, etc.</p>
+<blockquote><p>If your loop only creates Swift structs and Swift classes, adding <code>autoreleasepool</code> around it is a no-op. Only add it when you are certain Obj-C methods are involved.</p></blockquote>
+
+<h2>Cost of autoreleasepool</h2>
+<p>Pushing and popping a pool is very cheap — it is a stack operation on the thread's pool stack. The overhead is negligible compared to the allocation cost of the objects inside it. Do not avoid <code>autoreleasepool</code> on performance grounds.</p>
+
+<h2>Swift concurrency: implicit pool per Task</h2>
+<p>Each Swift <code>Task</code> body gets an implicit autorelease pool for the synchronous portion of its execution. This means you rarely need an explicit pool inside <code>async</code> functions — but you may still need one around loops that call Obj-C synchronous APIs intensively within an <code>async</code> context.</p>
+<pre><code><span class="kw">func</span> processBatch() <span class="kw">async</span> {
+    <span class="kw">for</span> item <span class="kw">in</span> heavyBatch {
+        autoreleasepool {               <span class="cm">// belt-and-suspenders in a hot async loop</span>
+            renderObjCThumbnail(item)
+        }
+    }
+}</code></pre>
+
+<h2>Summary</h2>
+<table>
+<tr><th>Context</th><th>Implicit pool?</th><th>Action needed</th></tr>
+<tr><td>Main thread, run-loop iteration</td><td>Yes (UIKit wraps it)</td><td>None</td></tr>
+<tr><td>Background DispatchQueue / Thread</td><td>No</td><td>Wrap Obj-C work in <code>autoreleasepool {}</code></td></tr>
+<tr><td>Tight loop creating many Obj-C temporaries</td><td>No per-iteration</td><td>Wrap loop body in <code>autoreleasepool {}</code></td></tr>
+<tr><td>Swift <code>Task</code> body</td><td>Yes (per suspension point)</td><td>Usually none; add for hot Obj-C loops</td></tr>
+<tr><td>Unit tests / CLI</td><td>Possibly not</td><td>Wrap Obj-C-heavy tests in <code>autoreleasepool {}</code></td></tr>
+</table>
+
 </main>
 </body>
 </html>

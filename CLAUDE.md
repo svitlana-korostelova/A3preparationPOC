@@ -100,56 +100,6 @@ All commands run from `A3_poc_ios_only/` unless noted.
 
 ---
 
-## 🏗️ PROJECT CONTEXT
-
-### Technology Stack
-
-| Component | Technology | Version |
-|-----------|------------|---------|
-| Language | Swift | 5.9 |
-| UI Framework | SwiftUI | iOS 17+ |
-| Reactive | Combine | iOS 17+ |
-| Project generator | XcodeGen | latest |
-| Min iOS | iOS | 17.0 |
-| Tests | none | — |
-
-### Project Structure
-
-```
-A3preparationPOC/                 # repo root (docs + Claude config)
-├── CLAUDE.md                     # this file
-├── .codemie/guides/              # AI-optimized topic guides
-├── .claude/skills/               # superpowers skills (symlinks)
-└── A3_poc_ios_only/              # the actual iOS app
-    ├── project.yml               # XcodeGen spec
-    ├── A3PocIOS.xcodeproj/       # generated
-    └── Sources/
-        ├── A3PocIOSApp.swift     # @main
-        ├── HomeView.swift        # navigation hub
-        └── *View.swift           # one per interview topic
-```
-
-### Current Topic Coverage
-
-| Topic | File | Status |
-|-------|------|--------|
-| GCD | `Sources/GCDView.swift` | ✅ |
-| OperationQueue | `Sources/OperationQueueView.swift` | ✅ |
-| Semaphores | `Sources/SemaphoreView.swift` | ✅ |
-| Locks | `Sources/LocksView.swift` | ✅ |
-| Structured Concurrency | `Sources/StructuredConcurrencyView.swift` | ✅ |
-| pthreads | `Sources/PThreadsView.swift` | ✅ |
-| Combine | `Sources/CombineView.swift` | ✅ |
-| Memory management / ARC | — | planned |
-| Networking / URLSession | — | planned |
-| Persistence (CoreData / SwiftData) | — | planned |
-| UIKit interop | — | planned |
-| Testing (XCTest) | — | planned |
-
-When adding a planned topic, follow `architecture.md` → "Adding a New Interview Topic".
-
----
-
 ## 🔧 TROUBLESHOOTING
 
 | Symptom | Cause | Solution |

@@ -5,64 +5,119 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>3.12. Understanding strong, weak, unowned</title>
 <style>
-body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
-.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
-  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
-.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
-.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
-.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
-.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
-.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
-  background-color:rgba(175,184,193,.2);border-radius:6px;
-  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
-  background-color:#f6f8fa;border-radius:6px}
-.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
-.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
-.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
-.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
-.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
-.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
-.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
-.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
-.markdown-body ul,.markdown-body ol{padding-left:2em}
-nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
-  border-bottom:1px solid #eaeef2;margin-bottom:24px}
-nav.breadcrumbs a{color:#0969da;text-decoration:none}
-nav.breadcrumbs a:hover{text-decoration:underline}
-ul.toc{list-style:none;padding:0}
-ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
-ul.toc li a{font-size:1.05em}
-.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
-  margin-left:8px;vertical-align:middle}
-.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
-  border-radius:4px;color:#7d4e00;font-size:90%}
-
-.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+pre { border-radius:8px; padding:1em; overflow-x:auto; font-size:0.88em; line-height:1.55; background:#f7f8fa; color:#1d1d1f; }
+pre code { background:none; padding:0; }
+.kw   { color:#ad3da4; font-weight:bold; }
+.type { color:#0b4f79; }
+.str  { color:#c41a16; }
+.num  { color:#1c00cf; }
+.cm   { color:#5d6c79; font-style:italic; }
+.attr { color:#643820; }
+@media (prefers-color-scheme:dark) {
+  pre { background:#1c1c1e; color:#e8e8e8; }
+  .kw { color:#fc5fa3; } .type { color:#5dd8ff; } .str { color:#fc6a5d; }
+  .num { color:#d0bf69; } .cm { color:#7f8c98; } .attr { color:#bf86c8; }
+}
+table { border-collapse:collapse; width:100%; margin:1em 0; }
+th,td { border:1px solid #ccc; padding:0.45em 0.7em; text-align:left; vertical-align:top; }
+th { background:#eef0f3; }
+@media (prefers-color-scheme:dark) { th { background:#2c2c2e; } td,th { border-color:#444; } }
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">3. Memory Management &amp; Runtime</a> › <a href="index.html">Topics</a></nav>
 <main>
 <h1>3.12. Understanding strong, weak, unowned</h1>
-<p>notes: </p>
+
+<h2>Strong (default)</h2>
+<p>Every reference is strong by default. A strong reference increments the object's retain count and keeps it alive as long as the reference exists. When you write <code>let x = MyClass()</code>, <code>x</code> is a strong reference.</p>
+<pre><code><span class="kw">class</span> <span class="type">User</span> { <span class="kw">var</span> name: <span class="type">String</span>; <span class="kw">init</span>(_ n: <span class="type">String</span>) { name = n } }
+
+<span class="kw">var</span> a: <span class="type">User</span>? = <span class="type">User</span>(<span class="str">"Alice"</span>)   <span class="cm">// refCount = 1</span>
+<span class="kw">var</span> b = a                        <span class="cm">// refCount = 2</span>
+a = <span class="kw">nil</span>                          <span class="cm">// refCount = 1 — object lives because b holds it</span>
+b = <span class="kw">nil</span>                          <span class="cm">// refCount = 0 → deinit → free</span></code></pre>
+
+<h2>Weak</h2>
+<p>A <code>weak</code> reference does <em>not</em> increment the retain count. It is always <code>Optional</code> and is automatically set to <code>nil</code> when the object it points to is deallocated. The runtime achieves this via the side table: it writes a pointer back from the object's side table entry to every weak variable, then zeroes them all during dealloc.</p>
+<pre><code><span class="kw">class</span> <span class="type">ViewController</span> {
+    <span class="kw">weak var</span> delegate: (<span class="kw">any</span> <span class="type">MyDelegate</span>)?   <span class="cm">// does NOT keep delegate alive</span>
+}
+
+<span class="kw">class</span> <span class="type">Presenter</span>: <span class="type">MyDelegate</span> {}
+
+<span class="kw">var</span> vc = <span class="type">ViewController</span>()
+<span class="kw">var</span> presenter: <span class="type">Presenter</span>? = <span class="type">Presenter</span>()
+vc.delegate = presenter            <span class="cm">// weak — no retain</span>
+presenter = <span class="kw">nil</span>                   <span class="cm">// Presenter deallocated</span>
+print(vc.delegate)                 <span class="cm">// nil — automatically zeroed</span></code></pre>
+
+<h2>Unowned</h2>
+<p>An <code>unowned</code> reference also does not increment the retain count, but it is <em>not</em> Optional. It assumes the referenced object is still alive when accessed. If it has been deallocated and you access an unowned reference, the program traps (<code>EXC_BAD_ACCESS</code>). Use it only when you can <em>guarantee</em> the referenced object outlives the reference holder.</p>
+<pre><code><span class="kw">class</span> <span class="type">CreditCard</span> {
+    <span class="kw">let</span> number: <span class="type">String</span>
+    <span class="kw">unowned let</span> customer: <span class="type">Customer</span>   <span class="cm">// card cannot exist without a customer</span>
+    <span class="kw">init</span>(number: <span class="type">String</span>, customer: <span class="type">Customer</span>) {
+        self.number = number
+        self.customer = customer
+    }
+}
+<span class="kw">class</span> <span class="type">Customer</span> {
+    <span class="kw">var</span> card: <span class="type">CreditCard</span>?
+}</code></pre>
+
+<h2>Decision matrix</h2>
+<table>
+<tr><th>Use</th><th>When</th><th>Type</th><th>After dealloc</th></tr>
+<tr><td><strong>strong</strong></td><td>Default; you own the object</td><td>Non-optional or Optional</td><td>Keeps it alive</td></tr>
+<tr><td><strong>weak</strong></td><td>Delegate, callback, parent back-reference where the other side could be nil</td><td>Must be <code>Optional</code></td><td>Auto-nil; safe to check</td></tr>
+<tr><td><strong>unowned</strong></td><td>Back-reference where referenced object is guaranteed to outlive the holder (parent–child, owner–action)</td><td>Non-optional</td><td>Crash (trap)</td></tr>
+</table>
+
+<h2>Closure capture lists</h2>
+<p>Closures capture variables strongly by default. Use a capture list to break cycles or control lifetime.</p>
+<pre><code><span class="kw">class</span> <span class="type">ViewModel</span> {
+    <span class="kw">var</span> onUpdate: (() -> <span class="type">Void</span>)?
+
+    <span class="kw">func</span> setup() {
+        <span class="cm">// ❌ Retain cycle: closure holds self strongly, self holds closure strongly</span>
+        onUpdate = {
+            self.refresh()
+        }
+
+        <span class="cm">// ✅ Weak: safe when ViewModel might be nil by the time closure runs</span>
+        onUpdate = { [<span class="kw">weak</span> self] <span class="kw">in</span>
+            self?.refresh()
+        }
+
+        <span class="cm">// ✅ Unowned: safe only when ViewModel is guaranteed alive during closure</span>
+        onUpdate = { [<span class="kw">unowned</span> self] <span class="kw">in</span>
+            self.refresh()
+        }
+    }
+
+    <span class="kw">func</span> refresh() {}
+}</code></pre>
+
+<h2>Weak + guard let pattern</h2>
+<p>When you capture <code>self</code> weakly in a closure, use <code>guard let self = self else { return }</code> to create a temporary strong reference for the duration of the closure's execution. This ensures the object isn't deallocated mid-closure while remaining safe if it was already gone when the closure fired.</p>
+<pre><code>onUpdate = { [<span class="kw">weak</span> self] <span class="kw">in</span>
+    <span class="kw">guard let</span> self <span class="kw">else</span> { <span class="kw">return</span> }   <span class="cm">// promote to strong for this scope</span>
+    self.refresh()
+    self.updateUI()                   <span class="cm">// self cannot be nil here</span>
+}</code></pre>
+
+<h2>Common patterns</h2>
+<table>
+<tr><th>Pattern</th><th>Reference type</th><th>Reason</th></tr>
+<tr><td>View → ViewModel</td><td>strong</td><td>View owns its ViewModel</td></tr>
+<tr><td>ViewModel → View (delegate/callback)</td><td>weak</td><td>View can be dismissed; ViewModel shouldn't keep it alive</td></tr>
+<tr><td>Child → Parent (owned lifecycle)</td><td>unowned</td><td>Child guaranteed not to outlive parent (e.g., CreditCard → Customer)</td></tr>
+<tr><td>Timer callback closure</td><td>weak self</td><td>Timer outlives ViewController; use weak to avoid leak</td></tr>
+<tr><td>URLSession completion</td><td>weak self</td><td>Network call may complete after VC is dismissed</td></tr>
+<tr><td>Lazy property using self</td><td>unowned self</td><td>Lazy init happens during self's lifetime; unowned is safe</td></tr>
+</table>
+
 </main>
 </body>
 </html>
