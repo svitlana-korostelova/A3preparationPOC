@@ -42,27 +42,107 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../../index.html">⌂ Knowledge Base</a> › <a href="../../index.html">2.2 UIKit</a> › <a href="../index.html">7. How to implement</a> › <a href="index.html">2.2.7.1. How to implement pull to refresh</a></nav>
 <main>
 <h1>2.2.7.1.1. How will you implement custom animation or do split view or do non-standard navigation bar?</h1>
-<p>notes:</p>
+<p>Rule: use the system component first and customize it through public API. Build from scratch only if the design cannot be done any other way.</p>
+
+<h2>1. Custom animation</h2>
+<ul>
+<li><strong>Property change</strong> on a view: <code>UIView.animate</code> or <code>UIViewPropertyAnimator</code> (pause, reverse, scrub).</li>
+<li><strong>Layer or shape</strong>: <code>CABasicAnimation</code> / <code>CAKeyframeAnimation</code> on a <code>CALayer</code> (see 2.2.4.2).</li>
+<li><strong>Between screens</strong>: set <code>transitioningDelegate</code> (modal) or the navigation controller's <code>delegate</code> (push), and return an object that conforms to <code>UIViewControllerAnimatedTransitioning</code>. Add <code>UIPercentDrivenInteractiveTransition</code> for gesture-driven back swipe (see 2.2.1.4).</li>
+</ul>
+<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">FadeScaleAnimator</span>: <span class="type">NSObject</span>, <span class="type">UIViewControllerAnimatedTransitioning</span> {
+    <span class="kw">func</span> transitionDuration(using ctx: <span class="type">UIViewControllerContextTransitioning</span>?) -&gt; <span class="type">TimeInterval</span> { <span class="num">0.35</span> }
+
+    <span class="kw">func</span> animateTransition(using ctx: <span class="type">UIViewControllerContextTransitioning</span>) {
+        <span class="kw">guard</span> <span class="kw">let</span> toView = ctx.view(forKey: .to) <span class="kw">else</span> { <span class="kw">return</span> }
+        ctx.containerView.addSubview(toView)
+        toView.alpha = <span class="num">0</span>
+        toView.transform = <span class="type">CGAffineTransform</span>(scaleX: <span class="num">0.9</span>, y: <span class="num">0.9</span>)
+
+        <span class="type">UIView</span>.animate(withDuration: transitionDuration(using: ctx), animations: {
+            toView.alpha = <span class="num">1</span>
+            toView.transform = .identity
+        }, completion: { _ <span class="kw">in</span>
+            ctx.completeTransition(!ctx.transitionWasCancelled) <span class="cm">// always call, or the UI freezes</span>
+        })
+    }
+}
+</code></pre></div>
+
+<h2>2. Split view</h2>
+<ul>
+<li>Use <code>UISplitViewController</code>. It collapses to one column on iPhone and compact width automatically.</li>
+<li>Since iOS 14 use the column API: <code>UISplitViewController(style: .doubleColumn)</code> or <code>.tripleColumn</code>, then <code>setViewController(_:for:)</code> for <code>.primary</code>, <code>.secondary</code>, <code>.compact</code>.</li>
+<li>Do not push the detail yourself. Call <code>show(.secondary)</code> and let the controller decide for each size class.</li>
+<li>Control the collapsed start screen with <code>splitViewController(_:topColumnForCollapsingToProposedTopColumn:)</code>, or the user sees an empty detail on iPhone.</li>
+<li>If the design is far from the system pattern, build your own container with child view controllers (see 2.2.1.6).</li>
+</ul>
+<div class="codehilite"><pre><code><span class="kw">let</span> split = <span class="type">UISplitViewController</span>(style: .doubleColumn)
+split.setViewController(<span class="type">UINavigationController</span>(rootViewController: <span class="type">ListViewController</span>()), <span class="kw">for</span>: .primary)
+split.setViewController(<span class="type">UINavigationController</span>(rootViewController: <span class="type">DetailViewController</span>()), <span class="kw">for</span>: .secondary)
+split.setViewController(<span class="type">UINavigationController</span>(rootViewController: <span class="type">ListViewController</span>()), <span class="kw">for</span>: .compact)
+split.preferredDisplayMode = .oneBesideSecondary
+split.preferredSplitBehavior = .tile
+</code></pre></div>
+
+<h2>3. Non-standard navigation bar</h2>
+<ul>
+<li><strong>Style only</strong> (colour, font, blur, no shadow): <code>UINavigationBarAppearance</code> with <code>standardAppearance</code>, <code>scrollEdgeAppearance</code>, <code>compactAppearance</code>. Set all of them, or the bar looks different at the top of a scroll view.</li>
+<li><strong>Custom content</strong>: <code>navigationItem.titleView</code>, <code>leftBarButtonItems</code>, <code>rightBarButtonItems</code> with <code>customView</code>.</li>
+<li><strong>Fully custom bar</strong>: hide the system bar (<code>setNavigationBarHidden(true, animated:)</code>) and add your own view. You lose the back swipe. Restore it as shown below.</li>
+<li><strong>Custom bar class</strong>: <code>UINavigationController(navigationBarClass:toolbarClass:)</code>.</li>
+</ul>
+<div class="codehilite"><pre><code><span class="kw">let</span> appearance = <span class="type">UINavigationBarAppearance</span>()
+appearance.configureWithTransparentBackground()
+appearance.titleTextAttributes = [.foregroundColor: <span class="type">UIColor</span>.label]
+navigationController?.navigationBar.standardAppearance = appearance
+navigationController?.navigationBar.scrollEdgeAppearance = appearance
+navigationController?.navigationBar.compactAppearance = appearance
+</code></pre></div>
+<p>Keep the back swipe when the system bar is hidden:</p>
+<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">AppNavigationController</span>: <span class="type">UINavigationController</span>, <span class="type">UIGestureRecognizerDelegate</span> {
+    <span class="kw">override</span> <span class="kw">func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
+        setNavigationBarHidden(<span class="kw">true</span>, animated: <span class="kw">false</span>)
+        interactivePopGestureRecognizer?.delegate = <span class="kw">self</span>
+    }
+
+    <span class="kw">func</span> gestureRecognizerShouldBegin(_ gestureRecognizer: <span class="type">UIGestureRecognizer</span>) -&gt; <span class="type">Bool</span> {
+        viewControllers.count &gt; <span class="num">1</span> <span class="cm">// on the root screen the swipe would freeze navigation</span>
+    }
+}
+</code></pre></div>
+
+<h2>Follow-up questions</h2>
+<ul>
+<li><strong>Why does the back swipe stop working with a custom bar or custom back button?</strong> The system pop gesture is tied to the standard bar and its delegate. Hiding the bar or replacing <code>leftBarButtonItem</code> disables it. Fix it with the delegate above.</li>
+<li><strong>Why do I need <code>completeTransition</code>?</strong> UIKit waits for it to finish the transition. Without it, the screen is stuck and gets no touches.</li>
+<li><strong>Why does the nav bar look different when I scroll?</strong> <code>scrollEdgeAppearance</code> is used at the top of the scroll view, <code>standardAppearance</code> after scrolling. Set both (and <code>compactAppearance</code>) to get the same look at every scroll position.</li>
+<li><strong>Custom bar view or system bar: which is better?</strong> System bar: Dynamic Type, large titles, accessibility, and iOS updates come free. Custom bar gives full design freedom but you own all of it. Prefer appearance API unless the design needs more.</li>
+</ul>
 </main>
 </body>
 </html>

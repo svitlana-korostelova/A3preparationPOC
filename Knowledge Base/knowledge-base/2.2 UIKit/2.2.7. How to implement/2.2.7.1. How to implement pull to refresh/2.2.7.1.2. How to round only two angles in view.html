@@ -42,114 +42,74 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../../index.html">⌂ Knowledge Base</a> › <a href="../../index.html">2.2 UIKit</a> › <a href="../index.html">7. How to implement</a> › <a href="index.html">2.2.7.1. How to implement pull to refresh</a></nav>
 <main>
 <h1>2.2.7.1.2. How to round only two angles in view?</h1>
-<ul>
-<li>
-<p>using <strong><code>CACornerMask</code></strong> with the view's layer</p>
-<p>```swift
-// Round only top corners
-view.layer.cornerRadius = 16
-view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]</p>
-<p>// Round only bottom corners<br />
-view.layer.cornerRadius = 16
-view.layer.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]</p>
-<p>// Round only left corners
-view.layer.cornerRadius = 16
+<p>Use <code>CALayer.maskedCorners</code> (iOS 11+). It works with <code>cornerRadius</code> and picks which corners get the radius.</p>
+<div class="codehilite"><pre><code><span class="cm">// Top corners only</span>
+view.layer.cornerRadius = <span class="num">16</span>
+view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+
+<span class="cm">// Bottom corners only</span>
+view.layer.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
+
+<span class="cm">// Left corners only</span>
 view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMinXMaxYCorner]
-```</p>
+
+view.layer.cornerCurve = .continuous <span class="cm">// smooth &quot;squircle&quot; like system UI</span>
+</code></pre></div>
 <ul>
-<li><strong><code>cornerRadius</code></strong> sets the radius size</li>
-<li><strong><code>maskedCorners</code></strong> specifies which corners to apply the radius to</li>
-<li>The layer automatically handles the clipping</li>
+<li><code>cornerRadius</code> sets the size. <code>maskedCorners</code> selects the corners. In UIKit, <code>MinY</code> is the <strong>top</strong> and <code>MinX</code> is the <strong>left</strong> (flipped coordinates).</li>
+<li><code>maskedCorners</code> only changes the shape of the layer's own background and border. To also <strong>clip subviews</strong> (for example an image), set <code>clipsToBounds = true</code> (<code>layer.masksToBounds</code>).</li>
 </ul>
-<p><strong>Common Use Cases</strong></p>
-<ul>
-<li><strong>Bottom sheets</strong>: Round top corners only</li>
-<li><strong>Table section headers</strong>: Round top corners of first cell</li>
-<li><strong>Card stacks</strong>: Round different corners for layered effect</li>
-</ul>
-<p><strong>Q: Why set <code>clipsToBounds = true</code> sometimes?</strong> A: When you have subviews extending beyond the rounded bounds. Though <strong><code>maskedCorners</code></strong> usually handles this automatically.</p>
-</li>
-<li>
-<p>Use <strong><code>UIPinchGestureRecognizer</code></strong> to detect pinch gestures and apply scale transformation to your view.</p>
-<p>```swift
-class ZoomableImageView: UIView {
-    private let imageView = UIImageView()
-    private var initialScale: CGFloat = 1.0</p>
-<div class="codehilite"><pre><span></span><code>override func awakeFromNib() {
-    super.awakeFromNib()
-    setupImageView()
-    setupPinchGesture()
-}
 
-private func setupImageView() {
-    imageView.contentMode = .scaleAspectFit
-    imageView.image = UIImage(named: &quot;photo&quot;)
-    addSubview(imageView)
-    imageView.frame = bounds
-}
+<h2>Older way: path + shape mask</h2>
+<p>Use it if you must support iOS 10 or need a custom shape. The mask path depends on the size, so update it in <code>layoutSubviews</code>.</p>
+<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">RoundedTopView</span>: <span class="type">UIView</span> {
+    <span class="kw">private</span> <span class="kw">let</span> maskLayer = <span class="type">CAShapeLayer</span>()
 
-private func setupPinchGesture() {
-    let pinchGesture = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
-    addGestureRecognizer(pinchGesture)
-}
-
-@objc private func handlePinch(_ gesture: UIPinchGestureRecognizer) {
-    switch gesture.state {
-    case .began:
-        initialScale = imageView.transform.a // Current scale
-    case .changed:
-        let scale = initialScale * gesture.scale
-        let clampedScale = min(max(scale, 0.5), 3.0) // Limit zoom: 0.5x to 3x
-        imageView.transform = CGAffineTransform(scaleX: clampedScale, y: clampedScale)
-    default:
-        break
+    <span class="kw">override</span> <span class="kw">func</span> layoutSubviews() {
+        <span class="kw">super</span>.layoutSubviews()
+        maskLayer.path = <span class="type">UIBezierPath</span>(roundedRect: bounds,
+                                      byRoundingCorners: [.topLeft, .topRight],
+                                      cornerRadii: <span class="type">CGSize</span>(width: <span class="num">16</span>, height: <span class="num">16</span>)).cgPath
+        layer.mask = maskLayer
     }
 }
 </code></pre></div>
 
-<p>}
-```</p>
-<p><strong>How It Works</strong></p>
-<ol>
-<li><strong>Gesture Detection</strong>: <strong><code>UIPinchGestureRecognizer</code></strong> tracks finger distance changes</li>
-<li><strong>Scale Calculation</strong>: <strong><code>gesture.scale</code></strong> provides zoom factor relative to gesture start</li>
-<li><strong>Transform Application</strong>: <strong><code>CGAffineTransform</code></strong> scales the view around its center</li>
-<li><strong>State Management</strong>: Store initial scale to maintain smooth continuous zooming</li>
-</ol>
+<h2>Common use cases</h2>
 <ul>
-<li>
-<p><strong>Practical Use Case</strong></p>
-<p><strong>Photo Gallery App</strong>: Users can zoom into photos to see details, zoom out for overview. Essential for examining image quality, reading text in photos, or focusing on specific areas.</p>
-</li>
-<li>
-<p><strong>Common Interview "Why" Questions</strong></p>
-<p><strong>Q: Why store <code>initialScale</code>?</strong> A: Without it, each gesture would reset to 1x scale. We need cumulative scaling across multiple pinch gestures.</p>
-<p><strong>Q: Why clamp the scale values?</strong> A: Prevents unusable zoom levels - too small makes content invisible, too large causes performance issues and poor UX.</p>
-<p><strong>Q: Why use <code>transform.a</code> for current scale?</strong> A: <strong><code>transform.a</code></strong> represents the x-axis scaling factor in the transformation matrix, giving us the current zoom level.</p>
-<p><strong>Q: Why not use <code>UIScrollView</code> instead?</strong> A: <strong><code>UIScrollView</code></strong> is better for complex zoom with panning, but custom implementation gives more control over zoom behavior and visual feedback.</p>
-</li>
+<li><strong>Bottom sheets</strong>: round the top corners.</li>
+<li><strong>Grouped table sections</strong>: round the top corners of the first cell and the bottom corners of the last cell.</li>
+<li><strong>Cards or chat bubbles</strong>: round different corners for a "tail" effect.</li>
 </ul>
-</li>
+
+<h2>Follow-up questions</h2>
+<ul>
+<li><strong>Why is my shadow cut when I round corners and clip?</strong> <code>masksToBounds</code> clips everything outside the bounds, including the layer's own shadow. Use two views: an outer view with the shadow (set <code>shadowPath</code>) and an inner view with the corners and clipping.</li>
+<li><strong>Why prefer <code>maskedCorners</code> over a mask layer?</strong> It needs no path updates on resize, and it avoids an extra mask layer that can cause off-screen rendering.</li>
+<li><strong>Can <code>cornerRadius</code> alone clip subviews?</strong> No. It only rounds the layer's own background and border. Clipping needs <code>masksToBounds</code> (which can trigger off-screen rendering when combined with other effects).</li>
 </ul>
 </main>
 </body>

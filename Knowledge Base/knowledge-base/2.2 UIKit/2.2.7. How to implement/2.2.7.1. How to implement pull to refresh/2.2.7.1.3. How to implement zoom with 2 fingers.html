@@ -42,27 +42,105 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../../index.html">⌂ Knowledge Base</a> › <a href="../../index.html">2.2 UIKit</a> › <a href="../index.html">7. How to implement</a> › <a href="index.html">2.2.7.1. How to implement pull to refresh</a></nav>
 <main>
 <h1>2.2.7.1.3. How to implement zoom with 2 fingers?</h1>
+<p>Two options. Use <code>UIScrollView</code> when the user must zoom <em>and</em> pan (photos, maps, documents). Use <code>UIPinchGestureRecognizer</code> when you need only a simple scale on one view.</p>
 
+<h2>Option 1: UIScrollView (recommended)</h2>
+<p>It gives pinch, pan, bounce, and min/max limits for free.</p>
+<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">PhotoViewController</span>: <span class="type">UIViewController</span>, <span class="type">UIScrollViewDelegate</span> {
+    <span class="kw">private</span> <span class="kw">let</span> scrollView = <span class="type">UIScrollView</span>()
+    <span class="kw">private</span> <span class="kw">let</span> imageView = <span class="type">UIImageView</span>(image: <span class="type">UIImage</span>(named: <span class="str">&quot;photo&quot;</span>))
+
+    <span class="kw">override</span> <span class="kw">func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
+        scrollView.frame = view.bounds
+        scrollView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        scrollView.minimumZoomScale = <span class="num">1</span>
+        scrollView.maximumZoomScale = <span class="num">4</span>
+        scrollView.delegate = <span class="kw">self</span>
+        view.addSubview(scrollView)
+
+        imageView.contentMode = .scaleAspectFit
+        imageView.frame = scrollView.bounds
+        scrollView.addSubview(imageView)
+        scrollView.contentSize = imageView.bounds.size
+
+        <span class="kw">let</span> doubleTap = <span class="type">UITapGestureRecognizer</span>(target: <span class="kw">self</span>, action: #selector(toggleZoom(_:)))
+        doubleTap.numberOfTapsRequired = <span class="num">2</span>
+        scrollView.addGestureRecognizer(doubleTap)
+    }
+
+    <span class="kw">func</span> viewForZooming(<span class="kw">in</span> scrollView: <span class="type">UIScrollView</span>) -&gt; <span class="type">UIView</span>? { imageView } <span class="cm">// the view to scale</span>
+
+    <span class="attr">@objc</span> <span class="kw">private</span> <span class="kw">func</span> toggleZoom(_ gesture: <span class="type">UITapGestureRecognizer</span>) {
+        <span class="kw">let</span> target: <span class="type">CGFloat</span> = scrollView.zoomScale &gt; <span class="num">1</span> ? <span class="num">1</span> : <span class="num">2.5</span>
+        scrollView.setZoomScale(target, animated: <span class="kw">true</span>)
+    }
+}
+</code></pre></div>
+
+<p>Frames are set once to keep the example short. For rotation support, pin the image view with Auto Layout to <code>contentLayoutGuide</code> and size it with <code>frameLayoutGuide</code>.</p>
+
+<h2>Option 2: UIPinchGestureRecognizer</h2>
+<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">ZoomableView</span>: <span class="type">UIView</span> {
+    <span class="kw">private</span> <span class="kw">var</span> startScale: <span class="type">CGFloat</span> = <span class="num">1</span>
+
+    <span class="kw">override</span> <span class="kw">init</span>(frame: <span class="type">CGRect</span>) {
+        <span class="kw">super</span>.<span class="kw">init</span>(frame: frame)
+        addGestureRecognizer(<span class="type">UIPinchGestureRecognizer</span>(target: <span class="kw">self</span>, action: #selector(handlePinch(_:))))
+    }
+
+    required <span class="kw">init</span>?(coder: <span class="type">NSCoder</span>) { fatalError(<span class="str">&quot;init(coder:) has not been implemented&quot;</span>) }
+
+    <span class="attr">@objc</span> <span class="kw">private</span> <span class="kw">func</span> handlePinch(_ gesture: <span class="type">UIPinchGestureRecognizer</span>) {
+        <span class="kw">switch</span> gesture.state {
+        <span class="kw">case</span> .began:
+            startScale = transform.a <span class="cm">// current scale</span>
+        <span class="kw">case</span> .changed:
+            <span class="kw">let</span> scale = min(max(startScale * gesture.scale, <span class="num">0.5</span>), <span class="num">3</span>) <span class="cm">// limit 0.5x...3x</span>
+            transform = <span class="type">CGAffineTransform</span>(scaleX: scale, y: scale)
+        <span class="kw">default</span>:
+            <span class="kw">break</span>
+        }
+    }
+}
+</code></pre></div>
+<ol>
+<li><strong>Detect</strong>: <code>UIPinchGestureRecognizer</code> reports <code>scale</code> (relative to the gesture start) and <code>velocity</code>.</li>
+<li><strong>Apply</strong>: <code>CGAffineTransform(scaleX:y:)</code> scales the view around its centre.</li>
+<li><strong>Keep state</strong>: save the scale at <code>.began</code>, because <code>gesture.scale</code> starts from 1 on every new pinch.</li>
+</ol>
+
+<h2>Follow-up questions</h2>
+<ul>
+<li><strong>Why do I need <code>startScale</code>?</strong> Each pinch starts with <code>gesture.scale == 1</code>. Without a saved start value, the view jumps back to 1x on the next pinch.</li>
+<li><strong>Why does my zoom not follow my fingers?</strong> A transform scales around the view's centre. To zoom at the pinch point, set the layer's <code>anchorPoint</code> to the pinch location in <code>.began</code> and fix <code>position</code> so the view does not jump. <code>UIScrollView</code> does this for you.</li>
+<li><strong>How do I add rotation too?</strong> Add a <code>UIRotationGestureRecognizer</code> and allow both with <code>gestureRecognizer(_:shouldRecognizeSimultaneouslyWith:)</code> returning <code>true</code>. Then <code>transform.a</code> is no longer the pure scale.</li>
+<li><strong>Why is the scroll view image blurry when zoomed?</strong> A transform stretches the bitmap. For sharp zoom, load a bigger image or use <code>CATiledLayer</code> for very large images.</li>
+<li><strong>How is pinch zoom done in SwiftUI?</strong> <code>MagnifyGesture</code> (iOS 17; <code>MagnificationGesture</code> before) with <code>.scaleEffect</code>, plus a saved base scale.</li>
+</ul>
 </main>
 </body>
 </html>

@@ -42,27 +42,100 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../../index.html">⌂ Knowledge Base</a> › <a href="../../index.html">2.2 UIKit</a> › <a href="../index.html">6. Advanced topics</a> › <a href="index.html">2.2.6.1. Decision process: how to develop UI on a new project</a></nav>
 <main>
 <h1>2.2.6.1.2. How do you implement state restoration in a UIKit app?</h1>
+<p><strong>State restoration</strong> brings the user back to the same screen after the system killed the app in the background. It is not a cache for data. Save only <em>where the user was</em>: IDs, selected tab, scroll position, draft text. Load the real data again from your store.</p>
 
+<h2>Modern way (iOS 13+, scenes)</h2>
+<ul>
+<li>When a scene goes to the background, UIKit calls <code>stateRestorationActivity(for:)</code> on your scene delegate. Return an <code>NSUserActivity</code> that holds a small <code>userInfo</code> dictionary.</li>
+<li>UIKit saves it in <code>UISceneSession.stateRestorationActivity</code>.</li>
+<li>On next launch, read it in <code>scene(_:willConnectTo:options:)</code> and rebuild the navigation stack.</li>
+<li>UIKit asks for it every time the scene goes to the background, so return the <em>current</em> state each time.</li>
+</ul>
+<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">SceneDelegate</span>: <span class="type">UIResponder</span>, <span class="type">UIWindowSceneDelegate</span> {
+    <span class="kw">var</span> window: <span class="type">UIWindow</span>?
+
+    <span class="kw">func</span> scene(_ scene: <span class="type">UIScene</span>,
+               willConnectTo session: <span class="type">UISceneSession</span>,
+               options connectionOptions: <span class="type">UIScene</span>.<span class="type">ConnectionOptions</span>) {
+        <span class="kw">guard</span> <span class="kw">let</span> windowScene = scene <span class="kw">as</span>? <span class="type">UIWindowScene</span> <span class="kw">else</span> { <span class="kw">return</span> }
+        <span class="kw">let</span> root = <span class="type">RootTabBarController</span>()
+        <span class="kw">let</span> window = <span class="type">UIWindow</span>(windowScene: windowScene)
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        <span class="kw">self</span>.window = window
+
+        <span class="kw">if</span> <span class="kw">let</span> activity = session.stateRestorationActivity {
+            root.restore(from: activity)
+        }
+    }
+
+    <span class="kw">func</span> stateRestorationActivity(<span class="kw">for</span> scene: <span class="type">UIScene</span>) -&gt; <span class="type">NSUserActivity</span>? {
+        (window?.rootViewController <span class="kw">as</span>? <span class="type">RootTabBarController</span>)?.makeRestorationActivity()
+    }
+}
+
+<span class="kw">extension</span> <span class="type">RootTabBarController</span> {
+    <span class="kw">static</span> <span class="kw">let</span> activityType = <span class="str">&quot;com.example.app.restoration&quot;</span>
+
+    <span class="kw">func</span> makeRestorationActivity() -&gt; <span class="type">NSUserActivity</span> {
+        <span class="kw">let</span> activity = <span class="type">NSUserActivity</span>(activityType: <span class="kw">Self</span>.activityType)
+        activity.userInfo = [<span class="str">&quot;tab&quot;</span>: selectedIndex, <span class="str">&quot;orderID&quot;</span>: currentOrderID ?? <span class="str">&quot;&quot;</span>]
+        <span class="kw">return</span> activity
+    }
+
+    <span class="kw">func</span> restore(from activity: <span class="type">NSUserActivity</span>) {
+        <span class="kw">guard</span> activity.activityType == <span class="kw">Self</span>.activityType <span class="kw">else</span> { <span class="kw">return</span> }
+        selectedIndex = activity.userInfo?[<span class="str">&quot;tab&quot;</span>] <span class="kw">as</span>? <span class="type">Int</span> ?? <span class="num">0</span>
+        <span class="kw">if</span> <span class="kw">let</span> id = activity.userInfo?[<span class="str">&quot;orderID&quot;</span>] <span class="kw">as</span>? <span class="type">String</span>, !id.isEmpty {
+            showOrder(id: id) <span class="cm">// push the detail screen, then load data by ID</span>
+        }
+    }
+}
+</code></pre></div>
+
+<h2>Legacy way (iOS 6–12, app delegate)</h2>
+<ul>
+<li>Set <code>restorationIdentifier</code> on every view controller in the path. Without it, that branch is skipped.</li>
+<li>Opt in with <code>application(_:shouldSaveSecureApplicationState:)</code> and <code>application(_:shouldRestoreSecureApplicationState:)</code>.</li>
+<li>Override <code>encodeRestorableState(with:)</code> and <code>decodeRestorableState(with:)</code> in each controller. Call <code>super</code>.</li>
+<li>Controllers made in code need <code>UIViewControllerRestoration</code> or <code>application(_:viewControllerWithRestorationIdentifierPath:coder:)</code>.</li>
+<li>Use it only when you must support old iOS. Scenes and <code>NSUserActivity</code> are the current path.</li>
+</ul>
+
+<h2>SwiftUI</h2>
+<p><code>@SceneStorage</code> saves small values per scene and restores them automatically. It is the same idea with less code. In a UIKit + SwiftUI app, one place should own restoration, to avoid two sources of truth.</p>
+
+<h2>Follow-up questions</h2>
+<ul>
+<li><strong>When is state <em>not</em> restored?</strong> When the user force-quits the app from the app switcher (the system drops the saved state), after a crash on launch, after a reboot or a long time, or when the app version changed and you chose to ignore old state.</li>
+<li><strong>How is it different from handoff or deep links?</strong> They use <code>NSUserActivity</code> too, but come from outside and carry intent ("open order 42"). Restoration is internal and carries position. Keep one routing function that both can call.</li>
+<li><strong>What must you not put in the saved state?</strong> Large models, images, secrets (tokens, passwords). The state is saved to disk and must stay small, or launch gets slow.</li>
+<li><strong>How do you test it?</strong> Run the app, go deep, press Home, stop from Xcode, then run again <em>from the home screen</em> (not from Xcode). Stopping from Xcode keeps the state. Force-quitting from the app switcher drops it.</li>
+<li><strong>What if the saved ID no longer exists?</strong> Validate on restore, fall back to the root screen, and never crash on a missing object.</li>
+</ul>
 </main>
 </body>
 </html>

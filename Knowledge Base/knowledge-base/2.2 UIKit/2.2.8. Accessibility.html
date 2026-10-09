@@ -42,27 +42,130 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../index.html">⌂ Knowledge Base</a> › <a href="index.html">2.2 UIKit</a></nav>
 <main>
 <h1>2.2.8. Accessibility</h1>
+<p>Accessibility (a11y) means everyone can use the app: blind or low-vision users, users with motor limits, deaf users, and users who just prefer large text. UIKit gives most of it through standard controls. Your job is to <strong>give correct information</strong> to custom views and <strong>not break</strong> the system settings.</p>
 
+<h2>System features to support</h2>
+<table>
+<tr><th>Feature</th><th>What it does</th><th>What you do</th></tr>
+<tr><td>VoiceOver</td><td>Screen reader. Reads <code>label</code>, <code>value</code>, <code>traits</code>, <code>hint</code>.</td><td>Set accessibility properties, control reading order.</td></tr>
+<tr><td>Dynamic Type</td><td>User-chosen text size (up to AX5).</td><td>Use text styles, <code>adjustsFontForContentSizeCategory</code>, flexible layout.</td></tr>
+<tr><td>Voice Control / Switch Control</td><td>Control the app by voice or with a switch.</td><td>Good labels, real controls, reachable actions.</td></tr>
+<tr><td>Reduce Motion / Prefer Cross-Fade</td><td>Less movement.</td><td>Check <code>UIAccessibility.isReduceMotionEnabled</code>; swap parallax or zoom for fade.</td></tr>
+<tr><td>Increase Contrast, Bold Text, Reduce Transparency, Differentiate Without Color</td><td>Visual help.</td><td>Use semantic system colours; never use colour as the only signal.</td></tr>
+</table>
+
+<h2>Key API (UIAccessibility)</h2>
+<ul>
+<li><code>isAccessibilityElement</code>: <code>true</code> makes a view reachable. Standard controls are already <code>true</code>; plain <code>UIView</code> and container views are <code>false</code>.</li>
+<li><code>accessibilityLabel</code>: short name of the thing, "Play". No role word ("button"), no punctuation games.</li>
+<li><code>accessibilityValue</code>: current state, "50 percent", "On".</li>
+<li><code>accessibilityHint</code>: result of the action, only when it is not obvious: "Opens the settings".</li>
+<li><code>accessibilityTraits</code>: role and state: <code>.button</code>, <code>.header</code>, <code>.selected</code>, <code>.adjustable</code>, <code>.notEnabled</code>.</li>
+<li><code>accessibilityIdentifier</code>: <strong>not</strong> read by VoiceOver. Only for UI tests.</li>
+<li><code>accessibilityElements</code>: set the order and group of children in a container. <code>accessibilityCustomActions</code>: extra actions in the VoiceOver rotor. <code>accessibilityViewIsModal</code>: hide everything behind a custom popup.</li>
+</ul>
+
+<h2>Example: table cell</h2>
+<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">ProductCell</span>: <span class="type">UITableViewCell</span> {
+    <span class="kw">let</span> titleLabel = <span class="type">UILabel</span>()
+    <span class="kw">let</span> priceLabel = <span class="type">UILabel</span>()
+    <span class="kw">let</span> iconView = <span class="type">UIImageView</span>()
+    <span class="kw">var</span> onFavorite: (() -&gt; <span class="type">Void</span>)?
+
+    <span class="kw">func</span> configure(title: <span class="type">String</span>, price: <span class="type">String</span>) {
+        titleLabel.text = title
+        priceLabel.text = price
+        titleLabel.font = .preferredFont(forTextStyle: .headline)
+        titleLabel.adjustsFontForContentSizeCategory = <span class="kw">true</span>
+        titleLabel.numberOfLines = <span class="num">0</span> <span class="cm">// grow with big text</span>
+
+        iconView.isAccessibilityElement = <span class="kw">false</span> <span class="cm">// decorative</span>
+
+        isAccessibilityElement = <span class="kw">true</span> <span class="cm">// one swipe for the whole cell, not three</span>
+        accessibilityLabel = <span class="str">&quot;\(title), \(price)&quot;</span>
+        accessibilityTraits = .button
+        accessibilityCustomActions = [
+            <span class="type">UIAccessibilityCustomAction</span>(name: <span class="str">&quot;Add to favorites&quot;</span>) { [<span class="kw">weak</span> <span class="kw">self</span>] _ <span class="kw">in</span>
+                <span class="kw">self</span>?.onFavorite?()
+                <span class="kw">return</span> <span class="kw">true</span>
+            }
+        ]
+    }
+}
+</code></pre></div>
+
+<h2>Dynamic Type</h2>
+<div class="codehilite"><pre><code><span class="cm">// System font: automatic</span>
+label.font = .preferredFont(forTextStyle: .body)
+label.adjustsFontForContentSizeCategory = <span class="kw">true</span>
+
+<span class="cm">// Custom font: scale it</span>
+<span class="kw">let</span> base = <span class="type">UIFont</span>(name: <span class="str">&quot;Avenir-Medium&quot;</span>, size: <span class="num">16</span>)!
+label.font = <span class="type">UIFontMetrics</span>(forTextStyle: .body).scaledFont(<span class="kw">for</span>: base)
+
+<span class="cm">// Switch to vertical layout when text is very large</span>
+registerForTraitChanges([<span class="type">UITraitPreferredContentSizeCategory</span>.<span class="kw">self</span>]) { (<span class="kw">self</span>: <span class="kw">Self</span>, _) <span class="kw">in</span>
+    <span class="kw">self</span>.stackView.axis = <span class="kw">self</span>.traitCollection.preferredContentSizeCategory.isAccessibilityCategory
+        ? .vertical : .horizontal
+}
+</code></pre></div>
+
+<h2>Announce changes</h2>
+<div class="codehilite"><pre><code><span class="type">UIAccessibility</span>.post(notification: .announcement, argument: <span class="str">&quot;Upload finished&quot;</span>)  <span class="cm">// spoken message</span>
+<span class="type">UIAccessibility</span>.post(notification: .layoutChanged, argument: errorLabel)        <span class="cm">// part of screen changed, move focus</span>
+<span class="type">UIAccessibility</span>.post(notification: .screenChanged, argument: <span class="kw">nil</span>)               <span class="cm">// new screen shown</span>
+</code></pre></div>
+
+<h2>Tools</h2>
+<ul>
+<li><strong>Accessibility Inspector</strong> (Xcode → Open Developer Tool): inspect labels and traits, run an audit, change text size on Simulator.</li>
+<li><strong>VoiceOver on a real device</strong>: the only real test. Use Accessibility Shortcut (triple-click the side button).</li>
+<li><strong>Automated audit</strong> in UI tests: <code>try app.performAccessibilityAudit()</code> (Xcode 15+) finds missing labels, small hit areas, clipped text, low contrast.</li>
+<li><strong>Environment Overrides</strong> in the Xcode debug bar: text size, contrast, bold text.</li>
+</ul>
+
+<h2>Checklist</h2>
+<ul>
+<li>Every interactive element has a label and the right trait.</li>
+<li>Touch target at least 44×44 pt.</li>
+<li>Reading order follows the visual order. Group related items (cell, card).</li>
+<li>Text scales; nothing is cut at the largest size.</li>
+<li>Information is not given by colour alone. Contrast is at least 4.5:1 for normal text.</li>
+<li>Animations respect Reduce Motion.</li>
+</ul>
+
+<h2>Follow-up questions</h2>
+<ul>
+<li><strong>Label vs hint vs identifier?</strong> Label is <em>what it is</em>, hint is <em>what happens</em>, identifier is for tests and is silent.</li>
+<li><strong>How do you make a custom-drawn view accessible?</strong> Set <code>isAccessibilityElement = true</code> with label, value, and traits. If it has several parts (a chart), set <code>accessibilityElements</code> to a list of <code>UIAccessibilityElement</code> objects, each with its own <code>accessibilityFrameInContainerSpace</code>.</li>
+<li><strong>How do you build a custom slider or stepper?</strong> Add the <code>.adjustable</code> trait and implement <code>accessibilityIncrement()</code> and <code>accessibilityDecrement()</code>. Update <code>accessibilityValue</code>.</li>
+<li><strong>A custom popup is open, but VoiceOver reads the screen behind it. Why?</strong> Set <code>accessibilityViewIsModal = true</code> on the popup, and post <code>.screenChanged</code> or <code>.layoutChanged</code> with the popup as argument.</li>
+<li><strong>How do you hide something from VoiceOver?</strong> For one decorative view, set <code>isAccessibilityElement = false</code>. For a whole subtree, set <code>accessibilityElementsHidden = true</code> on the container.</li>
+<li><strong>How do you react when the user changes text size while the screen is open?</strong> Labels with <code>adjustsFontForContentSizeCategory</code> update by themselves. For layout changes, observe the trait <code>UITraitPreferredContentSizeCategory</code> (iOS 17+) or <code>traitCollectionDidChange</code> (older).</li>
+</ul>
 </main>
 </body>
 </html>

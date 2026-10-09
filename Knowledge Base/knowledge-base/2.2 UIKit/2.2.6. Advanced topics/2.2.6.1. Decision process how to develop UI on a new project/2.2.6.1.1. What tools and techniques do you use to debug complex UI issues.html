@@ -42,27 +42,99 @@ ul.toc li a{font-size:1.05em}
   border-radius:4px;color:#7d4e00;font-size:90%}
 
 .codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
-.codehilite .hll{background-color:#ffffcc}
-.codehilite .c,.codehilite .ch,.codehilite .cm,.codehilite .cp,.codehilite .c1,.codehilite .cs{color:#6a737d;font-style:italic}
-.codehilite .err{color:#a61717;background-color:#e3d2d2}
-.codehilite .k,.codehilite .kc,.codehilite .kd,.codehilite .kn,.codehilite .kr,.codehilite .kt{color:#d73a49;font-weight:bold}
-.codehilite .kp{color:#d73a49}
-.codehilite .o,.codehilite .ow{color:#005cc5}
-.codehilite .nb{color:#005cc5}
-.codehilite .nc,.codehilite .nn{color:#6f42c1;font-weight:bold}
-.codehilite .nf{color:#6f42c1}
-.codehilite .s,.codehilite .s1,.codehilite .s2,.codehilite .sb,.codehilite .sc,.codehilite .sd,.codehilite .se,.codehilite .sh,.codehilite .si,.codehilite .sx,.codehilite .sr,.codehilite .ss{color:#032f62}
-.codehilite .m,.codehilite .mb,.codehilite .mf,.codehilite .mh,.codehilite .mi,.codehilite .mo,.codehilite .il{color:#005cc5}
-.codehilite .na{color:#22863a}
-.codehilite .nt{color:#22863a}
-.codehilite .nv{color:#e36209}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
 </style>
 </head>
 <body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../../index.html">⌂ Knowledge Base</a> › <a href="../../index.html">2.2 UIKit</a> › <a href="../index.html">6. Advanced topics</a> › <a href="index.html">2.2.6.1. Decision process: how to develop UI on a new project</a></nav>
 <main>
 <h1>2.2.6.1.1. What tools and techniques do you use to debug complex UI issues?</h1>
+<p>Work in this order: <strong>reproduce → isolate → inspect → fix → verify</strong>. Pick the tool by symptom.</p>
+<table>
+<tr><th>Symptom</th><th>Tool</th></tr>
+<tr><td>View is missing, wrong size, or clipped</td><td>Xcode <strong>View Debugger</strong> (Debug View Hierarchy)</td></tr>
+<tr><td>"Unable to simultaneously satisfy constraints"</td><td>Console log + symbolic breakpoint + constraint identifiers</td></tr>
+<tr><td>Scrolling or animation lags</td><td>Instruments: <strong>Animation Hitches</strong>, <strong>Time Profiler</strong>; Simulator colour debug options</td></tr>
+<tr><td>Tap goes to the wrong view</td><td>View Debugger + logging in <code>hitTest(_:with:)</code>; print the responder chain</td></tr>
+<tr><td>Screen never deallocates</td><td>Memory Graph Debugger, <code>deinit</code> log</td></tr>
+<tr><td>UI update from background thread</td><td>Main Thread Checker (on by default), purple runtime warnings</td></tr>
+<tr><td>Breaks with big fonts, dark mode, other languages</td><td>Xcode environment overrides, pseudo-languages, Accessibility Inspector</td></tr>
+</table>
 
+<h2>1. View Debugger</h2>
+<ul>
+<li>Shows the view hierarchy as 3D layers. Check <code>frame</code>, <code>alpha</code>, <code>isHidden</code>, <code>clipsToBounds</code>, and constraints in the inspector.</li>
+<li>Turn on <strong>Show Clipped Content</strong> to see views cut off by a parent.</li>
+<li>Turn on <strong>Show Constraints</strong> to see which constraints belong to a view.</li>
+<li>Issue navigator lists ambiguous or missing layout.</li>
+</ul>
+
+<h2>2. Auto Layout problems</h2>
+<ul>
+<li>Set <code>identifier</code> on constraints. The console log then shows names, not addresses.</li>
+<li>Add a symbolic breakpoint on <code>UIViewAlertForUnsatisfiableConstraints</code> to stop at the moment of conflict.</li>
+<li>Ambiguous layout (not enough constraints) gives no log. Use <code>view.hasAmbiguousLayout</code> and <code>view.constraintsAffectingLayout(for:)</code>.</li>
+</ul>
+
+<h2>3. LLDB: inspect and change the UI live</h2>
+<div class="codehilite"><pre><code>(lldb) expr -l objc -O -- [[[UIApplication sharedApplication] keyWindow] recursiveDescription]
+(lldb) expr -l objc -O -- [[[UIApplication sharedApplication] keyWindow] _autolayoutTrace]
+(lldb) po view.next                       // walk the responder chain
+(lldb) e view.backgroundColor = .red      // change a value without a rebuild
+(lldb) e CATransaction.flush()            // force the screen to redraw
+</code></pre></div>
+<p><code>recursiveDescription</code> and <code>_autolayoutTrace</code> are private. Use them only while debugging, never in shipped code.</p>
+
+<h2>4. Quick visual helper</h2>
+<div class="codehilite"><pre><code>#<span class="kw">if</span> <span class="type">DEBUG</span>
+<span class="kw">extension</span> <span class="type">UIView</span> {
+    <span class="kw">func</span> debugBorders(_ color: <span class="type">UIColor</span> = .systemRed) {
+        layer.borderColor = color.cgColor
+        layer.borderWidth = <span class="num">1</span>
+        subviews.forEach { $<span class="num">0</span>.debugBorders(color) }
+    }
+}
+#endif
+</code></pre></div>
+
+<h2>5. Performance</h2>
+<ul>
+<li>Simulator → <strong>Debug</strong> menu: <em>Color Blended Layers</em> (red = transparent views, GPU blends them), <em>Color Off-screen Rendered</em> (yellow), <em>Color Misaligned Images</em>.</li>
+<li>Common off-screen causes: <code>cornerRadius</code> + <code>masksToBounds</code>, shadow without <code>shadowPath</code>, <code>layer.mask</code>, <code>shouldRasterize</code> misuse.</li>
+<li>Instruments <strong>Animation Hitches</strong> shows which frames missed the deadline (16.6 ms at 60 Hz, 8.3 ms at 120 Hz). <strong>Time Profiler</strong> shows what the main thread did in that time.</li>
+<li>Always profile on a real device, in Release build.</li>
+</ul>
+
+<h2>6. Environment checks</h2>
+<ul>
+<li>Xcode debug bar → <strong>Environment Overrides</strong>: Dynamic Type size, dark mode, Increase Contrast, and more, without leaving the app.</li>
+<li>Scheme options: <strong>Double-Length Pseudo-language</strong> and <strong>Right-to-Left Pseudo-language</strong> test long text and RTL layout.</li>
+<li>Test on the smallest and the largest device, in both orientations, with Split View on iPad.</li>
+</ul>
+
+<h2>Follow-up questions</h2>
+<ul>
+<li><strong>A view is in the hierarchy but not visible. What do you check?</strong> <code>isHidden</code> and <code>alpha</code>; zero-size frame (missing constraints, or <code>translatesAutoresizingMaskIntoConstraints</code> still <code>true</code>); parent with <code>clipsToBounds</code> and the view is outside its bounds; another view covering it; wrong superview.</li>
+<li><strong>How do you find which constraint to break in a conflict?</strong> The system breaks one constraint to recover, and it is not always the wrong one. Read the whole list, compare priorities (<code>.required</code> is 1000), then lower the one that should be flexible, for example to <code>.defaultHigh</code>.</li>
+<li><strong>Why does the app hang only in Release?</strong> Release is optimized and Debug is slower, so timing differs. Always profile a Release build on a real device.</li>
+<li><strong>How do you find a leaking view controller?</strong> Add <code>deinit { print("deinit \(Self.self)") }</code>, pop the screen, and check the log. If it is missing, open the Memory Graph and follow the strong reference (often a closure or a delegate not marked <code>weak</code>).</li>
+</ul>
 </main>
 </body>
 </html>
