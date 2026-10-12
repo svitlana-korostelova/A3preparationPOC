@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>2.2.7.1.2. How to round only two angles in view?</title>
+<title>2.2.7.4. How to round only two angles in view?</title>
 <style>
 body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
@@ -62,9 +62,9 @@ ul.toc li a{font-size:1.05em}
 </style>
 </head>
 <body class="markdown-body">
-<nav class="breadcrumbs"><a href="../../../index.html">⌂ Knowledge Base</a> › <a href="../../index.html">2.2 UIKit</a> › <a href="../index.html">7. How to implement</a> › <a href="index.html">2.2.7.1. How to implement pull to refresh</a></nav>
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.7. How to implement</a></nav>
 <main>
-<h1>2.2.7.1.2. How to round only two angles in view?</h1>
+<h1>2.2.7.4. How to round only two angles in view?</h1>
 <p>Use <code>CALayer.maskedCorners</code> (iOS 11+). It works with <code>cornerRadius</code> and picks which corners get the radius.</p>
 <div class="codehilite"><pre><code><span class="cm">// Top corners only</span>
 view.layer.cornerRadius = <span class="num">16</span>

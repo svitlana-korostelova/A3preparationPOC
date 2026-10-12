@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.2.7.6. How to implement pull to refresh?</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.7. How to implement</a></nav>
+<main>
+<h1>2.2.7.6. How to implement pull to refresh?</h1>
+<p>Use <code>UIRefreshControl</code> (iOS 6+). Since iOS 10 every <code>UIScrollView</code> (table, collection, plain scroll view) has a <code>refreshControl</code> property. UIKit handles the pull gesture, the spinner and the bounce-back for you.</p>
+
+<h2>Basic example (UITableView + async/await)</h2>
+<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">FeedViewController</span>: <span class="type">UITableViewController</span> {
+    <span class="kw">private var</span> items: [<span class="type">String</span>] = []
+    <span class="kw">private var</span> refreshTask: <span class="type">Task</span>&lt;<span class="type">Void</span>, <span class="type">Never</span>&gt;?
+
+    <span class="kw">override func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
+        tableView.refreshControl = <span class="type">UIRefreshControl</span>()
+        tableView.refreshControl?.addTarget(<span class="kw">self</span>,
+                                            action: <span class="kw">#selector</span>(handleRefresh),
+                                            for: .valueChanged)
+    }
+
+    <span class="attr">@objc</span> <span class="kw">private func</span> handleRefresh() {
+        refreshTask?.cancel()
+        refreshTask = <span class="type">Task</span> { <span class="attr">@MainActor in</span>
+            <span class="kw">defer</span> { tableView.refreshControl?.endRefreshing() }
+            <span class="kw">do</span> {
+                items = <span class="kw">try await</span> api.loadItems()
+                tableView.reloadData()
+            } <span class="kw">catch</span> {
+                <span class="cm">// show an error, keep the old data</span>
+            }
+        }
+    }
+
+    <span class="kw">override func</span> tableView(<span class="kw">_</span> tableView: <span class="type">UITableView</span>, numberOfRowsInSection section: <span class="type">Int</span>) -&gt; <span class="type">Int</span> { items.count }
+
+    <span class="kw">override func</span> tableView(<span class="kw">_</span> tableView: <span class="type">UITableView</span>, cellForRowAt indexPath: <span class="type">IndexPath</span>) -&gt; <span class="type">UITableViewCell</span> {
+        <span class="kw">let</span> cell = tableView.dequeueReusableCell(withIdentifier: <span class="str">"Cell"</span>, for: indexPath)
+        cell.textLabel?.text = items[indexPath.row]
+        <span class="kw">return</span> cell
+    }
+}
+</code></pre></div>
+<ul>
+<li>Listen to <code>.valueChanged</code>. It fires when the user pulls far enough and releases.</li>
+<li>Always call <code>endRefreshing()</code>, also on error. Use <code>defer</code>.</li>
+<li>Update UI on the main thread. <code>@MainActor</code> on the <code>Task</code> does this.</li>
+</ul>
+
+<h2>Start refresh from code</h2>
+<p><code>beginRefreshing()</code> only starts the spinner. It does not scroll the content and does not send <code>.valueChanged</code>. Scroll manually and call your load method.</p>
+<div class="codehilite"><pre><code><span class="kw">func</span> refreshProgrammatically() {
+    <span class="kw">guard let</span> control = tableView.refreshControl <span class="kw">else</span> { <span class="kw">return</span> }
+    control.beginRefreshing()
+    tableView.setContentOffset(<span class="type">CGPoint</span>(x: <span class="num">0</span>, y: -control.frame.height - tableView.adjustedContentInset.top),
+                               animated: <span class="kw">true</span>)
+    handleRefresh()
+}
+</code></pre></div>
+
+<h2>Combine version</h2>
+<div class="codehilite"><pre><code><span class="kw">private var</span> cancellables = <span class="type">Set</span>&lt;<span class="type">AnyCancellable</span>&gt;()
+
+refreshControl.publisher(for: .valueChanged)    <span class="cm">// custom publisher or UIControl extension</span>
+    .flatMap { <span class="kw">_ in</span> api.itemsPublisher() }
+    .receive(on: <span class="type">DispatchQueue</span>.main)
+    .sink { [<span class="kw">weak self</span>] items <span class="kw">in</span>
+        <span class="kw">self</span>?.items = items
+        <span class="kw">self</span>?.tableView.reloadData()
+        <span class="kw">self</span>?.tableView.refreshControl?.endRefreshing()
+    }
+    .store(in: &amp;cancellables)
+</code></pre></div>
+
+<h2>SwiftUI</h2>
+<p>Use the <code>.refreshable</code> modifier (iOS 15+). The spinner stays visible until the <code>async</code> closure returns, so there is no <code>endRefreshing()</code>.</p>
+<div class="codehilite"><pre><code><span class="kw">struct</span> <span class="type">FeedView</span>: <span class="type">View</span> {
+    <span class="attr">@State private var</span> items: [<span class="type">String</span>] = []
+
+    <span class="kw">var</span> body: <span class="kw">some</span> <span class="type">View</span> {
+        <span class="type">List</span>(items, id: \.<span class="kw">self</span>) { <span class="type">Text</span>($0) }
+            .refreshable {
+                items = (<span class="kw">try</span>? <span class="kw">await</span> api.loadItems()) ?? items
+            }
+    }
+}
+</code></pre></div>
+
+<h2>Custom pull to refresh</h2>
+<p>If the design needs a custom animation, there are two common ways:</p>
+<ul>
+<li>Keep <code>UIRefreshControl</code> as a hidden host. Hide its default spinner and add your own view as a subview. Update it in <code>scrollViewDidScroll</code> using <code>contentOffset.y</code>.</li>
+<li>Do it from scratch: put a header view above the content and read <code>contentOffset.y</code> in <code>scrollViewDidScroll</code>. When the offset passes a threshold and the user releases (<code>scrollViewDidEndDragging</code>), start loading and animate <code>contentInset.top</code> to keep the header visible. Reset the inset when done.</li>
+</ul>
+
+<h2>Follow-up questions</h2>
+<ul>
+<li><strong>Why does the spinner jump or the layout glitch?</strong> Usually <code>endRefreshing()</code> is called while the user is still dragging, or the table is reloaded during the scroll. Wait until dragging ends, then reload.</li>
+<li><strong>Why is the refresh control hidden in a large-title navigation bar?</strong> The scroll view must be under the navigation bar and use the right <code>contentInsetAdjustmentBehavior</code>. Use <code>UITableViewController</code> or pin the table to the view edges.</li>
+<li><strong>How do you avoid double requests?</strong> Cancel the previous task before starting a new one (as in the example), or ignore the call while a request is running.</li>
+<li><strong>How do you add pull to refresh to a plain <code>UIScrollView</code>?</strong> Same way: <code>scrollView.refreshControl = UIRefreshControl()</code>. Set <code>alwaysBounceVertical = true</code> if the content is shorter than the screen.</li>
+</ul>
+</main>
+</body>
+</html>

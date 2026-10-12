@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.2.7.2. How do you implement a split view in UIKit?</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.7. How to implement</a></nav>
+<main>
+<h1>2.2.7.2. How do you implement a split view in UIKit?</h1>
+<p>Rule: use <code>UISplitViewController</code>. It handles size classes, collapse/expand, and iPad multitasking for you. Build your own container only if the design is far from the system pattern.</p>
+
+<h2>Setup (iOS 14+ column API)</h2>
+<ul>
+<li>Create it with a style: <code>.doubleColumn</code> (list + detail) or <code>.tripleColumn</code> (sidebar + list + detail).</li>
+<li>Set each column with <code>setViewController(_:for:)</code>: <code>.primary</code>, <code>.supplementary</code> (triple only), <code>.secondary</code>. Wrap each one in a <code>UINavigationController</code>.</li>
+<li>Optional <code>.compact</code> column: the screen shown on iPhone and compact width. If you skip it, the controller collapses the columns for you.</li>
+<li>The split view controller must be the <strong>root</strong> view controller of a window (or a child in a container). Do not push it on a navigation stack.</li>
+<li>Tune it with <code>preferredDisplayMode</code>, <code>preferredSplitBehavior</code> (<code>.tile</code>, <code>.overlay</code>, <code>.displace</code>), <code>preferredPrimaryColumnWidth</code>.</li>
+</ul>
+<div class="codehilite"><pre><code><span class="kw">let</span> split = <span class="type">UISplitViewController</span>(style: .doubleColumn)
+split.setViewController(<span class="type">UINavigationController</span>(rootViewController: <span class="type">ListViewController</span>()), for: .primary)
+split.setViewController(<span class="type">UINavigationController</span>(rootViewController: <span class="type">DetailViewController</span>()), for: .secondary)
+split.preferredDisplayMode = .oneBesideSecondary
+split.preferredSplitBehavior = .tile
+split.delegate = <span class="kw">self</span>
+window.rootViewController = split
+</code></pre></div>
+
+<h2>Show the detail</h2>
+<p>Do not push the detail yourself. Replace the secondary content and call <code>show(.secondary)</code>. The controller decides what that means: it updates the detail column on iPad and pushes on iPhone.</p>
+<div class="codehilite"><pre><code><span class="kw">func</span> didSelect(_ item: <span class="type">Item</span>) {
+    <span class="kw">let</span> detail = <span class="type">DetailViewController</span>(item: item)
+    (split.viewController(for: .secondary) <span class="kw">as</span>? <span class="type">UINavigationController</span>)?.setViewControllers([detail], animated: <span class="kw">false</span>)
+    split.show(.secondary)
+}
+</code></pre></div>
+
+<h2>Control the collapsed start screen</h2>
+<p>On iPhone the controller picks the top screen when it collapses. The default can be an empty detail. Return <code>.primary</code> to start on the list:</p>
+<div class="codehilite"><pre><code><span class="kw">func</span> splitViewController(_ svc: <span class="type">UISplitViewController</span>,
+                         topColumnForCollapsingToProposedTopColumn proposed: <span class="type">UISplitViewController</span>.Column) -&gt; <span class="type">UISplitViewController</span>.Column {
+    .primary
+}
+</code></pre></div>
+
+<h2>Follow-up questions</h2>
+<ul>
+<li><strong>Why does the user see an empty detail on iPhone?</strong> The collapse picked the secondary column without content. Implement the delegate method above, or show a real placeholder.</li>
+<li><strong>How do I know if it is one column or two?</strong> Check <code>isCollapsed</code> or the <code>horizontalSizeClass</code>. Do not check the device type: iPad in Split View or Slide Over is also compact.</li>
+<li><strong>What did the old API (before iOS 14) look like?</strong> Master/detail with <code>viewControllers</code>, <code>showDetailViewController(_:sender:)</code>, and the <code>collapseSecondary</code> delegate method. The column API is simpler. Use the old one only if you support iOS 13.</li>
+<li><strong>What is the SwiftUI equivalent?</strong> <code>NavigationSplitView</code> (iOS 16+). Inside a UIKit app you can host it with <code>UIHostingController</code>.</li>
+<li><strong>When do I build a custom container instead?</strong> When the layout rules differ from the system ones, for example a fixed side panel with custom resize. Use child view controllers (see 2.2.1.6) and handle size changes yourself.</li>
+</ul>
+</main>
+</body>
+</html>
