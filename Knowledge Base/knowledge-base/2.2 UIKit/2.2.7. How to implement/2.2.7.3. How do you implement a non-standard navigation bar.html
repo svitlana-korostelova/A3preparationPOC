@@ -108,8 +108,51 @@ navigationController?.navigationBar.compactScrollEdgeAppearance = appearance
 }
 </code></pre></div>
 
+<h2><code>navigationBar</code> vs <code>navigationItem</code> vs <code>UIBarButtonItem</code></h2>
+<p>Short rule: the bar is the <em>container</em> (one per navigation controller). The item is the <em>content</em> (one per view controller). The bar shows the item of the top screen.</p>
+<table>
+<thead><tr><th></th><th><code>navigationBar</code> (<code>UINavigationBar</code>)</th><th><code>navigationItem</code> (<code>UINavigationItem</code>)</th><th><code>UIBarButtonItem</code></th></tr></thead>
+<tbody>
+<tr><td>What it is</td><td>The view at the top of the screen</td><td>A data object that describes what the bar shows for one screen</td><td>One button inside an item</td></tr>
+<tr><td>Owner</td><td><code>UINavigationController</code></td><td>Each <code>UIViewController</code></td><td>The item (<code>leftBarButtonItems</code>, <code>rightBarButtonItems</code>, <code>backBarButtonItem</code>)</td></tr>
+<tr><td>How many</td><td>One, shared by all screens in the stack</td><td>One per screen</td><td>Many per item</td></tr>
+<tr><td>Use for</td><td>Look of the whole app: colours, fonts, blur, <code>prefersLargeTitles</code>, back indicator image</td><td>Content of this screen: <code>title</code>, <code>titleView</code>, buttons, <code>largeTitleDisplayMode</code>, <code>searchController</code>, <code>backButtonTitle</code></td><td>Actions: title or image, target-action, menu, or <code>customView</code></td></tr>
+</tbody>
+</table>
+
+<p>Correct setup:</p>
+<ul>
+<li><strong>Global style</strong> goes to the bar. Set it once, in the navigation controller or at app start.</li>
+<li><strong>Screen content</strong> goes to <code>navigationItem</code>. Set it in <code>viewDidLoad</code> of that screen.</li>
+<li><strong>One-screen style override</strong> goes to <code>navigationItem.standardAppearance</code> (and the other three). It wins over the bar for this screen only.</li>
+<li><strong>Back button text</strong> belongs to the <em>previous</em> screen. Set <code>backButtonTitle</code> or <code>backBarButtonItem</code> on the screen that pushes, not on the pushed screen.</li>
+</ul>
+<div class="codehilite"><pre><code><span class="cm">// Navigation controller: one style for the whole stack</span>
+<span class="kw">let</span> nav = <span class="type">UINavigationController</span>(rootViewController: <span class="type">ListViewController</span>())
+nav.navigationBar.prefersLargeTitles = <span class="kw">true</span>
+nav.navigationBar.tintColor = .systemBlue
+nav.navigationBar.standardAppearance = appearance
+nav.navigationBar.scrollEdgeAppearance = appearance
+
+<span class="cm">// View controller: content of this screen</span>
+<span class="kw">override</span> <span class="kw">func</span> viewDidLoad() {
+    <span class="kw">super</span>.viewDidLoad()
+    navigationItem.title = <span class="str">"Orders"</span>
+    navigationItem.largeTitleDisplayMode = .never
+    navigationItem.backButtonTitle = <span class="str">"Back"</span> <span class="cm">// shown on the NEXT screen</span>
+    navigationItem.rightBarButtonItem = <span class="type">UIBarButtonItem</span>(
+        systemItem: .add, primaryAction: <span class="type">UIAction</span> { [<span class="kw">weak</span> <span class="kw">self</span>] _ <span class="kw">in</span> <span class="kw">self</span>?.addTapped() })
+}
+</code></pre></div>
+<p>Common mistakes:</p>
+<ul>
+<li>Setting the title or buttons on <code>navigationBar</code>. The bar is shared, so the next screen overwrites them. Use <code>navigationItem</code>.</li>
+<li>Using <code>navigationController?.navigationBar</code> in <code>init</code>. The controller is <code>nil</code> until the screen is pushed. <code>navigationItem</code> works at any time.</li>
+</ul>
+
 <h2>Follow-up questions</h2>
 <ul>
+<li><strong>Why set the title on <code>navigationItem</code> and not on the bar?</strong> The bar is one shared view. The item belongs to the screen, and the bar swaps to it during push and pop. This also makes the push animation correct.</li>
 <li><strong>Why does the back swipe stop working with a custom bar or custom back button?</strong> The system pop gesture is tied to the standard bar and its delegate. Hiding the bar or replacing <code>leftBarButtonItem</code> disables it. Fix it with the delegate above. Do not enable it on the root screen.</li>
 <li><strong>Why does the nav bar look different when I scroll?</strong> <code>scrollEdgeAppearance</code> is used at the top of the scroll view, <code>standardAppearance</code> after scrolling. Set all appearances to get the same look at every scroll position.</li>
 <li><strong>Why did my bar colour stop working after iOS 15?</strong> <code>barTintColor</code> and <code>isTranslucent</code> no longer apply to the scroll-edge state. Use <code>UINavigationBarAppearance</code> with <code>backgroundColor</code>.</li>

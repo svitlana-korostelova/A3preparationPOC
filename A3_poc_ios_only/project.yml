@@ -10,6 +10,16 @@ settings:
     SWIFT_VERSION: 5.9
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
 
+schemes:
+  A3PocIOS:
+    build:
+      targets:
+        A3PocIOS: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+
 targets:
   A3PocIOS:
     type: application

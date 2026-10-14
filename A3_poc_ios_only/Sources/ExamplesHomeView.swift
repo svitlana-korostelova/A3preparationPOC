@@ -16,8 +16,18 @@ struct ExamplesHomeView: View {
                         Label("Example1 – Custom VC Transition", systemImage: "rectangle.on.rectangle.angled")
                     }
 
+                    NavigationLink(destination: SplitViewExampleScreen()) {
+                        Label("UISplitViewController – List & Detail", systemImage: "sidebar.left")
+                    }
+
                     NavigationLink(destination: CoreAnimationView()) {
                         Label("Core Animation – Progress Ring & Spring", systemImage: "circle.dashed")
+                    }
+                }
+
+                Section(header: Text("SwiftUI Examples")) {
+                    NavigationLink(destination: NavigationSplitViewExampleView()) {
+                        Label("NavigationSplitView – Sidebar & Detail", systemImage: "sidebar.squares.left")
                     }
                 }
             }

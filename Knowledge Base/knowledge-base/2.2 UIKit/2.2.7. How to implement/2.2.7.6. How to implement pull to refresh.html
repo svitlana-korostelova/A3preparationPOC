@@ -61,6 +61,7 @@ ul.toc li a{font-size:1.05em}
 }
 </style>
 </head>
+<body class="markdown-body">
 <nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.2 UIKit</a> › <a href="index.html">2.2.7. How to implement</a></nav>
 <main>
 <h1>2.2.7.6. How to implement pull to refresh?</h1>
@@ -81,7 +82,7 @@ ul.toc li a{font-size:1.05em}
 
     <span class="attr">@objc</span> <span class="kw">private func</span> handleRefresh() {
         refreshTask?.cancel()
-        refreshTask = <span class="type">Task</span> { <span class="attr">@MainActor in</span>
+        refreshTask = <span class="type">Task</span> { <span class="attr">@MainActor</span> <span class="kw">in</span>
             <span class="kw">defer</span> { tableView.refreshControl?.endRefreshing() }
             <span class="kw">do</span> {
                 items = <span class="kw">try await</span> api.loadItems()
@@ -135,7 +136,7 @@ refreshControl.publisher(for: .valueChanged)    <span class="cm">// custom publi
 <h2>SwiftUI</h2>
 <p>Use the <code>.refreshable</code> modifier (iOS 15+). The spinner stays visible until the <code>async</code> closure returns, so there is no <code>endRefreshing()</code>.</p>
 <div class="codehilite"><pre><code><span class="kw">struct</span> <span class="type">FeedView</span>: <span class="type">View</span> {
-    <span class="attr">@State private var</span> items: [<span class="type">String</span>] = []
+    <span class="attr">@State</span> <span class="kw">private var</span> items: [<span class="type">String</span>] = []
 
     <span class="kw">var</span> body: <span class="kw">some</span> <span class="type">View</span> {
         <span class="type">List</span>(items, id: \.<span class="kw">self</span>) { <span class="type">Text</span>($0) }

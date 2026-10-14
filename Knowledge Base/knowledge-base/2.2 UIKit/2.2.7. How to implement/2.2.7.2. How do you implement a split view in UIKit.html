@@ -101,11 +101,131 @@ window.rootViewController = split
 }
 </code></pre></div>
 
+<h2>Full minimal example</h2>
+<p>The snippets above use types that are not defined (<code>ListViewController</code>, <code>Item</code>, <code>window</code>, the delegate). This version is complete and compiles on iOS 17. The key points:</p>
+<ul>
+<li>One object (<code>SplitCoordinator</code>) owns the split view controller, wires the list to the detail, and is the delegate.</li>
+<li>The list does not know about the split view. It only calls <code>onSelect</code>.</li>
+<li>The secondary column holds a placeholder detail, so iPad never shows an empty screen at start.</li>
+<li>Keep the coordinator alive (here: a property of <code>SceneDelegate</code>). <code>delegate</code> is weak, so it would be released otherwise.</li>
+<li>Scene setup: <code>Info.plist</code> needs <code>UIApplicationSceneManifest</code> with <code>UISceneDelegateClassName</code> set to this <code>SceneDelegate</code> (module-qualified name).</li>
+</ul>
+<div class="codehilite"><pre><code><span class="kw">import</span> UIKit
+
+<span class="kw">struct</span> <span class="type">Item</span> { <span class="kw">let</span> id: <span class="type">Int</span>; <span class="kw">let</span> title: <span class="type">String</span> }
+
+<span class="cm">// Primary column: the list</span>
+<span class="kw">final class</span> <span class="type">ListViewController</span>: <span class="type">UITableViewController</span> {
+    <span class="kw">var</span> onSelect: ((<span class="type">Item</span>) -&gt; <span class="type">Void</span>)?
+    <span class="kw">private let</span> items = (<span class="num">1</span>...<span class="num">20</span>).map { <span class="type">Item</span>(id: $0, title: <span class="str">"Item \($0)"</span>) }
+
+    <span class="kw">override func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
+        title = <span class="str">"Items"</span>
+        tableView.register(<span class="type">UITableViewCell</span>.<span class="kw">self</span>, forCellReuseIdentifier: <span class="str">"cell"</span>)
+    }
+
+    <span class="kw">override func</span> tableView(_ tv: <span class="type">UITableView</span>, numberOfRowsInSection section: <span class="type">Int</span>) -&gt; <span class="type">Int</span> { items.count }
+
+    <span class="kw">override func</span> tableView(_ tv: <span class="type">UITableView</span>, cellForRowAt indexPath: <span class="type">IndexPath</span>) -&gt; <span class="type">UITableViewCell</span> {
+        <span class="kw">let</span> cell = tv.dequeueReusableCell(withIdentifier: <span class="str">"cell"</span>, for: indexPath)
+        cell.textLabel?.text = items[indexPath.row].title
+        <span class="kw">return</span> cell
+    }
+
+    <span class="kw">override func</span> tableView(_ tv: <span class="type">UITableView</span>, didSelectRowAt indexPath: <span class="type">IndexPath</span>) {
+        onSelect?(items[indexPath.row])
+    }
+}
+
+<span class="cm">// Secondary column: the detail</span>
+<span class="kw">final class</span> <span class="type">DetailViewController</span>: <span class="type">UIViewController</span> {
+    <span class="kw">private let</span> text: <span class="type">String</span>
+
+    <span class="kw">init</span>(text: <span class="type">String</span>) {
+        <span class="kw">self</span>.text = text
+        <span class="kw">super</span>.<span class="kw">init</span>(nibName: <span class="kw">nil</span>, bundle: <span class="kw">nil</span>)
+    }
+    <span class="kw">required init</span>?(coder: <span class="type">NSCoder</span>) { fatalError(<span class="str">"init(coder:) is not used"</span>) }
+
+    <span class="kw">override func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        title = text
+        <span class="kw">let</span> label = <span class="type">UILabel</span>()
+        label.text = text
+        label.translatesAutoresizingMaskIntoConstraints = <span class="kw">false</span>
+        view.addSubview(label)
+        <span class="type">NSLayoutConstraint</span>.activate([
+            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+    }
+}
+
+<span class="cm">// Owns the split view, connects list to detail, acts as delegate</span>
+<span class="kw">final class</span> <span class="type">SplitCoordinator</span>: <span class="type">NSObject</span>, <span class="type">UISplitViewControllerDelegate</span> {
+    <span class="kw">let</span> split = <span class="type">UISplitViewController</span>(style: .doubleColumn)
+    <span class="kw">private let</span> detailNav = <span class="type">UINavigationController</span>(
+        rootViewController: <span class="type">DetailViewController</span>(text: <span class="str">"Select an item"</span>))
+
+    <span class="kw">override init</span>() {
+        <span class="kw">super</span>.<span class="kw">init</span>()
+        <span class="kw">let</span> list = <span class="type">ListViewController</span>(style: .insetGrouped)
+        list.onSelect = { [<span class="kw">weak self</span>] item <span class="kw">in</span> <span class="kw">self</span>?.show(item) }
+
+        split.setViewController(<span class="type">UINavigationController</span>(rootViewController: list), for: .primary)
+        split.setViewController(detailNav, for: .secondary)
+        split.preferredDisplayMode = .oneBesideSecondary
+        split.preferredSplitBehavior = .tile
+        split.delegate = <span class="kw">self</span>
+    }
+
+    <span class="kw">private func</span> show(_ item: <span class="type">Item</span>) {
+        detailNav.setViewControllers([<span class="type">DetailViewController</span>(text: item.title)], animated: <span class="kw">false</span>)
+        split.show(.secondary)   <span class="cm">// iPad: updates detail. iPhone: pushes it.</span>
+    }
+
+    <span class="cm">// iPhone / compact: start on the list, not on the placeholder</span>
+    <span class="kw">func</span> splitViewController(
+        _ svc: <span class="type">UISplitViewController</span>,
+        topColumnForCollapsingToProposedTopColumn proposedTopColumn: <span class="type">UISplitViewController</span>.<span class="type">Column</span>
+    ) -&gt; <span class="type">UISplitViewController</span>.<span class="type">Column</span> {
+        .primary
+    }
+}
+
+<span class="cm">// The split view must be the window's root</span>
+<span class="kw">final class</span> <span class="type">SceneDelegate</span>: <span class="type">UIResponder</span>, <span class="type">UIWindowSceneDelegate</span> {
+    <span class="kw">var</span> window: <span class="type">UIWindow</span>?
+    <span class="kw">private let</span> coordinator = <span class="type">SplitCoordinator</span>()   <span class="cm">// strong ref: delegate is weak</span>
+
+    <span class="kw">func</span> scene(_ scene: <span class="type">UIScene</span>, willConnectTo session: <span class="type">UISceneSession</span>,
+               options connectionOptions: <span class="type">UIScene</span>.<span class="type">ConnectionOptions</span>) {
+        <span class="kw">guard let</span> windowScene = scene <span class="kw">as</span>? <span class="type">UIWindowScene</span> <span class="kw">else</span> { <span class="kw">return</span> }
+        <span class="kw">let</span> window = <span class="type">UIWindow</span>(windowScene: windowScene)
+        window.rootViewController = coordinator.split
+        window.makeKeyAndVisible()
+        <span class="kw">self</span>.window = window
+    }
+}
+</code></pre></div>
+
+<h2>Limits of UISplitViewController</h2>
+<ul>
+<li><strong>Max 2 or 3 columns.</strong> The styles are <code>.doubleColumn</code> and <code>.tripleColumn</code>. No 4th pane.</li>
+<li><strong>Side by side only.</strong> No top/bottom split.</li>
+<li><strong>Layout rules belong to the system.</strong> Collapse and expand follow size classes. You cannot say "show both panes when width &gt; 600". You can only tune it with <code>preferredDisplayMode</code>, <code>preferredSplitBehavior</code> and the column widths.</li>
+<li><strong>Column width is limited.</strong> You set preferred, minimum and maximum widths. There is no custom drag handle.</li>
+<li><strong>Collapse on iPhone is automatic.</strong> You influence it only through delegate methods (for example, the start column).</li>
+<li><strong>Should be a root controller.</strong> It is not meant to be pushed on a navigation stack or placed in a small area of a screen.</li>
+<li><strong>Limited visual control.</strong> The column toggle button, the sidebar look and the transitions are system-made.</li>
+</ul>
+
 <h2>Follow-up questions</h2>
 <ul>
 <li><strong>Why does the user see an empty detail on iPhone?</strong> The collapse picked the secondary column without content. Implement the delegate method above, or show a real placeholder.</li>
 <li><strong>How do I know if it is one column or two?</strong> Check <code>isCollapsed</code> or the <code>horizontalSizeClass</code>. Do not check the device type: iPad in Split View or Slide Over is also compact.</li>
-<li><strong>What did the old API (before iOS 14) look like?</strong> Master/detail with <code>viewControllers</code>, <code>showDetailViewController(_:sender:)</code>, and the <code>collapseSecondary</code> delegate method. The column API is simpler. Use the old one only if you support iOS 13.</li>
 <li><strong>What is the SwiftUI equivalent?</strong> <code>NavigationSplitView</code> (iOS 16+). Inside a UIKit app you can host it with <code>UIHostingController</code>.</li>
 <li><strong>When do I build a custom container instead?</strong> When the layout rules differ from the system ones, for example a fixed side panel with custom resize. Use child view controllers (see 2.2.1.6) and handle size changes yourself.</li>
 </ul>

@@ -8,9 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		08253EFAAE8101A98CDD170A /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C9AA89DAC17CA0A9DC5AA3A /* HomeView.swift */; };
+		35FCFA7171F95E354DAC6E3D /* UIKitSplitViewExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C42D39BC6D831B310E255E2 /* UIKitSplitViewExample.swift */; };
 		42A71E0C4F6A4B6C0A7D888D /* CombineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21362FDE3260DEEC2987E75 /* CombineView.swift */; };
 		42C8E70E89EE0AFAD27A4F13 /* CleanArchitectureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98780648DF36130F0E25FD73 /* CleanArchitectureView.swift */; };
 		58C73117C4966631B83B2AE7 /* OperationQueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB393DEB0E8FE99BCB7955F /* OperationQueueView.swift */; };
+		59DF18897CBED8FEE3204769 /* SwiftUISplitViewExample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 918A9112D86A92D28FE7C367 /* SwiftUISplitViewExample.swift */; };
 		63F045E3473CC2B3C5A46AF6 /* SemaphoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3617DDC1C9A85E161A62DC80 /* SemaphoreView.swift */; };
 		6D8ED1F54088AF1501653488 /* DependencyInjectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32C5ABADD099B15D61631AF3 /* DependencyInjectionView.swift */; };
 		77CE21E131F88CF6914D5BC3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D0768A1FFA5252FA00E1E55 /* Assets.xcassets */; };
@@ -42,7 +44,9 @@
 		69F8E857F18BB7FBDA7FC0F3 /* ExamplesHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamplesHomeView.swift; sourceTree = "<group>"; };
 		7CE47FA062F87F3D51520AE7 /* A3PocIOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = A3PocIOSApp.swift; sourceTree = "<group>"; };
 		7E6743371FCAFCFD51720B4D /* StructuredConcurrencyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructuredConcurrencyView.swift; sourceTree = "<group>"; };
+		918A9112D86A92D28FE7C367 /* SwiftUISplitViewExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUISplitViewExample.swift; sourceTree = "<group>"; };
 		98780648DF36130F0E25FD73 /* CleanArchitectureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleanArchitectureView.swift; sourceTree = "<group>"; };
+		9C42D39BC6D831B310E255E2 /* UIKitSplitViewExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIKitSplitViewExample.swift; sourceTree = "<group>"; };
 		AFB393DEB0E8FE99BCB7955F /* OperationQueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationQueueView.swift; sourceTree = "<group>"; };
 		CB4E79AC11A0F6A94A888939 /* VIPERView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VIPERView.swift; sourceTree = "<group>"; };
 		CC6B18A9C9FCE46B36D2CB1C /* PThreadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PThreadsView.swift; sourceTree = "<group>"; };
@@ -89,7 +93,9 @@
 				CC6B18A9C9FCE46B36D2CB1C /* PThreadsView.swift */,
 				3617DDC1C9A85E161A62DC80 /* SemaphoreView.swift */,
 				7E6743371FCAFCFD51720B4D /* StructuredConcurrencyView.swift */,
+				918A9112D86A92D28FE7C367 /* SwiftUISplitViewExample.swift */,
 				4ED8BB4432FC5A753EC96547 /* TCAView.swift */,
+				9C42D39BC6D831B310E255E2 /* UIKitSplitViewExample.swift */,
 				1678445FE1965EDCC59B02AA /* UIKitVCTransitionExample.swift */,
 				CB4E79AC11A0F6A94A888939 /* VIPERView.swift */,
 			);
@@ -178,7 +184,9 @@
 				7F0154FEA3E07565DB25FE2E /* PThreadsView.swift in Sources */,
 				63F045E3473CC2B3C5A46AF6 /* SemaphoreView.swift in Sources */,
 				AECB522DB318985726ED8518 /* StructuredConcurrencyView.swift in Sources */,
+				59DF18897CBED8FEE3204769 /* SwiftUISplitViewExample.swift in Sources */,
 				B2BCFC047CC3663FA9CEB1C0 /* TCAView.swift in Sources */,
+				35FCFA7171F95E354DAC6E3D /* UIKitSplitViewExample.swift in Sources */,
 				C8B42483968C964DBD34E3CB /* UIKitVCTransitionExample.swift in Sources */,
 				EEE0917F8C07CEEEBCD3354B /* VIPERView.swift in Sources */,
 			);
