@@ -36,3 +36,4 @@ __pycache__/
 
 # AI planning / agent scratch files
 docs/
+settings.json
