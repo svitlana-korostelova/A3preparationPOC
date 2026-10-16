@@ -67,23 +67,30 @@ ul.toc li a{font-size:1.05em}
 <h1>2.2.7.6. How to implement pull to refresh?</h1>
 <p>Use <code>UIRefreshControl</code> (iOS 6+). Since iOS 10 every <code>UIScrollView</code> (table, collection, plain scroll view) has a <code>refreshControl</code> property. UIKit handles the pull gesture, the spinner and the bounce-back for you.</p>
 
-<h2>Basic example (UITableView + async/await)</h2>
-<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">FeedViewController</span>: <span class="type">UITableViewController</span> {
+<h2>Basic example (UITableView in a regular UIViewController + async/await)</h2>
+<div class="codehilite"><pre><code><span class="kw">final</span> <span class="kw">class</span> <span class="type">FeedViewController</span>: <span class="type">UIViewController</span>, <span class="type">UITableViewDataSource</span> {
+    <span class="kw">private let</span> tableView = <span class="type">UITableView</span>()
+    <span class="kw">private let</span> refreshControl = <span class="type">UIRefreshControl</span>()    <span class="cm">// owned as a property</span>
     <span class="kw">private var</span> items: [<span class="type">String</span>] = []
     <span class="kw">private var</span> refreshTask: <span class="type">Task</span>&lt;<span class="type">Void</span>, <span class="type">Never</span>&gt;?
 
     <span class="kw">override func</span> viewDidLoad() {
         <span class="kw">super</span>.viewDidLoad()
-        tableView.refreshControl = <span class="type">UIRefreshControl</span>()
-        tableView.refreshControl?.addTarget(<span class="kw">self</span>,
-                                            action: <span class="kw">#selector</span>(handleRefresh),
-                                            for: .valueChanged)
+
+        tableView.frame = view.bounds
+        tableView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        tableView.dataSource = <span class="kw">self</span>
+        tableView.register(<span class="type">UITableViewCell</span>.<span class="kw">self</span>, forCellReuseIdentifier: <span class="str">"Cell"</span>)
+        view.addSubview(tableView)
+
+        refreshControl.addTarget(<span class="kw">self</span>, action: <span class="kw">#selector</span>(handleRefresh), for: .valueChanged)
+        tableView.refreshControl = refreshControl           <span class="cm">// works without UITableViewController</span>
     }
 
     <span class="attr">@objc</span> <span class="kw">private func</span> handleRefresh() {
         refreshTask?.cancel()
         refreshTask = <span class="type">Task</span> { <span class="attr">@MainActor</span> <span class="kw">in</span>
-            <span class="kw">defer</span> { tableView.refreshControl?.endRefreshing() }
+            <span class="kw">defer</span> { refreshControl.endRefreshing() }
             <span class="kw">do</span> {
                 items = <span class="kw">try await</span> api.loadItems()
                 tableView.reloadData()
@@ -93,9 +100,9 @@ ul.toc li a{font-size:1.05em}
         }
     }
 
-    <span class="kw">override func</span> tableView(<span class="kw">_</span> tableView: <span class="type">UITableView</span>, numberOfRowsInSection section: <span class="type">Int</span>) -&gt; <span class="type">Int</span> { items.count }
+    <span class="kw">func</span> tableView(<span class="kw">_</span> tableView: <span class="type">UITableView</span>, numberOfRowsInSection section: <span class="type">Int</span>) -&gt; <span class="type">Int</span> { items.count }
 
-    <span class="kw">override func</span> tableView(<span class="kw">_</span> tableView: <span class="type">UITableView</span>, cellForRowAt indexPath: <span class="type">IndexPath</span>) -&gt; <span class="type">UITableViewCell</span> {
+    <span class="kw">func</span> tableView(<span class="kw">_</span> tableView: <span class="type">UITableView</span>, cellForRowAt indexPath: <span class="type">IndexPath</span>) -&gt; <span class="type">UITableViewCell</span> {
         <span class="kw">let</span> cell = tableView.dequeueReusableCell(withIdentifier: <span class="str">"Cell"</span>, for: indexPath)
         cell.textLabel?.text = items[indexPath.row]
         <span class="kw">return</span> cell
@@ -103,6 +110,7 @@ ul.toc li a{font-size:1.05em}
 }
 </code></pre></div>
 <ul>
+<li>The table lives in a plain <code>UIViewController</code>, so you create the <code>UITableView</code>, set the data source and assign <code>tableView.refreshControl</code> yourself. Keeping the control in a property gives direct access to <code>endRefreshing()</code>.</li>
 <li>Listen to <code>.valueChanged</code>. It fires when the user pulls far enough and releases.</li>
 <li>Always call <code>endRefreshing()</code>, also on error. Use <code>defer</code>.</li>
 <li>Update UI on the main thread. <code>@MainActor</code> on the <code>Task</code> does this.</li>
@@ -157,7 +165,6 @@ refreshControl.publisher(for: .valueChanged)    <span class="cm">// custom publi
 <h2>Follow-up questions</h2>
 <ul>
 <li><strong>Why does the spinner jump or the layout glitch?</strong> Usually <code>endRefreshing()</code> is called while the user is still dragging, or the table is reloaded during the scroll. Wait until dragging ends, then reload.</li>
-<li><strong>Why is the refresh control hidden in a large-title navigation bar?</strong> The scroll view must be under the navigation bar and use the right <code>contentInsetAdjustmentBehavior</code>. Use <code>UITableViewController</code> or pin the table to the view edges.</li>
 <li><strong>How do you avoid double requests?</strong> Cancel the previous task before starting a new one (as in the example), or ignore the call while a request is running.</li>
 <li><strong>How do you add pull to refresh to a plain <code>UIScrollView</code>?</strong> Same way: <code>scrollView.refreshControl = UIRefreshControl()</code>. Set <code>alwaysBounceVertical = true</code> if the content is shorter than the screen.</li>
 </ul>

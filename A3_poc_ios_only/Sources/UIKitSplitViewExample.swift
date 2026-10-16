@@ -98,6 +98,7 @@ final class SplitListViewController: UITableViewController {
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        tableView.refreshControl
         items.count
     }
 

@@ -139,6 +139,39 @@ registerForTraitChanges([<span class="type">UITraitPreferredContentSizeCategory<
 <span class="type">UIAccessibility</span>.post(notification: .screenChanged, argument: <span class="kw">nil</span>)               <span class="cm">// new screen shown</span>
 </code></pre></div>
 
+<h2>Accessibility focus</h2>
+<p><strong>Accessibility focus</strong> is the element VoiceOver is on right now (the black frame). It is <em>not</em> the same as UIKit input focus (first responder, keyboard cursor) or the focus engine (<code>UIFocusSystem</code>, tvOS and Full Keyboard Access). A user moves it by swiping, touching, or with the rotor. The app can only <em>move</em> it by posting a notification.</p>
+<table>
+<tr><th>Need</th><th>How</th></tr>
+<tr><td>Move focus to a specific element</td><td><code>UIAccessibility.post(notification: .layoutChanged, argument: element)</code></td></tr>
+<tr><td>New screen or big change</td><td><code>.screenChanged</code>. With <code>nil</code>, focus goes to the first element.</td></tr>
+<tr><td>Read the current focus</td><td><code>UIAccessibility.focusedElement(using: .notificationVoiceOver)</code></td></tr>
+<tr><td>React when an element gets or loses focus</td><td>Override <code>accessibilityElementDidBecomeFocused()</code> and <code>accessibilityElementDidLoseFocus()</code> (informal protocol on <code>NSObject</code>), or observe <code>UIAccessibility.elementFocusedNotification</code>.</td></tr>
+<tr><td>Check if VoiceOver is on</td><td><code>UIAccessibility.isVoiceOverRunning</code> and <code>UIAccessibility.voiceOverStatusDidChangeNotification</code></td></tr>
+<tr><td>SwiftUI</td><td><code>@AccessibilityFocusState</code> with <code>.accessibilityFocused($flag)</code> (iOS 15+)</td></tr>
+</table>
+<div class="codehilite"><pre><code><span class="cm">// After validation fails: put VoiceOver on the first error</span>
+<span class="type">UIAccessibility</span>.post(notification: .layoutChanged, argument: errorLabel)
+
+<span class="cm">// Dismiss a custom popup: return focus to the button that opened it</span>
+<span class="kw">func</span> closePopup() {
+    popup.removeFromSuperview()
+    <span class="type">UIAccessibility</span>.post(notification: .layoutChanged, argument: openButton)
+}
+
+<span class="cm">// Custom view: react to focus</span>
+<span class="kw">override func</span> accessibilityElementDidBecomeFocused() {
+    <span class="kw">super</span>.accessibilityElementDidBecomeFocused()
+    scrollToVisible() <span class="cm">// keep the focused item on screen</span>
+}
+
+<span class="cm">// SwiftUI</span>
+<span class="attr">@AccessibilityFocusState</span> <span class="kw">private var</span> errorFocused: <span class="type">Bool</span>
+<span class="type">Text</span>(error).accessibilityFocused($errorFocused)
+<span class="cm">// later: errorFocused = true</span>
+</code></pre></div>
+<p><strong>Good practice:</strong> move focus only after a clear user action or a real context change (new screen, popup, error). Never steal focus on a timer or on every update. Use <code>.announcement</code> for passive news. Always <strong>restore focus</strong> to the trigger element when a popup or sheet closes. Check that the focus order matches the visual order.</p>
+
 <h2>Tools</h2>
 <ul>
 <li><strong>Accessibility Inspector</strong> (Xcode → Open Developer Tool): inspect labels and traits, run an audit, change text size on Simulator.</li>
@@ -155,6 +188,7 @@ registerForTraitChanges([<span class="type">UITraitPreferredContentSizeCategory<
 <li>Text scales; nothing is cut at the largest size.</li>
 <li>Information is not given by colour alone. Contrast is at least 4.5:1 for normal text.</li>
 <li>Animations respect Reduce Motion.</li>
+<li>Accessibility focus moves to the right place after errors, popups, and screen changes, and returns to the trigger when they close.</li>
 </ul>
 
 <h2>Follow-up questions</h2>
@@ -163,6 +197,29 @@ registerForTraitChanges([<span class="type">UITraitPreferredContentSizeCategory<
 <li><strong>How do you make a custom-drawn view accessible?</strong> Set <code>isAccessibilityElement = true</code> with label, value, and traits. If it has several parts (a chart), set <code>accessibilityElements</code> to a list of <code>UIAccessibilityElement</code> objects, each with its own <code>accessibilityFrameInContainerSpace</code>.</li>
 <li><strong>How do you build a custom slider or stepper?</strong> Add the <code>.adjustable</code> trait and implement <code>accessibilityIncrement()</code> and <code>accessibilityDecrement()</code>. Update <code>accessibilityValue</code>.</li>
 <li><strong>A custom popup is open, but VoiceOver reads the screen behind it. Why?</strong> Set <code>accessibilityViewIsModal = true</code> on the popup, and post <code>.screenChanged</code> or <code>.layoutChanged</code> with the popup as argument.</li>
+<li><strong>Accessibility focus vs first responder?</strong> First responder receives keyboard input and events. Accessibility focus is where VoiceOver is reading. They are independent: a text field can be first responder while VoiceOver is on another element. You move accessibility focus with <code>.layoutChanged</code> / <code>.screenChanged</code> (UIKit) or <code>@AccessibilityFocusState</code> (SwiftUI).</li>
+<li><strong>A user closes a sheet and VoiceOver jumps to the top of the screen. How do you fix it?</strong> Post <code>.layoutChanged</code> with the button that opened the sheet, in the dismiss completion and in <code>presentationControllerDidDismiss</code> (swipe down). <code>viewDidAppear</code> of the presenter is not called for page sheets.
+<div class="codehilite"><pre><code><span class="kw">final class</span> <span class="type">ListViewController</span>: <span class="type">UIViewController</span>, <span class="type">UIAdaptivePresentationControllerDelegate</span> {
+    <span class="kw">let</span> openButton = <span class="type">UIButton</span>(type: .system)
+
+    <span class="attr">@objc</span> <span class="kw">func</span> openSheet() {
+        <span class="kw">let</span> sheet = <span class="type">SettingsViewController</span>()
+        sheet.presentationController?.delegate = <span class="kw">self</span> <span class="cm">// swipe-down dismiss</span>
+        sheet.onClose = { [<span class="kw">weak self</span>] <span class="kw">in</span>
+            <span class="kw">self</span>?.dismiss(animated: <span class="kw">true</span>) { <span class="kw">self</span>?.restoreFocus() } <span class="cm">// Close button</span>
+        }
+        present(sheet, animated: <span class="kw">true</span>)
+    }
+
+    <span class="kw">func</span> presentationControllerDidDismiss(_ presentationController: <span class="type">UIPresentationController</span>) {
+        restoreFocus()
+    }
+
+    <span class="kw">private func</span> restoreFocus() {
+        <span class="type">UIAccessibility</span>.post(notification: .layoutChanged, argument: openButton)
+    }
+}
+</code></pre></div></li>
 <li><strong>How do you hide something from VoiceOver?</strong> For one decorative view, set <code>isAccessibilityElement = false</code>. For a whole subtree, set <code>accessibilityElementsHidden = true</code> on the container.</li>
 <li><strong>How do you react when the user changes text size while the screen is open?</strong> Labels with <code>adjustsFontForContentSizeCategory</code> update by themselves. For layout changes, observe the trait <code>UITraitPreferredContentSizeCategory</code> (iOS 17+) or <code>traitCollectionDidChange</code> (older).</li>
 </ul>
