@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3.11. Detecting memory issues</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../index.html">⌂ Knowledge Base</a> › <a href="index.html">3. Memory Management &amp; Runtime</a></nav>
+<main>
+<h1>3.11. Detecting memory issues</h1>
+
+<h2>Short answer</h2>
+<p>Start with <code>deinit</code> prints and the <strong>Memory Graph Debugger</strong> for retain cycles. Use <strong>Instruments (Leaks, Allocations)</strong> for growth over time. Use <strong>Address Sanitizer</strong> for crashes from freed or corrupted memory. Each tool answers a different question.</p>
+
+<h2>Which tool for which problem</h2>
+<table>
+<tr><th>Tool</th><th>Finds</th><th>Use when</th></tr>
+<tr><td><code>deinit</code> print / breakpoint</td><td>An object that never dies</td><td>First, fastest check for one screen</td></tr>
+<tr><td>Memory Graph Debugger</td><td>Live objects and who holds them, cycles</td><td>You suspect a retain cycle</td></tr>
+<tr><td>Instruments → Leaks</td><td>Leaked memory with allocation stacks</td><td>Confirm leaks in real flows</td></tr>
+<tr><td>Instruments → Allocations</td><td>Memory growth, object counts per type</td><td>Memory keeps rising but nothing "leaks" (e.g. a cache that never shrinks)</td></tr>
+<tr><td>Address Sanitizer (ASan)</td><td>Use-after-free, buffer overflows</td><td>Random <code>EXC_BAD_ACCESS</code>, unsafe-pointer code</td></tr>
+<tr><td>Malloc Stack Logging</td><td>Where an object was created</td><td>With the Memory Graph, to find the culprit line</td></tr>
+<tr><td>Main Thread Checker / runtime issues</td><td>UI or SwiftUI state changed off the main thread</td><td>Always on in debug</td></tr>
+</table>
+
+<h2>1. Memory Graph Debugger</h2>
+<ol>
+  <li>Run the app, use the suspect flow, then leave the screen.</li>
+  <li>Click <strong>Debug Memory Graph</strong> (three connected nodes) in the debug bar.</li>
+  <li>Look for instances of your screen or view model that should be gone. A leaked object shows a <strong>purple "!"</strong>. Select it to see the chain of strong references.</li>
+  <li>Turn on <strong>Scheme → Run → Diagnostics → Malloc Stack Logging (Live Allocations Only)</strong> first to see the creation backtrace.</li>
+</ol>
+
+<h2>2. Instruments — Leaks</h2>
+<ol>
+  <li>Product → Profile → <strong>Leaks</strong>.</li>
+  <li>Use the app. Red marks show leaked objects.</li>
+  <li>Open <strong>Cycles &amp; Roots</strong> to see the cycle, and the call tree (inverted) to find where it was allocated.</li>
+</ol>
+<p>Leaks only finds memory with no references left (usually cycles). It misses "abandoned" memory that is still referenced, like a growing cache. Use Allocations for that.</p>
+
+<h2>3. Instruments — Allocations</h2>
+<ul>
+  <li><strong>Mark Generation:</strong> take a snapshot, do an action, take another. Memory that remains in the new generation was not freed.</li>
+  <li><strong>Statistics:</strong> sort by <em>Persistent</em> to see which types stay alive and how many.</li>
+</ul>
+<pre><code><span class="cm">// Back-and-forth test for a leaking screen:</span>
+<span class="cm">// open A → mark generation 1</span>
+<span class="cm">// push B, go back → mark generation 2</span>
+<span class="cm">// repeat several times. If generation 2+ keeps growing with B's objects, B leaks.</span></code></pre>
+
+<h2>4. Address Sanitizer</h2>
+<p>Compiler instrumentation, enabled per scheme: <strong>Run → Diagnostics → Address Sanitizer</strong>. It slows the app about 2×. It detects use-after-free, heap and stack buffer overflows. It <strong>does not find retain cycles</strong>. For Swift this is mostly relevant with <code>Unsafe*Pointer</code>, <code>Unmanaged</code> and C interop (see <a href="3.12.%20Memory%20safety.html">3.12</a>).</p>
+
+<h2>5. Malloc Stack Logging</h2>
+<p>Records the call stack of each allocation. Turn it on in Scheme diagnostics, or with the environment variable <code>MallocStackLogging=1</code>. From the command line, <code>malloc_history &lt;pid&gt; &lt;address&gt;</code> shows how an address was allocated.</p>
+
+<h2>6. Runtime issues</h2>
+<p>Purple warnings in the Issue navigator, with no setup: "Publishing changes from background threads", "UI API called from a background thread", and main-actor violations. They are not leaks, but races like these often lead to freed-object crashes.</p>
+
+<h2>Typical causes to check first</h2>
+<p>Details and fixes are in <a href="3.4.%20Retain%20cycles%20and%20leaks.html">3.4</a>.</p>
+<ul>
+  <li>Stored closure capturing <code>self</code> without <code>[weak self]</code>.</li>
+  <li>Strong <code>delegate</code> property.</li>
+  <li><code>Timer</code> with <code>target: self</code> that is never invalidated.</li>
+  <li>Combine subscriptions, <code>Task</code>s or block observers that capture <code>self</code>.</li>
+  <li>Singletons and caches that hold large objects forever.</li>
+  <li>Obj-C temporaries in a long loop (see <a href="3.9.%20Autorelease%20pool.html">3.9</a>).</li>
+</ul>
+
+<h2>Before shipping</h2>
+<ul>
+  <li>Navigate through all main flows, then check the Memory Graph for leftover screens.</li>
+  <li>Run Leaks, and run Allocations on back-and-forth navigation.</li>
+  <li>Check memory on the oldest supported device. It has the lowest jetsam limit.</li>
+</ul>
+
+</main>
+</body>
+</html>

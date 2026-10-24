@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3.4. Retain cycles and leaks</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../index.html">⌂ Knowledge Base</a> › <a href="index.html">3. Memory Management &amp; Runtime</a></nav>
+<main>
+<h1>3.4. Retain cycles and leaks</h1>
+
+<h2>Short answer</h2>
+<p>A <strong>retain cycle</strong> (strong reference cycle) is when two or more objects hold strong references to each other in a loop. None of their counts can reach 0, so ARC never frees them. The memory stays until the app is killed. Break the loop by making one link <code>weak</code> or <code>unowned</code> (see <a href="3.3.%20Strong%2C%20weak%2C%20unowned.html">3.3</a>).</p>
+
+<h2>Three common cycles</h2>
+
+<h3>1. Two objects pointing at each other</h3>
+<pre><code><span class="kw">class</span> <span class="type">Person</span> {
+    <span class="kw">var</span> apartment: <span class="type">Apartment</span>?     <span class="cm">// strong</span>
+    <span class="kw">deinit</span> { <span class="type">print</span>(<span class="str">"Person gone"</span>) }
+}
+<span class="kw">class</span> <span class="type">Apartment</span> {
+    <span class="kw">var</span> tenant: <span class="type">Person</span>?         <span class="cm">// strong → cycle. Fix: weak var tenant</span>
+    <span class="kw">deinit</span> { <span class="type">print</span>(<span class="str">"Apartment gone"</span>) }
+}
+
+<span class="kw">var</span> john: <span class="type">Person</span>? = <span class="type">Person</span>()
+<span class="kw">var</span> flat: <span class="type">Apartment</span>? = <span class="type">Apartment</span>()
+john?.apartment = flat
+flat?.tenant = john
+john = <span class="kw">nil</span>; flat = <span class="kw">nil</span>   <span class="cm">// no deinit prints: both leak</span></code></pre>
+
+<h3>2. Strong delegate</h3>
+<pre><code><span class="kw">class</span> <span class="type">NetworkClient</span> {
+    <span class="kw">var</span> delegate: <span class="type">NetworkDelegate</span>?        <span class="cm">// ❌ should be weak</span>
+}
+<span class="cm">// ViewController → client (strong), client → ViewController (strong) = cycle</span></code></pre>
+
+<h3>3. Closure stored on self</h3>
+<pre><code><span class="kw">class</span> <span class="type">ViewModel</span> {
+    <span class="kw">var</span> onUpdate: (() -&gt; <span class="type">Void</span>)?
+
+    <span class="kw">func</span> setup() {
+        onUpdate = { <span class="kw">self</span>.reload() }                 <span class="cm">// ❌ self → closure → self</span>
+        onUpdate = { [<span class="kw">weak self</span>] <span class="kw">in</span> <span class="kw">self</span>?.reload() }  <span class="cm">// ✅</span>
+    }
+    <span class="kw">func</span> reload() {}
+}</code></pre>
+<p>A closure only creates a cycle if <code>self</code> also holds the closure. A one-shot closure that is not stored (e.g. <code>DispatchQueue.main.async</code>) only extends the lifetime until it runs.</p>
+
+<h2>Leaks that are not cycles</h2>
+<p>The object is kept alive by something outside your code.</p>
+<ul>
+  <li><strong><code>Timer</code> with <code>target: self</code></strong> — the run loop holds the timer and the timer holds <code>self</code>. Call <code>invalidate()</code> (not in <code>deinit</code>, because <code>deinit</code> never runs; use <code>viewWillDisappear</code> or the block API with <code>[weak self]</code>).</li>
+  <li><strong>Old <code>NotificationCenter</code> API</strong> — since iOS 9 selector-based observers are not retained, but block-based observers (<code>addObserver(forName:...)</code>) must be removed, and the block needs <code>[weak self]</code>.</li>
+  <li><strong>Combine <code>sink</code> / <code>assign(to:on:)</code></strong> — <code>assign(to:on: self)</code> retains <code>self</code>. Store the <code>AnyCancellable</code> and use <code>[weak self]</code> in <code>sink</code>.</li>
+  <li><strong>Long Swift <code>Task</code></strong> — a task that captures <code>self</code> keeps it alive until it ends. Cancel it or use <code>[weak self]</code>.</li>
+  <li><strong>Singletons and caches</strong> — anything they reference lives for the whole app.</li>
+</ul>
+<pre><code><span class="cm">// Timer holds its target strongly until invalidated</span>
+timer = <span class="type">Timer</span>.<span class="type">scheduledTimer</span>(withTimeInterval: <span class="num">1</span>, repeats: <span class="kw">true</span>) { [<span class="kw">weak self</span>] _ <span class="kw">in</span>
+    <span class="kw">self</span>?.tick()
+}
+<span class="cm">// still call timer?.invalidate() when the screen goes away</span></code></pre>
+
+<h2>How to prevent them</h2>
+<table>
+<tr><th>Tool</th><th>Use when</th></tr>
+<tr><td><code>weak var</code></td><td>Delegates, parent links, or any link where the other side may be <code>nil</code></td></tr>
+<tr><td><code>unowned</code></td><td>The other object always outlives this one</td></tr>
+<tr><td><code>[weak self]</code> in closures</td><td>The closure is stored, or runs later than the screen's lifetime</td></tr>
+<tr><td><code>struct</code></td><td>No identity needed. Value types cannot form cycles</td></tr>
+<tr><td>Invalidate / cancel</td><td>Timers, <code>CADisplayLink</code>, Combine subscriptions, <code>Task</code>s</td></tr>
+</table>
+
+<h2>How to find them</h2>
+<ul>
+  <li><strong>Print in <code>deinit</code></strong> and navigate back from the screen. No print means a leak.</li>
+  <li><strong>Memory Graph Debugger</strong> and <strong>Instruments</strong> — see <a href="3.11.%20Detecting%20memory%20issues.html">3.11</a>.</li>
+  <li><strong>Unit test:</strong> keep a <code>weak</code> reference and assert it is <code>nil</code> after the strong one goes away.</li>
+</ul>
+<pre><code><span class="kw">func</span> testNoLeak() {
+    <span class="kw">weak var</span> weakVM: <span class="type">ViewModel</span>?
+    <span class="type">autoreleasepool</span> {
+        <span class="kw">let</span> vm = <span class="type">ViewModel</span>()
+        vm.setup()
+        weakVM = vm
+    }
+    <span class="type">XCTAssertNil</span>(weakVM, <span class="str">"ViewModel should be deallocated"</span>)
+}</code></pre>
+
+<h2>Review checklist</h2>
+<ul>
+  <li>Every <code>delegate</code> property is <code>weak</code>.</li>
+  <li>Every closure stored in a property uses <code>[weak self]</code> (or <code>[unowned self]</code> with a proven lifetime).</li>
+  <li>Every <code>Timer</code>, <code>CADisplayLink</code>, observer and subscription has a matching stop or cancel.</li>
+</ul>
+
+</main>
+</body>
+</html>

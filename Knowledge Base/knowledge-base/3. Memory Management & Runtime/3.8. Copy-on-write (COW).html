@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3.8. Copy-on-write (COW)</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../index.html">⌂ Knowledge Base</a> › <a href="index.html">3. Memory Management &amp; Runtime</a></nav>
+<main>
+<h1>3.8. Copy-on-write (COW)</h1>
+
+<h2>Short answer</h2>
+<p>Copy-on-write makes copying a value type cheap. A copy only duplicates a pointer to the shared storage. The real data is copied <strong>later, only when one of the copies is mutated</strong> and the storage is shared. <code>Array</code>, <code>Dictionary</code>, <code>Set</code>, <code>String</code> and <code>Data</code> work this way.</p>
+
+<h2>How it works</h2>
+<p>Each of these structs holds a reference to a class-based heap buffer. Before every mutation, it asks: "am I the only owner of this buffer?" The check is <code>isKnownUniquelyReferenced(&amp;buffer)</code>, which looks at the strong count.</p>
+<table>
+<tr><th>Code</th><th>Buffer</th><th>What happens</th></tr>
+<tr><td><code>var a = [1, 2, 3]</code></td><td>count 1</td><td>Buffer allocated, owned by <code>a</code></td></tr>
+<tr><td><code>var b = a</code></td><td>count 2</td><td>Only the pointer is copied, buffer is shared</td></tr>
+<tr><td><code>b.append(4)</code></td><td>shared, so copy</td><td>New buffer for <code>b</code>, data copied, then 4 added. <code>a</code> is unchanged</td></tr>
+<tr><td><code>a.append(5)</code></td><td>count 1</td><td>Unique now, so mutate in place, no copy</td></tr>
+</table>
+<pre><code><span class="kw">var</span> a = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]
+<span class="kw">var</span> b = a        <span class="cm">// cheap: one pointer copied</span>
+b.<span class="type">append</span>(<span class="num">4</span>)      <span class="cm">// real copy happens here</span>
+<span class="type">print</span>(a, b)      <span class="cm">// [1, 2, 3] [1, 2, 3, 4]</span></code></pre>
+<p>Consequences:</p>
+<ul>
+  <li>Passing a large array to a function that only reads it is <strong>O(1)</strong>. No data copy.</li>
+  <li>The first mutation of a shared value is <strong>O(n)</strong>. Later ones are cheap.</li>
+  <li>Copy-on-write is checked at runtime, per mutation, so it is not free but is very cheap.</li>
+</ul>
+
+<h2>Writing COW for your own type</h2>
+<p>Keep the data in a final class and call <code>ensureUnique()</code> before every mutating method.</p>
+<pre><code><span class="kw">final class</span> <span class="type">Storage</span> {
+    <span class="kw">var</span> items: [<span class="type">String</span>]
+    <span class="kw">init</span>(_ items: [<span class="type">String</span>] = []) { <span class="kw">self</span>.items = items }
+}
+
+<span class="kw">struct</span> <span class="type">TagList</span> {
+    <span class="kw">private var</span> storage = <span class="type">Storage</span>()
+
+    <span class="kw">private mutating func</span> ensureUnique() {
+        <span class="kw">if</span> !<span class="type">isKnownUniquelyReferenced</span>(&amp;storage) {
+            storage = <span class="type">Storage</span>(storage.items)   <span class="cm">// copy before writing</span>
+        }
+    }
+
+    <span class="kw">var</span> count: <span class="type">Int</span> { storage.items.count }
+
+    <span class="kw">mutating func</span> add(_ tag: <span class="type">String</span>) {
+        ensureUnique()
+        storage.items.<span class="type">append</span>(tag)
+    }
+}
+
+<span class="kw">var</span> l1 = <span class="type">TagList</span>(); l1.add(<span class="str">"swift"</span>)
+<span class="kw">var</span> l2 = l1        <span class="cm">// shares storage</span>
+l2.add(<span class="str">"ios"</span>)      <span class="cm">// l2 copies first. l1.count == 1, l2.count == 2</span></code></pre>
+<p>Rules: keep the storage <code>private</code>, make it a <code>final class</code>, and run the uniqueness check in <em>every</em> mutating method. One missed method breaks value semantics.</p>
+
+<h2>Pitfalls</h2>
+<ul>
+  <li><strong>Class holding an array.</strong> COW protects copies of the <em>struct</em>. If two variables point to the same <em>class instance</em>, they share that instance's array on purpose. No copy happens. This is reference semantics, not a bug.</li>
+  <li><strong>Struct with a class property</strong> shares the object between copies. See <a href="3.7.%20Struct%20vs%20class.html">3.7</a>.</li>
+  <li><strong>Hidden copy in a loop.</strong> Keeping an extra copy of an array while mutating it forces a full copy on the first write.</li>
+  <li><strong>Not all value types are COW.</strong> A plain struct with big fixed fields is copied fully every time.</li>
+  <li><strong><code>_modify</code> accessor.</strong> Subscripts on COW collections use it to mutate an element in place without a copy-in/copy-out. You rarely write it yourself.</li>
+</ul>
+
+<h2>Interview summary</h2>
+<p>COW gives value semantics (independent copies) with reference-type performance (shared storage until a write). It relies on one uniqueness check, <code>isKnownUniquelyReferenced</code>, which is built on the reference count from <a href="3.1.%20Memory%20management%20and%20ARC.html">3.1</a>.</p>
+
+</main>
+</body>
+</html>

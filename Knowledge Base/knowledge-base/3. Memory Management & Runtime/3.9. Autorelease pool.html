@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3.9. Autorelease pool</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../index.html">⌂ Knowledge Base</a> › <a href="index.html">3. Memory Management &amp; Runtime</a></nav>
+<main>
+<h1>3.9. Autorelease pool</h1>
+
+<h2>Short answer</h2>
+<p><code>autorelease</code> means "release this object later, not now". The object is added to the current <strong>autorelease pool</strong>. When the pool <em>drains</em>, it sends <code>release</code> to every object inside. In Swift you only meet it through Obj-C APIs (Foundation, UIKit, Core Graphics…). Wrap heavy loops in <code>autoreleasepool { }</code> so temporary objects are freed each iteration, not at the end of the run-loop turn.</p>
+
+<h2>Why it exists</h2>
+<p>An Obj-C method that returns an object it created has a problem: it no longer owns the object, but if it releases it now, the caller gets a dead pointer. <code>autorelease</code> solves this. The object lives until the pool drains, which gives the caller time to use it or retain it.</p>
+<pre><code><span class="cm">// Obj-C, manual reference counting (historical)</span>
+- (<span class="type">NSString</span> *)greet {
+    <span class="type">NSString</span> *s = [[[<span class="type">NSString</span> alloc] initWithFormat:<span class="str">@"Hello"</span>] autorelease];
+    <span class="kw">return</span> s;   <span class="cm">// still alive after return; released when the pool drains</span>
+}</code></pre>
+
+<table>
+<tr><th>Term</th><th>Meaning</th></tr>
+<tr><td><code>autorelease</code></td><td>Registers an object in the current pool for a later <code>release</code></td></tr>
+<tr><td>Pool</td><td>A per-thread stack of pools holding autoreleased objects</td></tr>
+<tr><td>Drain</td><td>Send <code>release</code> to everything in the pool, then pop the pool</td></tr>
+<tr><td><code>@autoreleasepool { }</code> / <code>autoreleasepool { }</code></td><td>Modern syntax: push a pool, run the block, drain (also when leaving by <code>throw</code>). <code>NSAutoreleasePool</code> is the old manual class, and cannot be used in Swift or with ARC</td></tr>
+</table>
+
+<h2>Where the pool comes from</h2>
+<ul>
+  <li><strong>Main thread:</strong> the run loop pushes a pool at the start of each iteration and drains it at the end (see <a href="3.10.%20Run%20loop.html">3.10</a>). Objects live for at most one loop turn (about one frame).</li>
+  <li><strong>GCD queues and <code>OperationQueue</code>:</strong> they create pools around work items, but Apple does not say <em>when</em> they drain. Do not depend on it for big batches.</li>
+  <li><strong>Threads you create with <code>pthread</code>:</strong> no pool at all unless you create one.</li>
+  <li><strong>Unit tests and command-line tools:</strong> no UIKit run-loop pool.</li>
+</ul>
+
+<h2>When you need an explicit pool</h2>
+<h3>1. A loop that creates many Obj-C temporaries</h3>
+<pre><code><span class="cm">// All images pile up until the run-loop turn ends (big memory peak)</span>
+<span class="kw">for</span> url <span class="kw">in</span> imageURLs {
+    <span class="kw">let</span> image = <span class="type">UIImage</span>(contentsOfFile: url.path)
+    <span class="type">saveThumbnail</span>(image)
+}
+
+<span class="cm">// Each iteration frees its own images (peak = one iteration)</span>
+<span class="kw">for</span> url <span class="kw">in</span> imageURLs {
+    <span class="type">autoreleasepool</span> {
+        <span class="kw">let</span> image = <span class="type">UIImage</span>(contentsOfFile: url.path)
+        <span class="type">saveThumbnail</span>(image)
+    }
+}</code></pre>
+
+<h3>2. Background work that uses Obj-C APIs heavily</h3>
+<pre><code><span class="type">DispatchQueue</span>.<span class="type">global</span>().<span class="type">async</span> {
+    <span class="type">autoreleasepool</span> {
+        <span class="kw">let</span> data = <span class="type">NSData</span>(contentsOfFile: path)   <span class="cm">// autoreleased</span>
+        <span class="type">parse</span>(data)
+    }   <span class="cm">// drained here, at a known point</span>
+}</code></pre>
+
+<h3>3. Tests, scripts and tools</h3>
+<p>Wrap Obj-C-heavy code in a pool. There is no run loop to drain it. The same applies to hot loops inside <code>async</code> functions. Do not rely on a pool per <code>Task</code>.</p>
+
+<h2>When you do not need one</h2>
+<ul>
+  <li><strong>Pure Swift types.</strong> Swift objects use direct retain/release. Nothing is autoreleased, so a pool around them does nothing.</li>
+  <li><strong>Normal UI code on the main thread.</strong> The run loop pool is enough.</li>
+  <li>The compiler can remove an autorelease completely when caller and callee cooperate (the "return value optimization"), so you must not rely on an object being autoreleased.</li>
+</ul>
+<p>A pool is cheap to push and pop (a stack operation), so do not avoid it for speed reasons. Put it only around code that really creates Obj-C temporaries.</p>
+
+<h2>Threads and pools</h2>
+<p>Pools are per thread and nest like a stack. You cannot drain another thread's pool. If you pass an autoreleased object to another thread, retain it first (ARC does this when you keep a strong reference).</p>
+
+<h2>Quick reference</h2>
+<table>
+<tr><th>Scenario</th><th>Explicit pool?</th></tr>
+<tr><td>UI code on the main thread</td><td>No, the run loop handles it</td></tr>
+<tr><td>Loop with thousands of Obj-C temporaries (images, <code>NSData</code>)</td><td>Yes, inside each iteration</td></tr>
+<tr><td>Heavy Obj-C work on a background queue</td><td>Yes, around the block's work</td></tr>
+<tr><td>Pure Swift value types and classes</td><td>No</td></tr>
+<tr><td>Tests, command-line tools</td><td>Yes, around Obj-C-heavy code</td></tr>
+</table>
+
+<p>Related: <a href="3.11.%20Detecting%20memory%20issues.html">3.11</a> (spot memory growth with Instruments).</p>
+
+</main>
+</body>
+</html>

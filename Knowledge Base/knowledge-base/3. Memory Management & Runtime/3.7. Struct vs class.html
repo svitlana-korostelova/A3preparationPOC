@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3.7. Struct vs class</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../index.html">⌂ Knowledge Base</a> › <a href="index.html">3. Memory Management &amp; Runtime</a></nav>
+<main>
+<h1>3.7. Struct vs class</h1>
+
+<h2>Short answer</h2>
+<p><strong>Start with a struct.</strong> Use a class only when you need shared mutable identity, a <code>deinit</code>, inheritance or Obj-C/UIKit subclassing. A struct is a <em>value type</em>: every copy is independent. A class is a <em>reference type</em>: all variables point to the same object, and ARC tracks it.</p>
+<p>Apple's standard library follows this rule: <code>Array</code>, <code>String</code>, <code>Dictionary</code>, <code>Set</code>, <code>Data</code>, <code>URL</code> and <code>Date</code> are all structs.</p>
+
+<h2>Comparison</h2>
+<table>
+<tr><th></th><th>Struct / enum</th><th>Class / actor</th></tr>
+<tr><td>Copy</td><td>Independent copy</td><td>Shared reference</td></tr>
+<tr><td>Equality</td><td>By content (<code>Equatable</code>)</td><td>By identity (<code>===</code>), or custom <code>==</code></td></tr>
+<tr><td>Memory</td><td>Usually stack or inline, no ARC</td><td>Heap, ARC retain/release</td></tr>
+<tr><td>Inheritance</td><td>No (use protocols)</td><td>Yes (single class inheritance)</td></tr>
+<tr><td><code>deinit</code></td><td>No</td><td>Yes</td></tr>
+<tr><td>Obj-C / UIKit</td><td>Limited bridging</td><td>Full (<code>NSObject</code>, <code>@objc</code>)</td></tr>
+<tr><td>Thread safety</td><td>Each thread has its own copy, so no data race</td><td>Shared, so you must synchronize (queue, lock, actor)</td></tr>
+<tr><td>Mutation</td><td>Needs <code>var</code> or <code>mutating</code></td><td>Properties mutable through <code>let</code> reference</td></tr>
+</table>
+
+<h2>Use a value type when…</h2>
+<ul>
+  <li><strong>Equality is by content.</strong> Two coordinates with the same numbers are the same value.</li>
+  <li><strong>Copies must be independent.</strong> No surprise changes through another variable (no aliasing).</li>
+  <li><strong>You pass data across threads.</strong> Copies cannot race. Conform to <code>Sendable</code>.</li>
+  <li><strong>Data flows through pure functions</strong>, e.g. reducers (<code>(State, Action) -&gt; State</code>), parsing, mapping.</li>
+  <li><strong>Performance matters.</strong> No heap, no ARC, and arrays of structs are contiguous in memory.</li>
+  <li><strong>It is a SwiftUI <code>View</code>.</strong> Views are structs by design; SwiftUI diffs cheap value snapshots.</li>
+  <li>Typical examples: models, API responses (<code>Codable</code>), geometry, configuration, app state.</li>
+</ul>
+<pre><code><span class="kw">struct</span> <span class="type">HTTPRequest</span> {
+    <span class="kw">var</span> url: <span class="type">URL</span>
+    <span class="kw">var</span> headers: [<span class="type">String</span>: <span class="type">String</span>]
+}
+
+<span class="kw">func</span> sign(_ req: <span class="type">HTTPRequest</span>) -&gt; <span class="type">HTTPRequest</span> {
+    <span class="kw">var</span> signed = req                 <span class="cm">// independent copy</span>
+    signed.headers[<span class="str">"Authorization"</span>] = token()
+    <span class="kw">return</span> signed                      <span class="cm">// the original is unchanged</span>
+}</code></pre>
+
+<h2>Use a reference type when…</h2>
+<ul>
+  <li><strong>Shared mutable state</strong> must be seen by many owners: a cache, a session, a store.</li>
+  <li><strong>You need <code>deinit</code></strong> to close a file, socket, database or C handle. A resource must have one owner and must not be copied.</li>
+  <li><strong>Identity matters.</strong> Two sessions with equal data are still different sessions.</li>
+  <li><strong>You need inheritance</strong> (e.g. a coordinator base class).</li>
+  <li><strong>The framework requires it:</strong> <code>UIView</code>, <code>UIViewController</code>, <code>NSObject</code> subclasses, <code>ObservableObject</code> (<code>@StateObject</code> / <code>@ObservedObject</code>).</li>
+  <li><strong>Callbacks must reach one instance:</strong> delegates and observers (<code>AnyObject</code> protocols).</li>
+  <li><strong>The object is large</strong> and must never be copied, e.g. a big document model.</li>
+</ul>
+<pre><code><span class="kw">final class</span> <span class="type">ImageCache</span> {                  <span class="cm">// shared by many screens</span>
+    <span class="kw">private var</span> storage: [<span class="type">URL</span>: <span class="type">UIImage</span>] = [:]
+    <span class="kw">func</span> image(for url: <span class="type">URL</span>) -&gt; <span class="type">UIImage</span>? { storage[url] }
+    <span class="kw">func</span> store(_ image: <span class="type">UIImage</span>, for url: <span class="type">URL</span>) { storage[url] = image }
+}
+
+<span class="kw">final class</span> <span class="type">DatabaseConnection</span> {            <span class="cm">// exclusive resource</span>
+    <span class="kw">private let</span> handle: <span class="type">OpaquePointer</span>
+    <span class="kw">init</span>(path: <span class="type">String</span>) { handle = openDB(path) }
+    <span class="kw">deinit</span> { closeDB(handle) }
+}</code></pre>
+<p>A class used from several threads needs protection. Prefer an <code>actor</code>, which is a reference type with built-in isolation.</p>
+
+<h2>Common mistakes</h2>
+<h3>1. Class "to be safe"</h3>
+<p>A class with no shared state, no inheritance and no <code>deinit</code> only adds ARC and aliasing risk. Make it a struct.</p>
+
+<h3>2. Struct for shared state</h3>
+<pre><code><span class="kw">struct</span> <span class="type">BadCounter</span> { <span class="kw">var</span> count = <span class="num">0</span> }
+<span class="kw">var</span> a = <span class="type">BadCounter</span>()
+<span class="kw">var</span> b = a
+a.count += <span class="num">1</span>
+<span class="type">print</span>(b.count)   <span class="cm">// 0: b is a separate copy</span></code></pre>
+
+<h3>3. Reference inside a struct</h3>
+<p>A struct with a class property is <em>not</em> fully a value type. Copying the struct copies the pointer, so both copies share the object.</p>
+<pre><code><span class="kw">final class</span> <span class="type">Buffer</span> { <span class="kw">var</span> data: [<span class="type">UInt8</span>] = [] }
+<span class="kw">struct</span> <span class="type">Packet</span> { <span class="kw">var</span> buffer = <span class="type">Buffer</span>() }
+
+<span class="kw">var</span> p1 = <span class="type">Packet</span>()
+<span class="kw">var</span> p2 = p1
+p2.buffer.data.<span class="type">append</span>(<span class="num">0xFF</span>)
+<span class="cm">// p1.buffer.data is also [0xFF]</span></code></pre>
+<p>Fix: make <code>Buffer</code> a struct too, or use copy-on-write (<a href="3.8.%20Copy-on-write%20%28COW%29.html">3.8</a>). If every stored property is a value type or a COW type like <code>Array</code> / <code>String</code>, the struct is a true value type.</p>
+
+<h3>4. Huge inline structs</h3>
+<p>Large fixed-size structs are copied in full on assignment. Large data in <code>Array</code>, <code>String</code> or <code>Data</code> is fine because they are copy-on-write.</p>
+
+<h2>SwiftUI note</h2>
+<p>Views are structs. State holders are classes: <code>ObservableObject</code> and <code>@Observable</code> view models. The framework keeps their identity across redraws. See <a href="../2.1%20SwiftUI/index.html">SwiftUI</a>.</p>
+
+</main>
+</body>
+</html>

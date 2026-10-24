@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3.6. Swift runtime and side table</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../index.html">⌂ Knowledge Base</a> › <a href="index.html">3. Memory Management &amp; Runtime</a></nav>
+<main>
+<h1>3.6. Swift runtime and side table</h1>
+
+<h2>Short answer</h2>
+<p>The <strong>Swift runtime</strong> (<code>libswiftCore.dylib</code>) is the library inside every Swift process that does the work the compiler cannot do ahead of time: allocate objects, run ARC, cast types, look up protocol conformances and provide reflection. The <strong>side table</strong> is a small extra heap record the runtime adds to an object when it needs more counter space, mainly when someone takes a <code>weak</code> reference to it.</p>
+
+<h2>What the runtime does</h2>
+<table>
+<tr><th>Job</th><th>Key functions or structures</th></tr>
+<tr><td>Object allocation</td><td><code>swift_allocObject</code>, <code>swift_allocBox</code></td></tr>
+<tr><td>ARC</td><td><code>swift_retain</code>, <code>swift_release</code></td></tr>
+<tr><td>Type metadata</td><td>Per-type record: kind, field info, vtable (classes), conformances</td></tr>
+<tr><td>Dynamic casts (<code>as?</code>, <code>is</code>)</td><td><code>swift_dynamicCast</code>: walks the class chain or checks a conformance cache</td></tr>
+<tr><td>Protocol dispatch</td><td>Witness tables and existential containers</td></tr>
+<tr><td>Reflection</td><td><code>Mirror</code> (reads type metadata)</td></tr>
+<tr><td>Errors</td><td><code>swift_allocError</code> (boxes errors)</td></tr>
+</table>
+<p>Since Swift 5 the runtime ships inside the OS (ABI stable), so apps link to it instead of bundling it.</p>
+
+<h2>Object layout and allocation</h2>
+<p><code>MyClass()</code> becomes a call to <code>swift_allocObject</code>. It allocates memory, writes a 16-byte <strong>HeapObject header</strong> and then your <code>init</code> runs.</p>
+<table>
+<tr><th>Offset</th><th>Field</th><th>Content</th></tr>
+<tr><td>0 (8 bytes)</td><td>Metadata pointer (<code>isa</code>)</td><td>Points to the class's type metadata (vtable, field info)</td></tr>
+<tr><td>8 (8 bytes)</td><td>Ref counts</td><td>Packed strong count, unowned count and flags (deiniting, has side table)</td></tr>
+</table>
+<p>Your stored properties follow the header.</p>
+
+<h2>Method dispatch</h2>
+<table>
+<tr><th></th><th>Class method</th><th>Protocol method (<code>any P</code>)</th><th>Obj-C (<code>@objc</code>, dynamic)</th></tr>
+<tr><td>Mechanism</td><td>vtable in the class metadata</td><td>Witness table: one function pointer per requirement</td><td><code>objc_msgSend</code> by selector</td></tr>
+<tr><td>Cost</td><td>Indirect call</td><td>Indirect call + existential unpacking</td><td>Slowest, fully dynamic</td></tr>
+<tr><td>Faster when</td><td><code>final</code> or private (static dispatch)</td><td>Generic with a concrete type (specialized)</td><td>Avoid <code>@objc</code> unless needed</td></tr>
+</table>
+<p>An <strong>existential container</strong> (<code>any Protocol</code>) is 5 words: 3 for an inline value (bigger values go to a heap box), 1 for type metadata, and 1 per protocol for its witness table. This is why <code>any P</code> costs more than a generic <code>some P</code>.</p>
+
+<h2>Swift vs Objective-C runtime</h2>
+<table>
+<tr><th></th><th>Swift runtime</th><th>Obj-C runtime</th></tr>
+<tr><td>Library</td><td><code>libswiftCore</code></td><td><code>libobjc</code></td></tr>
+<tr><td>Dispatch</td><td>vtable / witness table (decided mostly at compile time)</td><td>Message sending (late-bound)</td></tr>
+<tr><td>Introspection</td><td>Limited (<code>Mirror</code>)</td><td>Full: method lists, swizzling, KVO</td></tr>
+<tr><td>Registration</td><td>Only <code>NSObject</code> subclasses and <code>@objc</code> members join the Obj-C runtime</td><td>—</td></tr>
+</table>
+<p>Pure Swift classes are not registered with Obj-C. Subclassing <code>NSObject</code> or using <code>@objc</code> adds Obj-C metadata and thunks, and is required for KVO, <code>#selector</code> and target-action.</p>
+
+<h2>The side table</h2>
+<h3>The problem</h3>
+<p>The 8-byte ref-count field has to hold the strong count, unowned count, weak information and flags. Space is tight, so the runtime uses two tiers:</p>
+<ul>
+  <li><strong>Fast path (most objects):</strong> counts are stored inline in the header.</li>
+  <li><strong>Slow path:</strong> the header holds a <em>pointer</em> to a side table object that holds the full counts.</li>
+</ul>
+
+<h3>When it is created</h3>
+<ol>
+  <li>Someone takes a <code>weak</code> reference to the object (the usual reason).</li>
+  <li>An inline count overflows (rare).</li>
+</ol>
+<p>The runtime allocates the side table, moves the counts into it and puts a pointer (plus a "has side table" flag) in the header. Callers see no difference.</p>
+<pre><code><span class="cm">// HeapObjectSideTableEntry (simplified)</span>
+<span class="kw">struct</span> <span class="type">SideTable</span> {
+    <span class="kw">var</span> object: <span class="type">UnsafeRawPointer</span>?   <span class="cm">// back pointer; cleared when the object dies</span>
+    <span class="kw">var</span> strongCount: <span class="type">UInt32</span>
+    <span class="kw">var</span> unownedCount: <span class="type">UInt32</span>
+    <span class="kw">var</span> weakCount: <span class="type">UInt32</span>        <span class="cm">// starts at 1: the object itself counts as one</span>
+}</code></pre>
+
+<h3>How a weak reference works</h3>
+<p>A <code>weak</code> variable stores a pointer to the <strong>side table</strong>, not to the object. Loading it calls <code>swift_weakLoadStrong</code>:</p>
+<ol>
+  <li>Follow the pointer to the side table.</li>
+  <li>If the object is still alive, atomically increment the strong count (so it cannot die mid-use) and return it.</li>
+  <li>If it is dead, return <code>nil</code>.</li>
+</ol>
+<pre><code><span class="kw">var</span> owner: <span class="type">Owner</span>? = <span class="type">Owner</span>()
+<span class="kw">let</span> obs = <span class="type">Observer</span>()
+obs.owner = owner   <span class="cm">// side table created, weakCount = 2</span>
+owner = <span class="kw">nil</span>          <span class="cm">// object dies; side table stays because obs still points to it</span>
+<span class="type">print</span>(obs.owner)    <span class="cm">// nil: read through the side table</span>
+<span class="cm">// when obs goes away, weakCount reaches 0 and the side table is freed</span></code></pre>
+
+<h3>Why this design</h3>
+<ul>
+  <li><strong>O(1) death:</strong> the runtime updates one place (the side table), not every weak variable. No scan.</li>
+  <li><strong>Pay only when used:</strong> objects with no weak references never get a side table.</li>
+  <li><strong>Thread-safe loads</strong> thanks to the atomic increment in step 2.</li>
+  <li><strong>Side tables can outlive the object.</strong> That is exactly what lets a weak variable safely read <code>nil</code> later.</li>
+</ul>
+
+<h3>Weak vs unowned cost</h3>
+<table>
+<tr><th></th><th><code>weak</code></th><th><code>unowned</code></th></tr>
+<tr><td>Needs side table</td><td>Yes</td><td>No (uses the inline unowned count)</td></tr>
+<tr><td>Load</td><td>Extra pointer hop + atomic retain</td><td>Check that the object is not deinitialized, no retain</td></tr>
+<tr><td>Dead object</td><td><code>nil</code></td><td>Trap</td></tr>
+</table>
+<p>Usage rules: <a href="3.3.%20Strong%2C%20weak%2C%20unowned.html">3.3</a>. ARC basics: <a href="3.1.%20Memory%20management%20and%20ARC.html">3.1</a>.</p>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3.5. Stack and heap</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../index.html">⌂ Knowledge Base</a> › <a href="index.html">3. Memory Management &amp; Runtime</a></nav>
+<main>
+<h1>3.5. Stack and heap</h1>
+
+<h2>Short answer</h2>
+<p>The <strong>stack</strong> is fast, private to one thread, and freed automatically when a function returns. The <strong>heap</strong> is shared, flexible, slower, and its lifetime is managed by ARC. Local value types (<code>struct</code>, <code>enum</code>, tuples, <code>Int</code>) usually live on the stack. Class instances always live on the heap.</p>
+
+<h2>Comparison</h2>
+<table>
+<tr><th></th><th>Stack</th><th>Heap</th></tr>
+<tr><td>Owner</td><td>One per thread, private</td><td>One per process, shared</td></tr>
+<tr><td>Allocate</td><td>Move the stack pointer (1 instruction)</td><td>Find a free block, update bookkeeping (much slower)</td></tr>
+<tr><td>Free</td><td>Automatic on function return</td><td>ARC release, then <code>free()</code></td></tr>
+<tr><td>Size</td><td>Fixed: 8 MB main thread, 512 KB for most secondary threads</td><td>Limited by virtual memory</td></tr>
+<tr><td>Thread safety</td><td>No sharing, so no problem</td><td>The allocator is thread-safe, but access to the object is not</td></tr>
+<tr><td>ARC cost</td><td>None</td><td>Atomic retain/release on every reference copy</td></tr>
+<tr><td>Fragmentation</td><td>None</td><td>Possible over time</td></tr>
+<tr><td>Typical content</td><td>Local structs, enums, tuples, primitives, function arguments, pointers</td><td>Class instances, closure contexts, Array/String/Dictionary buffers</td></tr>
+</table>
+
+<h2>Stack details</h2>
+<p>A function call moves the stack pointer down by the size of its frame (return address, saved registers, arguments, locals). Returning moves it back up. There is no <code>free()</code>, no ARC and no lock.</p>
+<p><strong>Stack overflow</strong> happens when frames exceed the stack size, almost always from unbounded recursion. The crash is <code>EXC_BAD_ACCESS</code> on the guard page. On a 512 KB thread you get roughly 1,000–2,500 recursive calls with typical frames. For deep recursion, use an explicit stack in an <code>Array</code>, which lives on the heap:</p>
+<pre><code><span class="kw">func</span> dfs(root: <span class="type">TreeNode</span>?) {
+    <span class="kw">var</span> stack: [<span class="type">TreeNode</span>] = root.map { [$0] } ?? []
+    <span class="kw">while let</span> node = stack.<span class="type">popLast</span>() {
+        <span class="cm">// process node</span>
+        <span class="kw">if let</span> r = node.right { stack.<span class="type">append</span>(r) }
+        <span class="kw">if let</span> l = node.left  { stack.<span class="type">append</span>(l) }
+    }
+}</code></pre>
+
+<h2>Heap details</h2>
+<ol>
+  <li>A class <code>init</code> calls <code>swift_allocObject</code>, which calls <code>malloc</code>.</li>
+  <li>The allocator finds a free block and the runtime writes the 16-byte header (metadata pointer + ref counts).</li>
+  <li>ARC retains and releases as references are copied.</li>
+  <li>At count 0: <code>deinit</code>, then <code>free()</code>.</li>
+</ol>
+<pre><code><span class="kw">class</span> <span class="type">Node</span> {
+    <span class="kw">var</span> value: <span class="type">Int</span>     <span class="cm">// 8 bytes</span>
+    <span class="kw">var</span> next: <span class="type">Node</span>?   <span class="cm">// 8 bytes</span>
+}
+<span class="cm">// Heap size: header 16 + 8 + 8 = 32 bytes minimum</span></code></pre>
+<p>Apple's allocator (<code>libmalloc</code>) uses per-thread caches for small blocks, so contention is low. It cannot move live Swift objects, so many tiny, short-lived allocations can fragment memory.</p>
+
+<h2>Why it matters for speed</h2>
+<p>A heap allocation costs the allocation itself, ARC traffic and cache misses. In a hot path (60 fps rendering, large parsing), replacing small classes with structs can remove thousands of allocations per frame.</p>
+<pre><code><span class="kw">class</span> <span class="type">FrameClass</span> { <span class="kw">var</span> x, y, w, h: <span class="type">Double</span> = <span class="num">0</span> }   <span class="cm">// heap + ARC per instance</span>
+<span class="kw">struct</span> <span class="type">FrameStruct</span> { <span class="kw">var</span> x, y, w, h: <span class="type">Double</span> }     <span class="cm">// inline, no ARC</span></code></pre>
+<p>Measure with <strong>Instruments → Allocations</strong> before you optimize.</p>
+
+<h2>When a value type ends up on the heap</h2>
+<p>"Struct = stack" is a default, not a rule. A value is placed on the heap when it must outlive the current stack frame, or when its size is not known or too big.</p>
+<table>
+<tr><th>Situation</th><th>Where the value goes</th></tr>
+<tr><td>Local variable, not captured</td><td>Stack</td></tr>
+<tr><td>Captured and modified by an <code>@escaping</code> closure</td><td>Heap box shared with the closure</td></tr>
+<tr><td>Stored property of a class</td><td>Inside the class's heap block</td></tr>
+<tr><td>Protocol existential (<code>any P</code>) bigger than 3 words (24 bytes)</td><td>Heap buffer, pointer kept in the existential container</td></tr>
+<tr><td><code>indirect enum</code> case</td><td>Heap box for the payload</td></tr>
+<tr><td>Local used after an <code>await</code></td><td>Task's heap-allocated async frame</td></tr>
+<tr><td>Array, String, Dictionary contents</td><td>Heap buffer (the struct itself is only a pointer + metadata)</td></tr>
+</table>
+<pre><code><span class="kw">func</span> makeCounter() -&gt; () -&gt; <span class="type">Int</span> {
+    <span class="kw">var</span> count = <span class="num">0</span>          <span class="cm">// Int, but boxed on the heap</span>
+    <span class="kw">return</span> { count += <span class="num">1</span>; <span class="kw">return</span> count }   <span class="cm">// the closure outlives this frame</span>
+}
+
+<span class="kw">indirect enum</span> <span class="type">Tree</span> {
+    <span class="kw">case</span> leaf(<span class="type">Int</span>)
+    <span class="kw">case</span> node(<span class="type">Tree</span>, <span class="type">Tree</span>)   <span class="cm">// recursive, so each payload is boxed</span>
+}</code></pre>
+<p>The reverse also happens: when escape analysis proves a class instance never leaves its function, the optimizer may allocate it on the stack. Do not rely on it.</p>
+
+<h2>Quick rule</h2>
+<ul>
+  <li>Plain data, hot paths, independent copies → <code>struct</code>.</li>
+  <li>Shared identity or controlled lifetime → <code>class</code>, and accept the heap cost.</li>
+  <li>Profile first. Do not guess.</li>
+</ul>
+<p>More: <a href="3.7.%20Struct%20vs%20class.html">3.7 Struct vs class</a>, <a href="3.6.%20Swift%20runtime%20and%20side%20table.html">3.6 Swift runtime and side table</a>.</p>
+
+</main>
+</body>
+</html>

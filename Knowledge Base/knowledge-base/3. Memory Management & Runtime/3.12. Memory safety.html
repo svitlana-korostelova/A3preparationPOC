@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3.12. Memory safety</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../index.html">⌂ Knowledge Base</a> › <a href="index.html">3. Memory Management &amp; Runtime</a></nav>
+<main>
+<h1>3.12. Memory safety</h1>
+
+<h2>Short answer</h2>
+<p>In safe Swift code, the language prevents the usual C memory bugs: reading uninitialized memory, using freed memory, and writing outside a buffer. It also enforces <strong>exclusive access</strong>: you cannot read and write the same variable at the same moment. Unsafe pointer APIs switch these guarantees off, and then you are responsible.</p>
+
+<h2>Four guarantees</h2>
+<table>
+<tr><th>Guarantee</th><th>How Swift enforces it</th></tr>
+<tr><td>No uninitialized memory</td><td>Compiler error if a variable is read before it is set</td></tr>
+<tr><td>No dangling references</td><td>ARC keeps an object alive while a strong reference exists. <code>weak</code> becomes <code>nil</code>, <code>unowned</code> traps instead of reading garbage</td></tr>
+<tr><td>No buffer overflow</td><td>Bounds checks on arrays and collections trap on a bad index</td></tr>
+<tr><td>Exclusive access</td><td>Overlapping read/write access to a variable is an error (compile time, or runtime when it cannot be proven)</td></tr>
+</table>
+<pre><code><span class="kw">var</span> count: <span class="type">Int</span>
+<span class="type">print</span>(count)          <span class="cm">// ❌ compile error: used before being initialized</span>
+
+<span class="kw">let</span> arr = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]
+<span class="kw">let</span> x = arr[<span class="num">5</span>]         <span class="cm">// runtime trap: index out of range</span></code></pre>
+
+<h2>Exclusive access</h2>
+<p>A <strong>write</strong> access is exclusive for its whole duration. A read can overlap with other reads, but not with a write. The rule covers <code>inout</code> arguments, <code>mutating</code> methods and properties.</p>
+<pre><code><span class="kw">var</span> score = <span class="num">0</span>
+<span class="kw">func</span> increment(_ n: <span class="kw">inout</span> <span class="type">Int</span>) { n += <span class="num">1</span> }
+increment(&amp;score)             <span class="cm">// OK: one write access during the call</span>
+
+<span class="type">Swift</span>.<span class="type">swap</span>(&amp;score, &amp;score)   <span class="cm">// ❌ error: overlapping accesses to 'score'</span></code></pre>
+<p>A common runtime case is a function that takes a variable <code>inout</code> while its own code also touches that variable (for example a closure that reads the same global or class property). Swift cannot always prove this at compile time, so it checks at runtime. A violation crashes with "Simultaneous accesses to …". This check is on in debug <em>and</em> release builds by default.</p>
+<ul>
+  <li>Structs: overlapping access to different stored properties of a <em>local</em> struct is allowed when the compiler can prove it is safe. It is not allowed for global variables or class properties.</li>
+  <li>Exclusivity is about one thread. Access from several threads is a data race. Use an actor, queue or lock (see the Concurrency section).</li>
+</ul>
+
+<h2>Unsafe pointers</h2>
+<p>For C interop and rare performance work, Swift offers pointer types with no safety checks.</p>
+<table>
+<tr><th>Type</th><th>Meaning</th></tr>
+<tr><td><code>UnsafePointer&lt;T&gt;</code> / <code>UnsafeMutablePointer&lt;T&gt;</code></td><td>Typed pointer, read-only / read-write, no bounds checks</td></tr>
+<tr><td><code>UnsafeRawPointer</code> / <code>UnsafeMutableRawPointer</code></td><td>Untyped pointer to raw bytes</td></tr>
+<tr><td><code>UnsafeBufferPointer&lt;T&gt;</code></td><td>Typed pointer + count. Still no bounds trap in release builds</td></tr>
+<tr><td><code>Unmanaged&lt;T&gt;</code></td><td>Object reference outside ARC. You do retain/release yourself</td></tr>
+</table>
+<p>Use the <code>withUnsafe…</code> functions. The pointer is valid <em>only inside the closure</em>.</p>
+<pre><code><span class="kw">var</span> buffer = [<span class="type">UInt8</span>](repeating: <span class="num">0</span>, count: <span class="num">256</span>)
+buffer.<span class="type">withUnsafeMutableBytes</span> { ptr <span class="kw">in</span>
+    <span class="type">fillBuffer</span>(ptr.baseAddress!, <span class="type">Int32</span>(ptr.count))   <span class="cm">// C function; valid here only</span>
+}
+
+<span class="kw">var</span> leaked: <span class="type">UnsafePointer</span>&lt;<span class="type">Int</span>&gt;?
+<span class="kw">var</span> n = <span class="num">42</span>
+<span class="type">withUnsafePointer</span>(to: &amp;n) { leaked = $0 }   <span class="cm">// ❌ pointer escapes: undefined behaviour</span></code></pre>
+
+<h2>Undefined behaviour</h2>
+<p>Break the rules in unsafe code and the result is undefined: crashes, silent corruption, or code that works in debug and fails with optimizations. Typical causes:</p>
+<ul>
+  <li>Using a pointer after the memory it points to is gone.</li>
+  <li>Reading or writing past the end of a buffer.</li>
+  <li>Reading memory as the wrong type (type punning without <code>UnsafeRawPointer</code> rules).</li>
+  <li>Unbalanced <code>Unmanaged</code> retain/release (leak or over-release).</li>
+</ul>
+
+<h2>Best practices</h2>
+<ul>
+  <li><strong>Keep unsafe code small</strong> and hidden behind a safe function or type.</li>
+  <li><strong>Write down your assumptions</strong> about lifetime, size and alignment in a comment.</li>
+  <li><strong>Prefer <code>withUnsafe…</code> closures</strong> and <code>UnsafeBufferPointer</code> over loose pointers.</li>
+  <li><strong>Test with Address Sanitizer</strong> (see <a href="3.11.%20Detecting%20memory%20issues.html">3.11</a>).</li>
+</ul>
+
+</main>
+</body>
+</html>

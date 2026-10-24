@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3.3. Strong, weak, unowned</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body img{max-width:100%;box-sizing:content-box;background-color:#fff}
+.markdown-body hr{height:.25em;padding:0;margin:24px 0;background-color:#d0d7de;border:0}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+ul.toc{list-style:none;padding:0}
+ul.toc li{padding:8px 0;border-bottom:1px solid #eaeef2}
+ul.toc li a{font-size:1.05em}
+.badge{font-size:11px;color:#656d76;background:#eaeef2;padding:2px 6px;border-radius:10px;
+  margin-left:8px;vertical-align:middle}
+.missing-image{display:inline-block;padding:4px 8px;background:#fff8c5;border:1px dashed #d4a72c;
+  border-radius:4px;color:#7d4e00;font-size:90%}
+
+.codehilite{background:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px}
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .codehilite { background: #1c1c1e; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../index.html">⌂ Knowledge Base</a> › <a href="index.html">3. Memory Management &amp; Runtime</a></nav>
+<main>
+<h1>3.3. Strong, weak, unowned</h1>
+
+<h2>Short answer</h2>
+<p>These are the three ways a variable can point to a class instance. <strong>Strong</strong> keeps the object alive. <strong>Weak</strong> and <strong>unowned</strong> do not. The difference between them is what happens after the object dies: <code>weak</code> becomes <code>nil</code>, <code>unowned</code> traps (crashes).</p>
+
+<h2>Comparison</h2>
+<table>
+<tr><th></th><th><code>strong</code> (default)</th><th><code>weak</code></th><th><code>unowned</code></th></tr>
+<tr><td>Changes strong count</td><td>+1</td><td>No</td><td>No</td></tr>
+<tr><td>Type</td><td>Any</td><td>Must be <code>Optional</code> <code>var</code></td><td>Non-optional (<code>let</code> or <code>var</code>)</td></tr>
+<tr><td>After the object dies</td><td>Not possible, it keeps it alive</td><td>Reads as <code>nil</code></td><td>Trap (crash) on access</td></tr>
+<tr><td>Safe to read?</td><td>Yes</td><td>Yes</td><td>Only if the object is guaranteed alive</td></tr>
+<tr><td>Cost</td><td>Atomic retain/release</td><td>Side table lookup on load (see <a href="3.6.%20Swift%20runtime%20and%20side%20table.html">3.6</a>)</td><td>Cheaper, no side table</td></tr>
+<tr><td>Use for</td><td>Ownership</td><td>Delegates, parent links, closures where the object may die first</td><td>Links where the other object always outlives this one</td></tr>
+</table>
+<p>Only class instances (<code>AnyObject</code>) can be held weakly or unowned. Structs and enums cannot.</p>
+
+<h2>Strong</h2>
+<p>Every reference is strong unless you say otherwise. The object stays alive while at least one strong reference exists.</p>
+<pre><code><span class="kw">var</span> a: <span class="type">User</span>? = <span class="type">User</span>(<span class="str">"Alice"</span>)   <span class="cm">// count = 1</span>
+<span class="kw">var</span> b = a                         <span class="cm">// count = 2</span>
+a = <span class="kw">nil</span>                             <span class="cm">// count = 1, still alive</span>
+b = <span class="kw">nil</span>                             <span class="cm">// count = 0, deinit</span></code></pre>
+
+<h2>Weak</h2>
+<p>Does not keep the object alive. Becomes <code>nil</code> when the object dies, so it is always safe to check.</p>
+<ul>
+  <li>Must be <code>weak var</code>, never <code>weak let</code> (the runtime has to be able to set it to <code>nil</code>).</li>
+  <li>Must be <code>Optional</code>.</li>
+</ul>
+<pre><code><span class="kw">protocol</span> <span class="type">NetworkDelegate</span>: <span class="type">AnyObject</span> { <span class="kw">func</span> didReceive(data: <span class="type">Data</span>) }
+
+<span class="kw">class</span> <span class="type">NetworkClient</span> {
+    <span class="kw">weak var</span> delegate: (<span class="kw">any</span> <span class="type">NetworkDelegate</span>)?   <span class="cm">// the classic weak use</span>
+}
+
+<span class="kw">class</span> <span class="type">Node</span> {
+    <span class="kw">weak var</span> parent: <span class="type">Node</span>?    <span class="cm">// child → parent: weak</span>
+    <span class="kw">var</span> children: [<span class="type">Node</span>] = []  <span class="cm">// parent → child: strong (parent owns children)</span>
+}</code></pre>
+
+<h2>Unowned</h2>
+<p>Does not keep the object alive, is not optional, and <strong>assumes the object is still alive</strong>. Use it only when the holder can never outlive the object it points to. If the object is gone, access traps with a clear error.</p>
+<pre><code><span class="kw">class</span> <span class="type">Customer</span> {
+    <span class="kw">var</span> card: <span class="type">CreditCard</span>?
+}
+<span class="kw">class</span> <span class="type">CreditCard</span> {
+    <span class="kw">unowned let</span> owner: <span class="type">Customer</span>   <span class="cm">// a card cannot exist without its customer</span>
+    <span class="kw">init</span>(owner: <span class="type">Customer</span>) { <span class="kw">self</span>.owner = owner }
+}</code></pre>
+<table>
+<tr><th>Variant</th><th>If the object is dead</th><th>Use</th></tr>
+<tr><td><code>unowned</code> / <code>unowned(safe)</code></td><td>Trap with an error message</td><td>Default</td></tr>
+<tr><td><code>unowned(unsafe)</code></td><td>Undefined behaviour (dangling pointer)</td><td>Rare C interop where even the check is too slow</td></tr>
+</table>
+
+<h2>Closure capture lists</h2>
+<p>Closures capture <code>self</code> strongly by default. Use a capture list to choose the reference type.</p>
+<pre><code><span class="kw">class</span> <span class="type">ViewModel</span> {
+    <span class="kw">var</span> onUpdate: (() -&gt; <span class="type">Void</span>)?
+
+    <span class="kw">func</span> setup() {
+        onUpdate = { <span class="kw">self</span>.refresh() }            <span class="cm">// ❌ cycle: self → closure → self</span>
+        onUpdate = { [<span class="kw">weak self</span>] <span class="kw">in</span> <span class="kw">self</span>?.refresh() } <span class="cm">// ✅ safe if self may be gone</span>
+        onUpdate = { [<span class="kw">unowned self</span>] <span class="kw">in</span> <span class="kw">self</span>.refresh() } <span class="cm">// ✅ only if self always outlives the closure</span>
+    }
+    <span class="kw">func</span> refresh() {}
+}</code></pre>
+<p>When you capture <code>[weak self]</code> and need <code>self</code> several times, promote it once. This also stops it from dying in the middle of the closure:</p>
+<pre><code>onUpdate = { [<span class="kw">weak self</span>] <span class="kw">in</span>
+    <span class="kw">guard let</span> <span class="kw">self</span> <span class="kw">else</span> { <span class="kw">return</span> }   <span class="cm">// strong for the rest of this scope</span>
+    <span class="kw">self</span>.refresh()
+    <span class="kw">self</span>.updateUI()
+}</code></pre>
+<p>If unsure, use <code>[weak self]</code>. A crash from <code>unowned</code> is worse than a skipped callback.</p>
+
+<h2>Which one to pick</h2>
+<table>
+<tr><th>Situation</th><th>Use</th><th>Why</th></tr>
+<tr><td>View → ViewModel, parent → child</td><td>strong</td><td>The owner holds what it owns</td></tr>
+<tr><td>Delegate, ViewModel → View callback</td><td>weak</td><td>The other side can disappear</td></tr>
+<tr><td>Timer or URLSession completion capturing <code>self</code></td><td>weak self</td><td>The callback can fire after the screen is gone</td></tr>
+<tr><td>Child → parent with the same lifetime (card → customer)</td><td>unowned</td><td>The child never outlives the parent</td></tr>
+<tr><td><code>lazy var</code> that uses <code>self</code></td><td>unowned self</td><td>It runs while <code>self</code> is alive</td></tr>
+</table>
+<p>Why weak and unowned exist: <a href="3.4.%20Retain%20cycles%20and%20leaks.html">3.4 Retain cycles and leaks</a>.</p>
+
+</main>
+</body>
+</html>
