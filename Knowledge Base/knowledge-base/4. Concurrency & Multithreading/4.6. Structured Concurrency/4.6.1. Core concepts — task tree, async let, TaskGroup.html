@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4.6.1. Core concepts — task tree, async let, TaskGroup</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3{margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code{padding:.2em .4em;font-size:85%;background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da}
+
+.markdown-body pre {
+  border-radius: 8px;
+  padding: 1em;
+  overflow-x: auto;
+  font-size: 0.88em;
+  line-height: 1.55;
+  background: #f7f8fa;
+  color: #1d1d1f;
+}
+.markdown-body pre code { background: none; padding: 0; font-size: 100%; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ccc; padding: 0.45em 0.7em; text-align: left; vertical-align: top; }
+th { background: #eef0f3; }
+
+@media (prefers-color-scheme: dark) {
+  body.markdown-body { background: #0d1117; color: #e6edf3; }
+  .markdown-body h1, .markdown-body h2 { border-color: #30363d; }
+  .markdown-body a, nav.breadcrumbs a { color: #4493f8; }
+  nav.breadcrumbs { border-color: #30363d; color: #8b949e; }
+  .markdown-body blockquote { color: #8b949e; border-color: #30363d; }
+  .markdown-body pre { background: #1c1c1e; color: #e8e8e8; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+  th { background: #2c2c2e; }
+  td, th { border-color: #444; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">4. Concurrency &amp; Multithreading</a> › <a href="index.html">4.6. Structured Concurrency</a></nav>
+<main>
+<h1>4.6.1. Core concepts — task tree, async let, TaskGroup</h1>
+
+<blockquote><p>The most common "explain it" questions. Each answer starts with a short version you can say out loud, then gives detail and code.</p></blockquote>
+
+<!-- Q1 -->
+<h2>Q1. What is structured concurrency?</h2>
+<p><strong>Short answer:</strong> Child tasks live inside the scope that created them. The scope cannot finish until every child has finished. So tasks form a <strong>tree</strong>, like nested function calls.</p>
+<p>This gives three guarantees "for free":</p>
+<ul>
+  <li><strong>No leaked work</strong> — when a function returns, none of its child tasks are still running.</li>
+  <li><strong>Cancellation flows down</strong> — cancel the parent and every child is marked as cancelled.</li>
+  <li><strong>Errors flow up</strong> — a child's error is rethrown in the parent, where you can handle it.</li>
+</ul>
+<p>Swift has exactly two structured tools: <code>async let</code> and task groups (<code>withTaskGroup</code>, <code>withThrowingTaskGroup</code>, <code>withDiscardingTaskGroup</code>). <code>Task { }</code> and <code>Task.detached { }</code> are <strong>unstructured</strong>.</p>
+<pre><code><span class="cm">// Task tree</span>
+<span class="cm">// loadScreen()               ← parent</span>
+<span class="cm">//  ├─ async let profile      ← child</span>
+<span class="cm">//  └─ withTaskGroup          ← child scope</span>
+<span class="cm">//      ├─ thumbnail(id: 1)   ← grandchild</span>
+<span class="cm">//      └─ thumbnail(id: 2)   ← grandchild</span></code></pre>
+
+<!-- Q2 -->
+<h2>Q2. Why was it introduced? What was wrong with GCD and completion handlers?</h2>
+<p><strong>Short answer:</strong> With GCD, nothing links a piece of work to the code that started it. You must track, cancel and wait for work by hand, and it's easy to forget.</p>
+<table>
+<tr><th>Problem with GCD / callbacks</th><th>How structured concurrency fixes it</th></tr>
+<tr><td>Forgot to call the completion handler, or called it twice</td><td>A function returns a value or throws — exactly once, checked by the compiler</td></tr>
+<tr><td>Cancellation must be wired by hand (flags, <code>DispatchWorkItem</code>)</td><td>Cancellation propagates through the task tree automatically</td></tr>
+<tr><td><code>DispatchGroup</code> enter/leave mismatch → hang or crash</td><td><code>async let</code> / task group always wait for children</td></tr>
+<tr><td>Errors passed as <code>Result</code> through nested closures</td><td>Normal <code>try</code> / <code>catch</code></td></tr>
+<tr><td>Thread explosion: blocked threads make GCD create more threads</td><td>Cooperative pool with about one thread per CPU core; <code>await</code> frees the thread instead of blocking it</td></tr>
+</table>
+
+<!-- Q3 -->
+<h2>Q3. How does <code>async let</code> work?</h2>
+<p><strong>Short answer:</strong> <code>async let</code> starts a child task right away and runs it in parallel with the rest of the function. You get the value later with <code>await</code>.</p>
+<pre><code><span class="kw">func</span> loadScreen(userID: <span class="type">String</span>) <span class="kw">async throws</span> -&gt; <span class="type">Screen</span> {
+    <span class="kw">async let</span> user  = api.user(id: userID)      <span class="cm">// starts now</span>
+    <span class="kw">async let</span> feed  = api.feed(for: userID)    <span class="cm">// starts now, in parallel</span>
+    <span class="kw">async let</span> badge = api.unreadCount()        <span class="cm">// starts now, in parallel</span>
+
+    <span class="cm">// total time ≈ the slowest call, not the sum</span>
+    <span class="kw">return try await</span> <span class="type">Screen</span>(user: user, feed: feed, badge: badge)
+}</code></pre>
+<p>Compare with sequential code — each <code>await</code> waits for the previous one:</p>
+<pre><code><span class="kw">let</span> user  = <span class="kw">try await</span> api.user(id: userID)    <span class="cm">// 1 s</span>
+<span class="kw">let</span> feed  = <span class="kw">try await</span> api.feed(for: userID)  <span class="cm">// + 1 s</span>
+<span class="kw">let</span> badge = <span class="kw">try await</span> api.unreadCount()      <span class="cm">// + 1 s  → 3 s total</span></code></pre>
+<p>Key facts interviewers check:</p>
+<ul>
+  <li>If you leave the scope without awaiting an <code>async let</code>, Swift <strong>cancels it and waits for it</strong> anyway. It never outlives the function.</li>
+  <li>You can't pass an <code>async let</code> value around or store it — you can only <code>await</code> it in the same scope.</li>
+  <li>If one awaited <code>async let</code> throws, the function exits, and the other not-yet-awaited ones are cancelled and awaited.</li>
+</ul>
+
+<!-- Q4 -->
+<h2>Q4. How do task groups work?</h2>
+<p><strong>Short answer:</strong> A task group runs a <em>dynamic</em> number of child tasks of the <em>same</em> result type. You add tasks with <code>addTask</code> and read results as they finish.</p>
+<pre><code><span class="kw">func</span> loadThumbnails(ids: [<span class="type">Int</span>]) <span class="kw">async throws</span> -&gt; [<span class="type">Int</span>: <span class="type">UIImage</span>] {
+    <span class="kw">try await</span> withThrowingTaskGroup(of: (<span class="type">Int</span>, <span class="type">UIImage</span>).<span class="kw">self</span>) { group <span class="kw">in</span>
+        <span class="kw">for</span> id <span class="kw">in</span> ids {
+            group.addTask {
+                (id, <span class="kw">try await</span> api.thumbnail(id: id))
+            }
+        }
+
+        <span class="kw">var</span> result: [<span class="type">Int</span>: <span class="type">UIImage</span>] = [:]
+        <span class="kw">for try await</span> (id, image) <span class="kw">in</span> group {   <span class="cm">// completion order, not add order</span>
+            result[id] = image
+        }
+        <span class="kw">return</span> result
+    }
+}</code></pre>
+<ul>
+  <li>Results arrive in <strong>completion order</strong>. To keep the input order, return the index with the value (as above) and sort or map afterwards.</li>
+  <li>Collect results in the parent (the <code>for await</code> loop). Don't mutate a shared <code>var</code> from inside <code>addTask</code> — child closures are <code>@Sendable</code>, and Swift 6 rejects this as a data race.</li>
+  <li>When the closure ends, the group waits for any children you didn't read.</li>
+</ul>
+
+<!-- Q5 -->
+<h2>Q5. <code>async let</code> vs <code>TaskGroup</code> — when to use which?</h2>
+<table>
+<tr><th></th><th><code>async let</code></th><th>Task group</th></tr>
+<tr><td><strong>Number of tasks</strong></td><td>Fixed, known when you write the code</td><td>Dynamic — decided at runtime (e.g. one per array item)</td></tr>
+<tr><td><strong>Result types</strong></td><td>Each can be a different type</td><td>All children return the same type</td></tr>
+<tr><td><strong>Result order</strong></td><td>You await them by name</td><td>Completion order</td></tr>
+<tr><td><strong>Limit parallelism</strong></td><td>No</td><td>Yes (see Q6)</td></tr>
+<tr><td><strong>Typical use</strong></td><td>"Load user + feed + settings for this screen"</td><td>"Download 200 images"</td></tr>
+</table>
+
+<!-- Q6 -->
+<h2>Q6. How do you limit how many tasks a group runs at once?</h2>
+<p><strong>Short answer:</strong> Task groups have no built-in limit. Start the first N tasks, then add one new task each time one finishes.</p>
+<pre><code><span class="kw">func</span> downloadAll(_ urls: [<span class="type">URL</span>], maxConcurrent: <span class="type">Int</span> = <span class="num">4</span>) <span class="kw">async throws</span> -&gt; [<span class="type">Data</span>] {
+    <span class="kw">try await</span> withThrowingTaskGroup(of: <span class="type">Data</span>.<span class="kw">self</span>) { group <span class="kw">in</span>
+        <span class="kw">var</span> iterator = urls.makeIterator()
+        <span class="kw">var</span> results: [<span class="type">Data</span>] = []
+
+        <span class="cm">// 1. Fill the first N slots</span>
+        <span class="kw">for</span> _ <span class="kw">in</span> <span class="num">0</span>..&lt;maxConcurrent {
+            <span class="kw">guard let</span> url = iterator.next() <span class="kw">else break</span>
+            group.addTask { <span class="kw">try await</span> download(url) }
+        }
+
+        <span class="cm">// 2. Each time one finishes, start the next</span>
+        <span class="kw">while let</span> data = <span class="kw">try await</span> group.next() {
+            results.append(data)
+            <span class="kw">if let</span> url = iterator.next() {
+                group.addTask { <span class="kw">try await</span> download(url) }
+            }
+        }
+        <span class="kw">return</span> results
+    }
+}</code></pre>
+<p>Why it matters: 1 000 parallel image downloads can exhaust memory and overload the server, even though Swift's thread pool itself stays small.</p>
+
+<!-- Q7 -->
+<h2>Q7. What happens when one child task in a throwing group fails?</h2>
+<p><strong>Short answer:</strong> The error is <em>not</em> raised immediately. It is stored until you read that child's result (<code>next()</code> or <code>for try await</code>). When the error is thrown out of the group closure, the group cancels all other children and waits for them before rethrowing.</p>
+<pre><code><span class="kw">try await</span> withThrowingTaskGroup(of: <span class="type">Void</span>.<span class="kw">self</span>) { group <span class="kw">in</span>
+    group.addTask { <span class="kw">try await</span> upload(a) }
+    group.addTask { <span class="kw">throw</span> <span class="type">UploadError</span>.offline }   <span class="cm">// fails fast</span>
+    group.addTask { <span class="kw">try await</span> upload(c) }
+
+    <span class="kw">try await</span> group.waitForAll()   <span class="cm">// rethrows .offline → siblings get cancelled</span>
+}</code></pre>
+<ul>
+  <li>If you want "collect every result, even failures", return <code>Result&lt;T, Error&gt;</code> from each child and use a non-throwing group.</li>
+  <li><code>withThrowingDiscardingTaskGroup</code> (iOS 17) is different: the first child error cancels the group <strong>right away</strong>, with no need to read results.</li>
+</ul>
+
+<!-- Q8 -->
+<h2>Q8. What is <code>withDiscardingTaskGroup</code> and when do you need it?</h2>
+<p><strong>Short answer:</strong> A group for children that return <code>Void</code>. It frees each child as soon as it finishes instead of keeping its result. Use it for long-running "fire many jobs" loops, so memory doesn't grow forever. Available from iOS 17 / Swift 5.9.</p>
+<pre><code><span class="kw">await</span> withDiscardingTaskGroup { group <span class="kw">in</span>
+    <span class="kw">for await</span> message <span class="kw">in</span> socket.messages {   <span class="cm">// endless stream</span>
+        group.addTask { <span class="kw">await</span> handle(message) }
+    }
+}</code></pre>
+<p>With a normal <code>withTaskGroup</code>, every finished child stays in memory until you call <code>next()</code>, which this loop never does.</p>
+
+<!-- Q9 -->
+<h2>Q9. What do child tasks inherit from the parent?</h2>
+<table>
+<tr><th>Inherited?</th><th>Child task (<code>async let</code>, group)</th><th><code>Task { }</code></th><th><code>Task.detached { }</code></th></tr>
+<tr><td>Cancellation from parent</td><td>✅ Yes</td><td>❌ No</td><td>❌ No</td></tr>
+<tr><td>Priority</td><td>✅ Yes</td><td>✅ Yes</td><td>❌ No</td></tr>
+<tr><td>Task-local values (<code>@TaskLocal</code>)</td><td>✅ Yes</td><td>✅ Yes</td><td>❌ No</td></tr>
+<tr><td>Actor isolation (e.g. <code>@MainActor</code>)</td><td>❌ No — group / <code>async let</code> children run off the actor</td><td>✅ Yes</td><td>❌ No</td></tr>
+<tr><td>Parent waits for it</td><td>✅ Yes</td><td>❌ No</td><td>❌ No</td></tr>
+</table>
+<p>Child tasks in a group are <code>@Sendable</code> closures and are not isolated to the caller's actor. If they call an actor's method, they hop to that actor with <code>await</code>.</p>
+
+<!-- Q10 -->
+<h2>Q10. What are task-local values?</h2>
+<p><strong>Short answer:</strong> A value bound to the current task and all of its children, like a thread-local, but for tasks. Good for request IDs, tracing and logging context — things you don't want to pass through every function.</p>
+<pre><code><span class="kw">enum</span> <span class="type">Trace</span> {
+    <span class="attr">@TaskLocal</span> <span class="kw">static var</span> requestID: <span class="type">String</span> = <span class="str">"none"</span>
+}
+
+<span class="kw">await</span> <span class="type">Trace</span>.$requestID.withValue(<span class="str">"req-42"</span>) {
+    <span class="kw">async let</span> a = fetchA()   <span class="cm">// inside: Trace.requestID == "req-42"</span>
+    <span class="kw">async let</span> b = fetchB()   <span class="cm">// inside: Trace.requestID == "req-42"</span>
+    _ = <span class="kw">await</span> (a, b)
+}
+<span class="cm">// outside: Trace.requestID == "none" again</span></code></pre>
+<p>The value is read-only inside the scope. It is not passed to <code>Task.detached</code>.</p>
+
+<!-- Q11 -->
+<h2>Q11. How does priority work? What is priority escalation?</h2>
+<p><strong>Short answer:</strong> Children inherit the parent's priority. If a high-priority task <code>await</code>s a lower-priority task, Swift <strong>raises</strong> the awaited task's priority so the important work isn't stuck behind it. This prevents priority inversion.</p>
+<pre><code><span class="kw">let</span> prefetch = <span class="type">Task</span>(priority: .background) { <span class="kw">await</span> loadCache() }
+
+<span class="cm">// later, on the main actor (userInitiated):</span>
+<span class="kw">let</span> cache = <span class="kw">await</span> prefetch.value   <span class="cm">// prefetch is escalated to userInitiated</span></code></pre>
+<p>Actors also escalate: if high-priority work is waiting for an actor, the job that is currently running on it gets a higher priority.</p>
+
+<h2>Quick rule</h2>
+<ul>
+  <li>Fixed set of parallel calls → <code>async let</code>.</li>
+  <li>Unknown number of calls → task group; add a limit for big inputs.</li>
+  <li>Many <code>Void</code> jobs, long-running → discarding task group.</li>
+  <li>Reach for <code>Task { }</code> only when you must start async work from sync code (see 4.6.2).</li>
+</ul>
+</main>
+</body>
+</html>

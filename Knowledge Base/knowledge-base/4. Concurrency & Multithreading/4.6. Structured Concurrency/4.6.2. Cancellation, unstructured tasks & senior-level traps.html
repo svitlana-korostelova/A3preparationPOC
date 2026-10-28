@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4.6.2. Cancellation, unstructured tasks &amp; senior-level traps</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3{margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code{padding:.2em .4em;font-size:85%;background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da}
+
+.markdown-body pre {
+  border-radius: 8px;
+  padding: 1em;
+  overflow-x: auto;
+  font-size: 0.88em;
+  line-height: 1.55;
+  background: #f7f8fa;
+  color: #1d1d1f;
+}
+.markdown-body pre code { background: none; padding: 0; font-size: 100%; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ccc; padding: 0.45em 0.7em; text-align: left; vertical-align: top; }
+th { background: #eef0f3; }
+
+@media (prefers-color-scheme: dark) {
+  body.markdown-body { background: #0d1117; color: #e6edf3; }
+  .markdown-body h1, .markdown-body h2 { border-color: #30363d; }
+  .markdown-body a, nav.breadcrumbs a { color: #4493f8; }
+  nav.breadcrumbs { border-color: #30363d; color: #8b949e; }
+  .markdown-body blockquote { color: #8b949e; border-color: #30363d; }
+  .markdown-body pre { background: #1c1c1e; color: #e8e8e8; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+  th { background: #2c2c2e; }
+  td, th { border-color: #444; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">4. Concurrency &amp; Multithreading</a> › <a href="index.html">4.6. Structured Concurrency</a></nav>
+<main>
+<h1>4.6.2. Cancellation, unstructured tasks &amp; senior-level traps</h1>
+
+<blockquote><p>This is where senior interviews usually go deeper: cancellation details, bridging old APIs, and "what is wrong with this code?" questions.</p></blockquote>
+
+<!-- Q1 -->
+<h2>Q1. How does cancellation work in Swift concurrency?</h2>
+<p><strong>Short answer:</strong> Cancellation is <strong>cooperative</strong>. Calling <code>cancel()</code> only sets a flag. The task keeps running until its code checks the flag and stops.</p>
+<p>Ways to check:</p>
+<ul>
+  <li><code>Task.isCancelled</code> — returns a <code>Bool</code>; you decide what to do (e.g. return partial results).</li>
+  <li><code>try Task.checkCancellation()</code> — throws <code>CancellationError</code> if cancelled.</li>
+  <li>Many system APIs check for you: <code>Task.sleep</code> and <code>URLSession</code>'s async methods throw when the task is cancelled.</li>
+</ul>
+<pre><code><span class="kw">func</span> process(_ items: [<span class="type">Item</span>]) <span class="kw">async throws</span> -&gt; [<span class="type">Result</span>] {
+    <span class="kw">var</span> output: [<span class="type">Result</span>] = []
+    <span class="kw">for</span> item <span class="kw">in</span> items {
+        <span class="kw">try</span> <span class="type">Task</span>.checkCancellation()   <span class="cm">// stop between items</span>
+        output.append(heavyWork(item))  <span class="cm">// sync CPU work never checks by itself</span>
+    }
+    <span class="kw">return</span> output
+}</code></pre>
+<p>Cancellation goes <strong>down</strong> the tree (parent → children), never up. Cancelling one child does not cancel its parent or siblings.</p>
+
+<!-- Q2 -->
+<h2>Q2. How do you cancel a legacy callback API when the task is cancelled?</h2>
+<p><strong>Short answer:</strong> Use <code>withTaskCancellationHandler</code>. The <code>onCancel</code> closure runs immediately when the task is cancelled — even while the operation is suspended — so you can call the old API's cancel method.</p>
+<pre><code><span class="kw">func</span> fetch(_ request: <span class="type">URLRequest</span>) <span class="kw">async throws</span> -&gt; <span class="type">Data</span> {
+    <span class="kw">let</span> box = <span class="type">TaskBox</span>()   <span class="cm">// Sendable, lock-protected holder of URLSessionDataTask?</span>
+    <span class="kw">return try await</span> withTaskCancellationHandler {
+        <span class="kw">try await</span> withCheckedThrowingContinuation { continuation <span class="kw">in</span>
+            <span class="kw">let</span> task = <span class="type">URLSession</span>.shared.dataTask(with: request) { data, _, error <span class="kw">in</span>
+                <span class="kw">if let</span> error { continuation.resume(throwing: error) }
+                <span class="kw">else</span> { continuation.resume(returning: data ?? <span class="type">Data</span>()) }
+            }
+            box.set(task)
+            task.resume()
+        }
+    } onCancel: {
+        box.cancel()   <span class="cm">// may run on any thread, so TaskBox must be thread-safe</span>
+    }
+}</code></pre>
+<p>Two things to mention: <code>onCancel</code> can run on any thread, at the same time as the operation; and if the task is already cancelled, <code>onCancel</code> runs right away, before the operation starts. So <code>TaskBox</code> should remember "cancel was requested" and cancel the data task as soon as it is set.</p>
+
+<!-- Q3 -->
+<h2>Q3. How do you wrap a completion-handler API with <code>async</code>? What are the rules?</h2>
+<p><strong>Short answer:</strong> Use <code>withCheckedContinuation</code> / <code>withCheckedThrowingContinuation</code>. You must call <code>resume</code> <strong>exactly once</strong> on every path.</p>
+<pre><code><span class="kw">func</span> currentLocation() <span class="kw">async throws</span> -&gt; <span class="type">CLLocation</span> {
+    <span class="kw">try await</span> withCheckedThrowingContinuation { continuation <span class="kw">in</span>
+        locationService.requestOnce { result <span class="kw">in</span>
+            continuation.resume(with: result)   <span class="cm">// exactly once</span>
+        }
+    }
+}</code></pre>
+<table>
+<tr><th>Mistake</th><th>What happens</th></tr>
+<tr><td>Resume twice</td><td><strong>Checked</strong> continuation: crash with a clear message. <strong>Unsafe</strong> continuation: undefined behaviour.</td></tr>
+<tr><td>Never resume</td><td>The task hangs forever. Checked continuation logs "leaked its continuation" in the console.</td></tr>
+<tr><td>Delegate API that fires many times</td><td>Continuation is the wrong tool — use <code>AsyncStream</code> instead.</td></tr>
+</table>
+<p>Use <code>withUnsafeContinuation</code> only after measuring a real performance problem.</p>
+
+<!-- Q4 -->
+<h2>Q4. <code>Task { }</code> vs <code>Task.detached { }</code> — when is unstructured code OK?</h2>
+<p><strong>Short answer:</strong> You need an unstructured task to <em>start</em> async work from synchronous code, such as a button action or <code>viewDidLoad</code>. Prefer <code>Task { }</code>. <code>Task.detached</code> is rarely the right choice.</p>
+<ul>
+  <li><code>Task { }</code> keeps the current actor, priority and task-locals. In a <code>@MainActor</code> view model it runs on the main actor.</li>
+  <li><code>Task.detached { }</code> keeps none of them. Use it only when you must <em>not</em> run on the current actor and can't make the work <code>nonisolated</code> instead.</li>
+  <li>Neither is cancelled automatically. <strong>Dropping the handle does not cancel the task.</strong> Store it and call <code>cancel()</code> yourself.</li>
+</ul>
+<pre><code><span class="attr">@MainActor</span>
+<span class="kw">final class</span> <span class="type">ProfileViewModel</span> {
+    <span class="kw">var</span> profile: <span class="type">Profile</span>?
+    <span class="kw">private var</span> loadTask: <span class="type">Task</span>&lt;<span class="type">Void</span>, <span class="type">Never</span>&gt;?
+
+    <span class="kw">func</span> onAppear() {
+        loadTask?.cancel()
+        loadTask = <span class="type">Task</span> { [<span class="kw">weak self</span>] <span class="kw">in</span>
+            <span class="kw">let</span> profile = <span class="kw">try</span>? <span class="kw">await</span> api.profile()
+            <span class="kw">self</span>?.profile = profile
+        }
+    }
+
+    <span class="kw">func</span> onDisappear() { loadTask?.cancel() }
+}</code></pre>
+<p>Note: <code>Task { }</code> holds a strong reference to everything it captures (including <code>self</code>) until it finishes. A long or endless loop inside it keeps the view model alive.</p>
+
+<!-- Q5 -->
+<h2>Q5. How does SwiftUI's <code>.task</code> modifier relate to structured concurrency?</h2>
+<p><strong>Short answer:</strong> <code>.task</code> ties a task to the view's lifetime. SwiftUI starts it when the view appears and <strong>cancels it when the view disappears</strong>. <code>.task(id:)</code> also cancels and restarts the task whenever <code>id</code> changes.</p>
+<pre><code><span class="kw">struct</span> <span class="type">SearchView</span>: <span class="type">View</span> {
+    <span class="attr">@State</span> <span class="kw">private var</span> query = <span class="str">""</span>
+    <span class="attr">@State</span> <span class="kw">private var</span> results: [<span class="type">Item</span>] = []
+
+    <span class="kw">var</span> body: <span class="kw">some</span> <span class="type">View</span> {
+        <span class="type">List</span>(results) { <span class="type">Text</span>($0.title) }
+            .searchable(text: $query)
+            .task(id: query) {                       <span class="cm">// old search is cancelled on each keystroke</span>
+                <span class="kw">try</span>? <span class="kw">await</span> <span class="type">Task</span>.sleep(for: .milliseconds(<span class="num">300</span>))  <span class="cm">// debounce</span>
+                <span class="kw">guard</span> !<span class="type">Task</span>.isCancelled <span class="kw">else</span> { <span class="kw">return</span> }
+                results = (<span class="kw">try</span>? <span class="kw">await</span> api.search(query)) ?? []
+            }
+    }
+}</code></pre>
+<p>This is the go-to answer for "implement search-as-you-type with debounce" in SwiftUI — no Combine needed.</p>
+
+<!-- Q6 -->
+<h2>Q6. How do you add a timeout to an async call?</h2>
+<p><strong>Short answer:</strong> Race the work against <code>Task.sleep</code> in a throwing task group. Take whichever finishes first, then cancel the other.</p>
+<pre><code><span class="kw">struct</span> <span class="type">TimeoutError</span>: <span class="type">Error</span> {}
+
+<span class="kw">func</span> withTimeout&lt;T: <span class="type">Sendable</span>&gt;(
+    _ duration: <span class="type">Duration</span>,
+    operation: <span class="attr">@escaping</span> <span class="attr">@Sendable</span> () <span class="kw">async throws</span> -&gt; <span class="type">T</span>
+) <span class="kw">async throws</span> -&gt; <span class="type">T</span> {
+    <span class="kw">try await</span> withThrowingTaskGroup(of: <span class="type">T</span>.<span class="kw">self</span>) { group <span class="kw">in</span>
+        group.addTask { <span class="kw">try await</span> operation() }
+        group.addTask {
+            <span class="kw">try await</span> <span class="type">Task</span>.sleep(for: duration)
+            <span class="kw">throw</span> <span class="type">TimeoutError</span>()
+        }
+        <span class="kw">defer</span> { group.cancelAll() }          <span class="cm">// stop the loser</span>
+        <span class="kw">return try await</span> group.next()!     <span class="cm">// first result or first error wins</span>
+    }
+}</code></pre>
+<p>Follow-up they may ask: the timeout only works if <code>operation</code> reacts to cancellation. The group still waits for the losing child before it returns.</p>
+
+<!-- Q7 -->
+<h2>Q7. "What is wrong with this code?" — common traps</h2>
+
+<h3>Trap 1: <code>Task { }</code> inside a loop</h3>
+<pre><code><span class="kw">func</span> refreshAll() <span class="kw">async</span> {
+    <span class="kw">for</span> id <span class="kw">in</span> ids {
+        <span class="type">Task</span> { <span class="kw">await</span> refresh(id) }   <span class="cm">// ❌ unstructured: not awaited, not cancelled with parent</span>
+    }
+    <span class="cm">// returns immediately — refreshes are still running</span>
+}</code></pre>
+<p><strong>Fix:</strong> use a task group so the function waits and cancellation flows down.</p>
+
+<h3>Trap 2: Blocking inside async code</h3>
+<pre><code><span class="kw">func</span> load() <span class="kw">async</span> -&gt; <span class="type">Data</span> {
+    <span class="kw">let</span> semaphore = <span class="type">DispatchSemaphore</span>(value: <span class="num">0</span>)
+    <span class="kw">var</span> result = <span class="type">Data</span>()
+    legacyFetch { result = $0; semaphore.signal() }
+    semaphore.wait()      <span class="cm">// ❌ blocks a thread of the small cooperative pool</span>
+    <span class="kw">return</span> result
+}</code></pre>
+<p>The pool has about one thread per CPU core. Blocking them (semaphores, <code>Thread.sleep</code>, <code>DispatchGroup.wait</code>) can stall all async work or deadlock the app. <strong>Fix:</strong> use a continuation (Q3).</p>
+
+<h3>Trap 3: Unused <code>async let</code> is silently cancelled</h3>
+<pre><code><span class="kw">func</span> onLogin() <span class="kw">async</span> {
+    <span class="kw">async let</span> _ = analytics.track(<span class="str">"login"</span>)   <span class="cm">// ❌ cancelled + awaited at scope exit</span>
+    <span class="kw">await</span> showHome()
+}</code></pre>
+<p>The function also <em>waits</em> for it before returning. <strong>Fix:</strong> <code>await</code> it, or — if it should really outlive the function — make it an explicit <code>Task { }</code>.</p>
+
+<h3>Trap 4: Showing <code>CancellationError</code> to the user</h3>
+<pre><code><span class="kw">do</span> {
+    items = <span class="kw">try await</span> api.load()
+} <span class="kw">catch is</span> <span class="type">CancellationError</span> {
+    <span class="kw">return</span>                       <span class="cm">// ✅ the user left — not a real error</span>
+} <span class="kw">catch let</span> error <span class="kw">as</span> <span class="type">URLError</span> <span class="kw">where</span> error.code == .cancelled {
+    <span class="kw">return</span>                       <span class="cm">// ✅ URLSession reports cancel this way</span>
+} <span class="kw">catch</span> {
+    showAlert(error)
+}</code></pre>
+
+<h3>Trap 5: Heavy work in <code>Task { }</code> on the main actor</h3>
+<pre><code><span class="attr">@MainActor</span> <span class="kw">func</span> exportTapped() {
+    <span class="type">Task</span> {
+        <span class="kw">let</span> pdf = renderPDF(pages)   <span class="cm">// ❌ sync CPU work — runs on main, UI freezes</span>
+        share(pdf)
+    }
+}</code></pre>
+<p><code>Task { }</code> is not "background". <strong>Fix:</strong> move the work into a <code>nonisolated</code> async function (or another actor), then <code>await</code> it.</p>
+
+<h3>Trap 6: Mutating shared state from group children</h3>
+<pre><code><span class="kw">var</span> total = <span class="num">0</span>
+<span class="kw">await</span> withTaskGroup(of: <span class="type">Void</span>.<span class="kw">self</span>) { group <span class="kw">in</span>
+    <span class="kw">for</span> file <span class="kw">in</span> files {
+        group.addTask { total += <span class="kw">await</span> size(of: file) }   <span class="cm">// ❌ data race — Swift 6 compile error</span>
+    }
+}</code></pre>
+<p><strong>Fix:</strong> make children return their value (<code>of: Int.self</code>) and sum them in the parent with <code>for await</code>.</p>
+
+<!-- Q8 -->
+<h2>Q8. Is a task tied to a thread? What happens at <code>await</code>?</h2>
+<p><strong>Short answer:</strong> No. At every <code>await</code> the task may be suspended, and it may resume on a <strong>different thread</strong>. That's why you should not use thread-based tools (thread-locals, <code>NSLock</code> held across an <code>await</code>, <code>Thread.current</code> checks) in async code.</p>
+<ul>
+  <li>Holding a lock across <code>await</code> can deadlock: another task on the same thread may try to take the same lock.</li>
+  <li>After <code>await</code>, any state you read before may have changed — this is the root of actor re-entrancy bugs. Re-check your assumptions after each <code>await</code>.</li>
+  <li>Use actors or task-local values instead.</li>
+</ul>
+
+<h2>Cheat sheet</h2>
+<table>
+<tr><th>Need</th><th>Tool</th></tr>
+<tr><td>Start async work from sync code</td><td><code>Task { }</code> — store the handle, cancel it</td></tr>
+<tr><td>Work that follows a SwiftUI view's lifetime</td><td><code>.task</code> / <code>.task(id:)</code></td></tr>
+<tr><td>Stop a long loop on cancel</td><td><code>try Task.checkCancellation()</code></td></tr>
+<tr><td>Cancel an old API on task cancel</td><td><code>withTaskCancellationHandler</code></td></tr>
+<tr><td>One callback → async</td><td><code>withCheckedThrowingContinuation</code></td></tr>
+<tr><td>Many callbacks → async</td><td><code>AsyncStream</code></td></tr>
+<tr><td>Timeout / "first one wins"</td><td>Throwing task group + <code>next()</code> + <code>cancelAll()</code></td></tr>
+</table>
+</main>
+</body>
+</html>
