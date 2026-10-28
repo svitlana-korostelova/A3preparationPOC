@@ -103,6 +103,22 @@ b = <span class="kw">nil</span>                       <span class="cm">// count 
 <h2>Before ARC: manual reference counting (MRC)</h2>
 <p>Until Xcode 4.2 (2011), Obj-C developers called <code>retain</code> / <code>release</code> by hand. A missing <code>release</code> leaked memory. An extra one crashed the app. ARC removed this whole class of mistakes by generating the calls at compile time.</p>
 
+<h2>Example: dangling pointer</h2>
+<pre><code><span class="kw">protocol</span> <span class="type">LoaderDelegate</span>: <span class="type">AnyObject</span> { <span class="kw">func</span> done() }
+<span class="kw">class</span> <span class="type">Screen</span>: <span class="type">LoaderDelegate</span> { <span class="kw">func</span> done() { <span class="type">print</span>(<span class="str">"done"</span>) } }
+
+<span class="kw">class</span> <span class="type">Loader</span> {
+    <span class="kw">unowned</span>(<span class="kw">unsafe</span>) <span class="kw">var</span> delegate: <span class="type">LoaderDelegate</span>?  <span class="cm">// no retain, never set to nil</span>
+    <span class="kw">func</span> finish() { delegate?.done() }
+}
+
+<span class="kw">var</span> screen: <span class="type">Screen</span>? = <span class="type">Screen</span>()
+<span class="kw">let</span> loader = <span class="type">Loader</span>()
+loader.delegate = screen
+screen = <span class="kw">nil</span>      <span class="cm">// Screen is freed, delegate still holds the old address</span>
+loader.finish()   <span class="cm">// 💥 EXC_BAD_ACCESS (use-after-free)</span></code></pre>
+<p>Fix: declare it as <code>weak var delegate</code>. ARC sets it to <code>nil</code> when the object dies, so the call does nothing. Debug with Zombie Objects or Address Sanitizer.</p>
+
 <h2>What the count costs</h2>
 <ul>
   <li><strong>Atomic operations.</strong> Retain and release are atomic, so they are thread-safe. Each one adds a memory barrier and cache traffic between cores. A single call takes a few nanoseconds, but millions of them in a hot loop are measurable.</li>
@@ -110,6 +126,21 @@ b = <span class="kw">nil</span>                       <span class="cm">// count 
   <li><strong>Compiler help:</strong> retain/release pairs are merged or removed, <code>final</code> classes allow static dispatch, and short-lived objects may be moved to the stack.</li>
 </ul>
 <p>Tip: use <code>struct</code> for plain data. Value types have no reference count. See <a href="3.7.%20Struct%20vs%20class.html">3.7</a>.</p>
+<p>Example: the retain/release cost is paid on every run of the line, so it matters in hot loops. Measure first (Instruments → Time Profiler, look for <code>swift_retain</code> / <code>swift_release</code>), then fix:</p>
+<pre><code><span class="cm">// Slow: heap allocation + retain/release on every iteration</span>
+<span class="kw">class</span> <span class="type">PointClass</span> { <span class="kw">var</span> x = <span class="num">0.0</span>, y = <span class="num">0.0</span> }
+<span class="kw">for</span> _ <span class="kw">in</span> <span class="num">0</span>..&lt;<span class="num">1_000_000</span> { <span class="kw">let</span> p = <span class="type">PointClass</span>(); use(p) }
+
+<span class="cm">// Fast: no heap, no reference counting</span>
+<span class="kw">struct</span> <span class="type">Point</span> { <span class="kw">var</span> x = <span class="num">0.0</span>, y = <span class="num">0.0</span> }
+<span class="kw">for</span> _ <span class="kw">in</span> <span class="num">0</span>..&lt;<span class="num">1_000_000</span> { <span class="kw">let</span> p = <span class="type">Point</span>(); use(p) }</code></pre>
+<p>Other fixes:</p>
+<ul>
+  <li>Mark classes <code>final</code>.</li>
+  <li>Create objects (like <code>DateFormatter</code>) once outside the loop and reuse them.</li>
+  <li>Prefer arrays of structs over arrays of class instances.</li>
+  <li>Avoid extra closure captures in hot paths.</li>
+</ul>
 
 <h2>Why it matters on iOS</h2>
 <ul>
@@ -120,7 +151,7 @@ b = <span class="kw">nil</span>                       <span class="cm">// count 
 </ul>
 
 <h2>Ownership keywords (Swift 5.9+)</h2>
-<p>Swift can also express ownership directly: <code>~Copyable</code> types, plus <code>consume</code> and <code>borrowing</code> / <code>consuming</code> parameters. They remove copies and retains in performance-critical code. Normal app code does not need them.</p>
+<p>Swift can also express ownership directly: <code>~Copyable</code> types, plus <code>consume</code> and <code>borrowing</code> / <code>consuming</code> parameters. They remove copies and retains in performance-critical code. Normal app code does not need them. See <a href="3.13.%20Ownership%20keywords.html">3.13</a>.</p>
 
 <h2>Related</h2>
 <ul>

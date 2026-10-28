@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3.13. Ownership keywords</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{
+  margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body table,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body a{color:#0969da;text-decoration:none}.markdown-body a:hover{text-decoration:underline}
+.markdown-body code,.markdown-body kbd{padding:.2em .4em;margin:0;font-size:85%;
+  background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body pre{padding:16px;overflow:auto;font-size:85%;line-height:1.45;
+  background-color:#f6f8fa;border-radius:6px}
+.markdown-body pre code{padding:0;margin:0;font-size:100%;background:transparent;border:0}
+.markdown-body table{border-collapse:collapse;display:block;overflow:auto;max-width:100%}
+.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid #d0d7de}
+.markdown-body table tr{background-color:#fff;border-top:1px solid #d0d7de}
+.markdown-body table tr:nth-child(2n){background-color:#f6f8fa}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;
+  border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+nav.breadcrumbs a:hover{text-decoration:underline}
+
+.markdown-body pre { color: #1d1d1f; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background-color: #1c1c1e; color: #e8e8e8; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../index.html">⌂ Knowledge Base</a> › <a href="index.html">3. Memory Management &amp; Runtime</a></nav>
+<main>
+<h1>3.13. Ownership keywords</h1>
+
+<h2>Short answer</h2>
+<p>Swift 5.9+ lets you say <strong>who owns a value</strong>. The compiler then needs fewer copies and fewer retain/release calls. Use it only in performance-critical code or for single-owner resources. Normal app code does not need it.</p>
+
+<h2>The keywords</h2>
+<ul>
+  <li><code>~Copyable</code> — the type cannot be copied. There is always one owner.</li>
+  <li><code>borrowing</code> — the function only reads the value. No copy, no retain.</li>
+  <li><code>consuming</code> — the function takes the value and uses it up.</li>
+  <li><code>consume</code> — give up ownership. The old variable cannot be used after it.</li>
+</ul>
+
+<h2>Example</h2>
+<pre><code><span class="kw">struct</span> <span class="type">FileHandle</span>: <span class="kw">~Copyable</span> {
+    <span class="kw">let</span> fd: <span class="type">Int32</span>
+    <span class="kw">deinit</span> { close(fd) }                  <span class="cm">// runs exactly once</span>
+}
+
+<span class="kw">func</span> read(_ f: <span class="kw">borrowing</span> <span class="type">FileHandle</span>) { }   <span class="cm">// only looks</span>
+<span class="kw">func</span> finish(_ f: <span class="kw">consuming</span> <span class="type">FileHandle</span>) { } <span class="cm">// takes it</span>
+
+<span class="kw">let</span> f = <span class="type">FileHandle</span>(fd: <span class="num">3</span>)
+read(f)
+finish(f)    <span class="cm">// f is moved here</span>
+<span class="cm">// read(f)   // ❌ compile error: f was already consumed</span></code></pre>
+
+<h2>Why it matters</h2>
+<ul>
+  <li>Fewer copies and ARC calls in hot code (see <a href="3.1.%20Memory%20management%20and%20ARC.html">3.1</a>).</li>
+  <li>"Use after move" is a compile error, not a runtime crash.</li>
+</ul>
+</main>
+</body>
+</html>
