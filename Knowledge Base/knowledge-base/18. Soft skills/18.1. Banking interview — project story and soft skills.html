@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>18.1. Banking interview — project story and soft skills</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3{margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}
+.markdown-body p,.markdown-body ul,.markdown-body ol{margin-top:0;margin-bottom:16px}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+.markdown-body a{color:#0969da;text-decoration:none}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+@media (prefers-color-scheme: dark) {
+  body.markdown-body { background: #0d1117; color: #e6edf3; }
+  .markdown-body h1, .markdown-body h2 { border-color: #30363d; }
+  .markdown-body a, nav.breadcrumbs a { color: #4493f8; }
+  nav.breadcrumbs { border-color: #30363d; color: #8b949e; }
+  .markdown-body blockquote { color: #8b949e; border-color: #30363d; }
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../index.html">⌂ Knowledge Base</a> › <a href="index.html">Soft skills</a></nav>
+<main>
+<h1>18.1. Banking interview — project story and soft skills</h1>
+<p>They let Q1 run for about 3 minutes without interrupting. For S1–S5 they ask once more: "and who decides?" or "what if that doesn't work?"</p>
+
+<h2>Q1. Tell me about your last project: one technical problem you solved, and what you decided.</h2>
+<p><strong>Shape, not a script.</strong> They are scoring English and whether the story is yours. If it sounds memorised they will change a detail ("now the screen is opened from a deep link — what changes?") and ask why.</p>
+<ol>
+  <li>One sentence on the product and your role.</li>
+  <li>One concrete problem: a bug, a constraint, or a design choice. Name the file or the screen, not "we improved performance".</li>
+  <li>The decision <em>you</em> made. Say "I", not "we", for that step.</li>
+  <li>The trade-off: what you gave up, and why that was acceptable.</li>
+  <li>The result, in one sentence. Stop. Do not fill the rest of the 3 minutes with a second story.</li>
+</ol>
+<p>Use a problem you can still draw on a whiteboard. A deep-link follow-up should be answerable from the same design: who owns navigation, what state is missing, what you would test.</p>
+
+<h2>S1. Three days before the sprint ends, the requirements change a lot. The deadline stays. What do you do?</h2>
+<p><strong>Say this:</strong> I raise it the same day, in the ticket, with options. I do not decide the deadline myself, and I do not quietly work nights to hide it.</p>
+<ul>
+  <li>Write the risk where the PO and the BA can see it: new UI, new API contract, three days left.</li>
+  <li>Offer options, each with what ships and what does not: cut the scope, split the ticket, ship a basic version and put the rest in the next sprint.</li>
+  <li>Who decides: the PO, with the client. I estimate and recommend. I do not promise the full new scope.</li>
+</ul>
+<p>If that does not work: I ask which of the options they want in writing, then I do that option. I do not start the full redesign while the decision is open.</p>
+
+<h2>S2. A ticket has an empty description and a link to the whole Figma file. What do you do?</h2>
+<p><strong>Say this:</strong> Clarifying it is my job. I do not wait for someone to "describe it", and I do not build the whole file.</p>
+<ul>
+  <li>Read the Figma far enough to write a short proposal: which screens, which states, what I think is out of scope.</li>
+  <li>Ask the reporter first, then the PO or BA, with those specific questions.</li>
+  <li>Put the agreed slice back on the ticket before I estimate or code.</li>
+</ul>
+<p>If nobody answers: I say I am blocked, name who I asked, and pick the smallest slice I am willing to defend. I do not invent the API contract.</p>
+
+<h2>S3. Halfway through the sprint you realise the ticket needs one more sprint. What do you do?</h2>
+<p><strong>Say this:</strong> I say it as soon as I know, with the reason and a new estimate. I also say what can still land in this sprint.</p>
+<ul>
+  <li>The reason is specific: a wrong assumption, a hidden dependency, a review that took longer. Not "it was harder than I thought" on its own.</li>
+  <li>A split: this sprint gets the part that is done and safe; the rest gets a new estimate.</li>
+  <li>Who decides to cut or to slip: the PO. I do not move the sprint end by myself, and I do not stay silent until the review.</li>
+</ul>
+
+<h2>S4. A colleague rejects your PR for another approach and will not discuss it. What do you do?</h2>
+<p><strong>Say this:</strong> I start from the written guideline, then I ask for a short call. If they still refuse, I ask the lead or a third iOS engineer to choose. After that I update the guideline so we do not repeat the thread.</p>
+<ul>
+  <li>Re-read the team rules first (architecture, "small change to legacy code", test expectations). The reply should quote the rule, not the preference.</li>
+  <li>One call, with the trade-off in two columns: their approach and mine, cost of each.</li>
+  <li>If they will not talk: the lead mediates. I do not merge over the review, and I do not leave the PR blocked with no owner.</li>
+  <li>Whoever wins, the guideline gets one line so the next PR does not reopen it.</li>
+</ul>
+
+<h2>S5. How do you use AI tools, and where do you not trust them?</h2>
+<p><strong>Say this:</strong> I use them for reading unfamiliar code, drafting tests, and boilerplate. I read every line before it is committed. I do not paste customer or account data into a tool the project has not approved.</p>
+<ul>
+  <li>Name the tools you actually use, and one real task for each (explore a module, generate the first test, sketch a mapper).</li>
+  <li>What I re-check myself: concurrency, money or balance math, security, and anything the model cannot run.</li>
+  <li>On this project the allowed tool is GitHub Copilot, with a monthly limit. Other tools are a question for the team, not a default.</li>
+</ul>
+
+<h2>Optional. AI tooling in practice</h2>
+<p>They may ask this after S5. It is not one of the scored S questions.</p>
+<p><strong>Which tools, and have you written rules or skills?</strong> Name the tool and the task. A rule or a skill should have one job: code style, architecture constraints, or how tests are generated. "I have a long prompt" is weaker than "I have a skill that loads only when I touch the network layer".</p>
+<p><strong>Have you connected AI to Jira, GitHub, or CI?</strong> Describe one integration end to end: what started it, what it was allowed to read, and what went wrong (permissions, a bad write, a token limit). Do not describe an integration you have not done.</p>
+
+<h2>Optional. What is in the model's context, and how do you keep it small?</h2>
+<p><strong>Say this:</strong> Context is everything the model can see on that turn: the system rules, instruction files, skills that were loaded, the chat, tool calls and their results, and files that were read. All of it counts toward the window.</p>
+<ul>
+  <li>A skill is instructions loaded into the <em>current</em> chat when needed. A sub-agent is a separate chat that returns a summary. The main chat stays smaller. The cost is extra tokens, and the sub-agent does not see the rest of the conversation unless you pass it.</li>
+  <li>Usage is visible in the API response (input, output, cached) or in the tool's usage command. Cached tokens are the repeated prefix, not free work.</li>
+  <li>How I shrink it: short rule files, skills that load on demand, narrow file reads, a new session when the chat is long, and a sub-agent for a wide search.</li>
+</ul>
+</main>
+</body>
+</html>

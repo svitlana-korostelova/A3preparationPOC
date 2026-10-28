@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>20.1.5. Changing a large function that has no tests</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3{margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+.markdown-body a{color:#0969da;text-decoration:none}
+.markdown-body code{padding:.2em .4em;font-size:85%;background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+.markdown-body pre{border-radius:8px;padding:1em;overflow-x:auto;font-size:.88em;line-height:1.55;background:#f7f8fa;color:#1d1d1f}
+.markdown-body pre code{background:none;padding:0;font-size:100%}
+.kw{color:#ad3da4;font-weight:bold}.type{color:#0b4f79}.str{color:#c41a16}.num{color:#1c00cf}
+.cm{color:#5d6c79;font-style:italic}.attr{color:#643820}
+@media (prefers-color-scheme: dark) {
+  body.markdown-body{background:#0d1117;color:#e6edf3}
+  .markdown-body h1,.markdown-body h2{border-color:#30363d}
+  .markdown-body a,nav.breadcrumbs a{color:#4493f8}
+  nav.breadcrumbs{border-color:#30363d;color:#8b949e}
+  .markdown-body blockquote{color:#8b949e;border-color:#30363d}
+  .markdown-body pre{background:#1c1c1e;color:#e8e8e8}
+  .kw{color:#fc5fa3}.type{color:#5dd8ff}.str{color:#fc6a5d}.num{color:#d0bf69}
+  .cm{color:#7f8c98}.attr{color:#bf86c8}
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">Testing</a> › <a href="index.html">20.1. Testing</a></nav>
+<main>
+<h1>20.1.5. Changing a large function that has no tests</h1>
+<p>You need one part of a large function. It has no tests, you do not understand all of it, and you may only change this one file. How do you approach it?</p>
+<p><strong>Say this:</strong> I do not rewrite it. I pin the current behaviour with characterization tests, then I extract only the part I need, in small steps, and I check with the person who last owned the file. On a legacy screen, the refactor itself waits for approval.</p>
+<ol>
+  <li><strong>Find the seam without editing behaviour.</strong> What goes in, what comes out, what it calls. <code>git log -L</code> and <code>git blame</code> on that function. Ask the author if they are still on the team. The history is the spec you do not have.</li>
+  <li><strong>Write characterization tests first.</strong> They lock what the function does today, including the odd cases, not what you wish it did. Put them in the test target. That is a new test file, not a change to the legacy file. Run them and keep the results. A failing new test means you misunderstood the current behaviour, so fix the test, not the production code.</li>
+  <li><strong>Change the one file in small steps.</strong> Extract a method around the part you need. Run the characterization tests after each extract. Stop when the new method is the piece you had to change. Leave the rest of the function alone.</li>
+  <li><strong>If you cannot call the function from a test</strong> (it needs a storyboard, a singleton, the whole view controller), sprout the new behaviour beside it: a new function in the same file, tested on its own, called from the old function in one line. The old body stays. That is the move when the constraint is "this file only" and there is no seam.</li>
+  <li><strong>Get approval before a wider refactor.</strong> A minimal extract is the change. Renaming the whole function, or moving it to a new type, is a separate ask.</li>
+</ol>
+<pre><code><span class="attr">@Test</span>(arguments: [
+    (<span class="str">"PLN"</span>, <span class="num">1000</span>, <span class="str">"10,00 zł"</span>),
+    (<span class="str">"PLN"</span>, <span class="num">0</span>, <span class="str">"0,00 zł"</span>)
+])
+<span class="kw">func</span> formatsBalanceAsToday(_ code: <span class="type">String</span>, _ cents: <span class="type">Int</span>, _ expected: <span class="type">String</span>) {
+    <span class="cm">// pins current output, including a format you might not choose yourself</span>
+    #expect(formatBalance(code, cents) == expected)
+}</code></pre>
+<blockquote><p>If you stall: "How would you know you didn't break anything?" The characterization tests, re-run after every extract.</p></blockquote>
+</main>
+</body>
+</html>

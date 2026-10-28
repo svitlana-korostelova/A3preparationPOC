@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.1.6.4. Ways to build UIKit UI and pass data across storyboards</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3{margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+.markdown-body a{color:#0969da;text-decoration:none}
+.markdown-body code{padding:.2em .4em;font-size:85%;background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+.markdown-body pre{border-radius:8px;padding:1em;overflow-x:auto;font-size:.88em;line-height:1.55;background:#f7f8fa;color:#1d1d1f}
+.markdown-body pre code{background:none;padding:0;font-size:100%}
+.kw{color:#ad3da4;font-weight:bold}.type{color:#0b4f79}.str{color:#c41a16}.num{color:#1c00cf}
+.cm{color:#5d6c79;font-style:italic}.attr{color:#643820}
+@media (prefers-color-scheme: dark) {
+  body.markdown-body{background:#0d1117;color:#e6edf3}
+  .markdown-body h1,.markdown-body h2{border-color:#30363d}
+  .markdown-body a,nav.breadcrumbs a{color:#4493f8}
+  nav.breadcrumbs{border-color:#30363d;color:#8b949e}
+  .markdown-body blockquote{color:#8b949e;border-color:#30363d}
+  .markdown-body pre{background:#1c1c1e;color:#e8e8e8}
+  .kw{color:#fc5fa3}.type{color:#5dd8ff}.str{color:#fc6a5d}.num{color:#d0bf69}
+  .cm{color:#7f8c98}.attr{color:#bf86c8}
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.1 SwiftUI</a> › <a href="index.html">2.1.6. UIKit integration</a></nav>
+<main>
+<h1>2.1.6.4. Ways to build UIKit UI and pass data across storyboards</h1>
+<p>What are the ways to build UI in UIKit? How do you navigate between storyboards without code, and how do you pass data before the transition?</p>
+<p><strong>Say this:</strong> Three ways to build the UI: code, a XIB, or a storyboard. The arrow between storyboard scenes is a segue. A storyboard reference is how that arrow jumps to a scene in another storyboard, still without code. Data is passed in <code>prepare(for:sender:)</code> before the destination appears. When I need a real initializer, I leave the segue and use <code>instantiateViewController(identifier:creator:)</code>.</p>
+<p>The storyboard / XIB / NIB comparison table is already in <a href="../../2.2%20UIKit/2.2.3.%20Layout/2.2.3.3.%20What%20is%20IBInspectable%20IBDesignable%20opinion/2.2.3.3.2.%20Storyboard%20vs%20XIB%20vs%20NIB.html">2.2.3.3.2</a>. This page only adds the navigation and the data hand-off.</p>
+<ul>
+  <li><strong>Code.</strong> You create the views and the <code>push</code> or <code>present</code> yourself. Dependencies go in <code>init</code>. This is the testable path.</li>
+  <li><strong>XIB.</strong> One view, one cell, or one controller. You load it with <code>UINib</code> or by name. Navigation stays in code.</li>
+  <li><strong>Storyboard.</strong> Many scenes. The relationship and the segue are stored in the file.</li>
+</ul>
+<p><strong>Navigate without code.</strong> Draw a segue (show, show detail, present, or a relationship). To land in a different storyboard, drop a storyboard reference on the canvas and point the segue at it. UIKit instantiates the destination. You do not call <code>pushViewController</code>.</p>
+<p><strong>Pass data before the transition.</strong> <code>prepare(for:sender:)</code> runs on the source after the destination exists and before it appears. Cast <code>segue.destination</code> and set properties. <code>sender</code> is whatever you passed to <code>performSegue</code>, often the tapped model.</p>
+<pre><code><span class="kw">override func</span> prepare(<span class="kw">for</span> segue: <span class="type">UIStoryboardSegue</span>, sender: <span class="type">Any</span>?) {
+    <span class="kw">guard let</span> details = segue.destination <span class="kw">as</span>? <span class="type">AccountDetailsViewController</span>,
+          <span class="kw">let</span> id = sender <span class="kw">as</span>? <span class="type">Account</span>.ID <span class="kw">else</span> { <span class="kw">return</span> }
+    details.accountID = id
+}</code></pre>
+<p><strong>When the destination needs an initializer.</strong> A storyboard always calls <code>init(coder:)</code>, so a custom <code>init</code> is not used by a segue. <code>instantiateViewController(identifier:creator:)</code> (iOS 13) is the code path that still loads the layout from the storyboard and lets you inject:</p>
+<pre><code><span class="kw">let</span> details = storyboard.instantiateViewController(identifier: <span class="str">"AccountDetails"</span>) { coder <span class="kw">in</span>
+    <span class="type">AccountDetailsViewController</span>(coder: coder, accountID: id)
+}
+navigationController.pushViewController(details, animated: <span class="kw">true</span>)</code></pre>
+<p>That second path is code. I use it when the screen has dependencies. I use <code>prepare(for:)</code> when the screen is already a segue and the only input is a property.</p>
+<blockquote><p>If you stall: "What is the arrow between screens called?" A segue.</p></blockquote>
+</main>
+</body>
+</html>

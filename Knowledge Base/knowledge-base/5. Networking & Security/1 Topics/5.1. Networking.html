@@ -56,6 +56,25 @@ ul.toc li a{font-size:1.05em}
 .codehilite .na{color:#22863a}
 .codehilite .nt{color:#22863a}
 .codehilite .nv{color:#e36209}
+
+.markdown-body pre code { background: none; padding: 0; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background: #1c1c1e; color: #e8e8e8; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+  .markdown-body th { background: #2c2c2e; }
+  .markdown-body td, .markdown-body th { border-color: #444; }
+}
 </style>
 </head>
 <body class="markdown-body">
@@ -63,6 +82,59 @@ ul.toc li a{font-size:1.05em}
 <main>
 <h1>5.1. Networking</h1>
 <p>notes: </p>
+
+<h2>Q8. <code>fetch()</code> calls the backend, maps the response, and updates state. What types do you create, and who owns <code>URLSession</code>?</h2>
+<p><strong>Say this:</strong> The view model asks a repository. The repository asks a network service. The service is the only type that sees <code>URLSession</code>. The bytes are a DTO. The repository maps that DTO into a domain model before the view model stores it.</p>
+<pre><code>View model  →  repository (protocol)  →  network service  →  URLSession
+                 maps DTO to domain         Codable DTO
+</code></pre>
+<ul>
+  <li><strong>View model.</strong> Calls <code>await repository.accounts()</code>, writes state (<code>.loading</code> / <code>.loaded</code> / <code>.failed</code>). It does not build a <code>URLRequest</code> and it does not know <code>URLSession</code> exists.</li>
+  <li><strong>Repository or use case.</strong> A protocol. It owns the mapping from the API shape to the app model, and any cache rule. The view model depends on the protocol.</li>
+  <li><strong>Network service.</strong> Builds the request, calls the session, checks the status code, decodes the DTO. One service, many endpoints.</li>
+  <li><strong>DTO vs domain.</strong> The <code>Codable</code> struct matches the JSON (<code>account_id</code>, optional fields, wire dates). The domain model is what the screen uses. They are different types so a backend rename does not leak into SwiftUI.</li>
+</ul>
+<p><strong>Who owns <code>URLSession</code>.</strong> The composition root creates one session (or passes <code>.shared</code>) and injects it into the network service. The service holds it. The repository and the view model do not. A session is expensive to create per call: it owns the connection pool and the cookie storage. One session per app, or one per backend, is enough.</p>
+<pre><code><span class="kw">protocol</span> <span class="type">AccountsRepository</span> {
+    <span class="kw">func</span> accounts() <span class="kw">async throws</span> -&gt; [<span class="type">Account</span>]
+}
+
+<span class="kw">struct</span> <span class="type">AccountDTO</span>: <span class="type">Decodable</span> {
+    <span class="kw">let</span> accountId: <span class="type">String</span>
+    <span class="kw">let</span> balanceCents: <span class="type">Int</span>
+}
+
+<span class="kw">final class</span> <span class="type">AccountsAPI</span>: <span class="type">AccountsRepository</span> {
+    <span class="kw">private let</span> client: <span class="type">HTTPClient</span>
+    <span class="kw">func</span> accounts() <span class="kw">async throws</span> -&gt; [<span class="type">Account</span>] {
+        <span class="kw">let</span> dto: [<span class="type">AccountDTO</span>] = <span class="kw">try await</span> client.get(<span class="str">"/accounts"</span>)
+        <span class="kw">return</span> dto.map { <span class="type">Account</span>(id: $0.accountId, balanceCents: $0.balanceCents) }
+    }
+}</code></pre>
+<blockquote><p>If you stall: "Would the view model know about URLSession?" No.</p></blockquote>
+
+<h2>Q9. The network service calls <code>URLSession.shared</code> directly. How do you test it?</h2>
+<p><strong>Say this:</strong> <code>.shared</code> is a real network. I do not call it from a unit test. Two changes I would offer, and I can name a third.</p>
+<ol>
+  <li><strong>Inject the session.</strong> <code>init(session: URLSession = .shared)</code>. Production call sites stay the same. The test builds a session whose configuration uses a stub <code>URLProtocol</code>. <code>.shared</code> ignores a protocol you register later, so the default parameter is what makes the stub possible.</li>
+  <li><strong>A small protocol around the one method you call.</strong> <code>HTTPClient</code> with <code>data(for:)</code>. <code>URLSession</code> conforms in an extension. The test passes a fake that returns <code>Data</code> and an <code>HTTPURLResponse</code>. This is the smallest fake when you do not care about redirects, cookies, or timeouts.</li>
+  <li><strong><code>URLProtocol</code>.</strong> Use this when you want the real <code>URLSession</code> stack (status codes, decoding errors) without the network. Register the protocol on the <em>configuration</em> of the injected session, not on <code>.shared</code>.</li>
+</ol>
+<pre><code><span class="kw">protocol</span> <span class="type">HTTPClient</span> {
+    <span class="kw">func</span> data(<span class="kw">for</span> request: <span class="type">URLRequest</span>) <span class="kw">async throws</span> -&gt; (<span class="type">Data</span>, <span class="type">URLResponse</span>)
+}
+<span class="kw">extension</span> <span class="type">URLSession</span>: <span class="type">HTTPClient</span> {
+    <span class="kw">func</span> data(<span class="kw">for</span> request: <span class="type">URLRequest</span>) <span class="kw">async throws</span> -&gt; (<span class="type">Data</span>, <span class="type">URLResponse</span>) {
+        <span class="kw">try await</span> data(<span class="kw">for</span>: request, delegate: <span class="kw">nil</span>)
+    }
+}
+
+<span class="kw">final class</span> <span class="type">NetworkService</span> {
+    <span class="kw">private let</span> client: <span class="type">HTTPClient</span>
+    <span class="kw">init</span>(client: <span class="type">HTTPClient</span> = <span class="type">URLSession</span>.shared) { <span class="kw">self</span>.client = client }
+}</code></pre>
+<p>I would not subclass <code>URLSession</code>. Its important methods are not designed as override points. I also would not hit a live host from the unit-test process.</p>
+<blockquote><p>If you stall: "Can the service receive the session from outside?" Yes. Default the parameter to <code>.shared</code> so existing callers do not change.</p></blockquote>
 </main>
 </body>
 </html>

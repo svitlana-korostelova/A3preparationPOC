@@ -56,6 +56,25 @@ ul.toc li a{font-size:1.05em}
 .codehilite .na{color:#22863a}
 .codehilite .nt{color:#22863a}
 .codehilite .nv{color:#e36209}
+
+.markdown-body pre code { background: none; padding: 0; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background: #1c1c1e; color: #e8e8e8; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+  .markdown-body th { background: #2c2c2e; }
+  .markdown-body td, .markdown-body th { border-color: #444; }
+}
 </style>
 </head>
 <body class="markdown-body">
@@ -94,6 +113,128 @@ print("utility")
 // User doesn't know it's happening: prefetch, sync, cleanup
 print("background — runs last")
 }</p>
+
+<h2>Q2. Why do we need actors? Can you still get a race condition?</h2>
+<p><strong>Say this:</strong> Actors remove <em>data races</em> on their own state. They do not remove <em>logic races</em>. The usual hole is reentrancy at <code>await</code>.</p>
+<p>An actor runs one piece of its isolated code at a time, so two tasks cannot write the same stored property at the same moment. That is the data-race guarantee.</p>
+<p>At every <code>await</code> the actor <strong>lets the next waiter in</strong>. State you checked before the <code>await</code> may be different when you resume. The memory is still safe. The decision you made from the old state may be wrong. That is a race condition, and actors do not stop it.</p>
+<pre><code><span class="kw">actor</span> <span class="type">AccountStore</span> {
+    <span class="kw">private var</span> balance = <span class="num">100</span>
+
+    <span class="kw">func</span> withdraw(_ amount: <span class="type">Int</span>) <span class="kw">async throws</span> {
+        <span class="kw">guard</span> balance &gt;= amount <span class="kw">else</span> { <span class="kw">throw</span> <span class="type">BankError</span>.insufficient }
+        <span class="kw">await</span> audit.log(amount)   <span class="cm">// suspension: another withdraw can enter</span>
+        balance -= amount         <span class="cm">// may overdraw</span>
+    }
+}</code></pre>
+<p>Fix: do the check and the mutation together, before any <code>await</code>. If the later call can fail and you must roll back, re-read the state after the <code>await</code> and decide again. Do not trust a value you captured before the suspension.</p>
+<pre><code><span class="kw">func</span> withdraw(_ amount: <span class="type">Int</span>) <span class="kw">async throws</span> {
+    <span class="kw">guard</span> balance &gt;= amount <span class="kw">else</span> { <span class="kw">throw</span> <span class="type">BankError</span>.insufficient }
+    balance -= amount            <span class="cm">// still inside the actor, no await yet</span>
+    <span class="kw">await</span> audit.log(amount)
+}</code></pre>
+<p>Two extras if they keep going:</p>
+<ul>
+  <li>A data race can still exist <em>around</em> an actor: <code>nonisolated(unsafe)</code>, a class reference that escapes the actor, or a global <code>var</code> touched from both inside and outside.</li>
+  <li>Two actors that <code>await</code> each other can deadlock. Actors do not detect that.</li>
+</ul>
+<blockquote><p>If you stall: "What happens to actor state across an await?" Then: "Have you heard of actor reentrancy?"</p></blockquote>
+<p>One line on the same idea also sits in <a href="../../../../4.6.%20Structured%20Concurrency/4.6.2.%20Cancellation,%20unstructured%20tasks%20&amp;%20senior-level%20traps.html">4.6.2, Q8</a>. The example above is the interview answer.</p>
+
+<h2>Q3. Where does this <code>Task</code> run, when does <code>refresh()</code> return, and what happens to the UI?</h2>
+<pre><code><span class="attr">@MainActor</span>
+<span class="kw">final class</span> <span class="type">AccountsViewModel</span> {
+    <span class="kw">func</span> refresh() {
+        <span class="type">Task</span> {
+            <span class="kw">let</span> data = heavySynchronousWork()
+            apply(data)
+        }
+    }
+}</code></pre>
+<p><strong>a) Where does the body run?</strong> <code>Task { }</code> inherits the actor, the priority, and task-local values from the place it is created. <code>refresh()</code> is on the main actor, so the task body is main-actor isolated too. It is not a background task.</p>
+<p><strong>b) When does <code>refresh()</code> return?</strong> Immediately. <code>Task { }</code> only schedules the work and returns a handle. This code drops the handle. The caller of <code>refresh()</code> does not wait for <code>heavySynchronousWork()</code>.</p>
+<p><strong>c) What happens to the UI?</strong> It freezes. <code>heavySynchronousWork()</code> has no <code>await</code>, so it runs straight through on the main thread. <code>Task</code> does not move synchronous work off the caller. Only an <code>await</code> suspends.</p>
+<p><strong>Fix, in the order I would offer:</strong></p>
+<ol>
+  <li>A <code>nonisolated async</code> function, awaited from the main-actor task. The heavy call leaves the main actor. <code>apply</code> runs after the <code>await</code>, back on the main actor.</li>
+  <li>A separate actor, if the work also has state to protect.</li>
+  <li><code>Task.detached</code> only if you also mean to drop priority and task-locals. See Q4.</li>
+</ol>
+<pre><code><span class="attr">@MainActor</span>
+<span class="kw">final class</span> <span class="type">AccountsViewModel</span> {
+    <span class="kw">func</span> refresh() {
+        <span class="type">Task</span> {
+            <span class="kw">let</span> data = <span class="kw">await</span> <span class="type">Self</span>.heavyWork()
+            apply(data)   <span class="cm">// resumed on the main actor</span>
+        }
+    }
+
+    <span class="kw">nonisolated static func</span> heavyWork() <span class="kw">async</span> -&gt; <span class="type">Data</span> {
+        heavySynchronousWork()
+    }
+}</code></pre>
+<p>Senior extra: in Swift 6.2 the upcoming mode <code>NonisolatedNonsendingByDefault</code> keeps a <code>nonisolated async</code> function on the <em>caller's</em> actor. In that mode the function above would still freeze the UI. Mark it <code>@concurrent</code> so it actually runs on the cooperative pool. A dedicated actor does not have this trap.</p>
+<p>Also: if <code>refresh()</code> can be <code>async</code> and the caller is SwiftUI <code>.task</code>, delete the inner <code>Task</code>. An unstructured task is only needed to start async work from synchronous code, and it is not cancelled with the view. The same freeze is trap 5 in <a href="../../../../4.6.%20Structured%20Concurrency/4.6.2.%20Cancellation,%20unstructured%20tasks%20&amp;%20senior-level%20traps.html">4.6.2</a>.</p>
+<blockquote><p>If you stall: "What does a Task inherit from where it's created?" Then: "Is the body isolated to any actor?"</p></blockquote>
+
+<h2>Q4. When would you use <code>Task.detached</code>, and what do you lose?</h2>
+<p><strong>Say this:</strong> Almost never as a first choice. <code>Task.detached</code> starts unstructured work that inherits nothing: not the actor, not the priority, not task-local values.</p>
+<p>Use it when the work must not run on the caller's actor <em>and</em> you also do not want the caller's priority or task-locals (a trace id, a transaction id). For "just get this off the main actor", prefer the <code>nonisolated</code> / <code>@concurrent</code> function or a separate actor from Q3. Those keep priority and task-locals.</p>
+<p>What you lose:</p>
+<ul>
+  <li>Actor isolation. You cannot touch main-actor state inside the detached body. Hop back to apply UI state.</li>
+  <li>Priority. A tap-priority caller can spawn a default-priority detached task, so the work may sit behind other jobs.</li>
+  <li>Task-local values.</li>
+</ul>
+<p>Cancellation is the same trap as <code>Task { }</code>: neither is cancelled when the caller is cancelled, and dropping the handle does not cancel it. Keep the handle and call <code>cancel()</code>. The stored-handle sample is already in <a href="../../../../4.6.%20Structured%20Concurrency/4.6.2.%20Cancellation,%20unstructured%20tasks%20&amp;%20senior-level%20traps.html">4.6.2, Q4</a>. Inheritance of actor, priority, and task-locals is the table in <a href="../../../../4.6.%20Structured%20Concurrency/4.6.1.%20Core%20concepts%20%E2%80%94%20task%20tree,%20async%20let,%20TaskGroup.html">4.6.1</a>.</p>
+
+<h2>Q10. How do you test async code? What changes with Swift Testing?</h2>
+<p><strong>Say this:</strong> In XCTest I wait on an expectation, or I make the test method <code>async</code> and <code>await</code> the work. Swift Testing drops the expectation type: the test is <code>async</code>, checks are <code>#expect</code> / <code>#require</code>, and repeated events use <code>confirmation</code>.</p>
+<h3>XCTest</h3>
+<ul>
+  <li><strong>Completion handler.</strong> Create an <code>XCTestExpectation</code>, <code>fulfill()</code> in the callback, then <code>wait(for:timeout:)</code>. On a new SDK, <code>await fulfillment(of:timeout:)</code> from an <code>async</code> test.</li>
+  <li><strong>async/await.</strong> Mark the test <code>async throws</code> and <code>await</code> the call. No expectation for a single result.</li>
+  <li><strong>Publisher.</strong> Same expectation in <code>sink</code>, or <code>await publisher.values.first</code> inside an <code>async</code> test. Remember to keep the cancellable alive until <code>fulfill</code>.</li>
+</ul>
+<pre><code><span class="kw">func</span> testRefresh() <span class="kw">async throws</span> {
+    <span class="kw">let</span> vm = <span class="type">AccountsViewModel</span>(service: <span class="type">FakeAccounts</span>())
+    <span class="kw">await</span> vm.refresh()
+    <span class="type">XCTAssertEqual</span>(vm.state, .loaded)
+}
+
+<span class="kw">func</span> testSaveCallback() {
+    <span class="kw">let</span> exp = expectation(description: <span class="str">"saved"</span>)
+    cache.save { exp.fulfill() }
+    wait(for: [exp], timeout: <span class="num">1</span>)
+}</code></pre>
+<h3>Swift Testing</h3>
+<p>This is what new tests on the banking project use.</p>
+<ul>
+  <li><code>@Test</code> instead of a method that starts with <code>test</code>.</li>
+  <li><code>#expect</code> records a failure and continues. <code>#require</code> stops the test when the value must exist (it unwraps).</li>
+  <li>The test function can be <code>async throws</code>. No <code>XCTestExpectation</code>.</li>
+  <li><code>confirmation</code> for "this event happened N times".</li>
+  <li><code>@Test(arguments:)</code> runs the same body once per value.</li>
+</ul>
+<pre><code><span class="kw">import</span> Testing
+
+<span class="attr">@Test</span> <span class="kw">func</span> refreshLoads() <span class="kw">async throws</span> {
+    <span class="kw">let</span> vm = <span class="type">AccountsViewModel</span>(service: <span class="type">FakeAccounts</span>())
+    <span class="kw">await</span> vm.refresh()
+    #expect(vm.state == .loaded)
+}
+
+<span class="attr">@Test</span> <span class="kw">func</span> emitsTwoUpdates() <span class="kw">async</span> {
+    <span class="kw">await</span> confirmation(expectedCount: <span class="num">2</span>) { confirm <span class="kw">in</span>
+        <span class="kw">for await</span> _ <span class="kw">in</span> store.updates.prefix(<span class="num">2</span>) { confirm() }
+    }
+}
+
+<span class="attr">@Test</span>(arguments: [<span class="num">200</span>, <span class="num">404</span>, <span class="num">500</span>])
+<span class="kw">func</span> mapsStatus(_ code: <span class="type">Int</span>) {
+    #expect(<span class="type">AccountError</span>.map(code) != <span class="kw">nil</span>)
+}</code></pre>
+<blockquote><p>If you stall: "In XCTest, what do you wait on?" An expectation.</p></blockquote>
 </main>
 </body>
 </html>

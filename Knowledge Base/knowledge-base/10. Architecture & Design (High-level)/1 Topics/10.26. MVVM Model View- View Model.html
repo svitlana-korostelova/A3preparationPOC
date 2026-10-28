@@ -56,6 +56,25 @@ ul.toc li a{font-size:1.05em}
 .codehilite .na{color:#22863a}
 .codehilite .nt{color:#22863a}
 .codehilite .nv{color:#e36209}
+
+.markdown-body pre code { background: none; padding: 0; }
+.kw   { color: #ad3da4; font-weight: bold; }
+.type { color: #0b4f79; }
+.str  { color: #c41a16; }
+.num  { color: #1c00cf; }
+.cm   { color: #5d6c79; font-style: italic; }
+.attr { color: #643820; }
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre { background: #1c1c1e; color: #e8e8e8; }
+  .kw   { color: #fc5fa3; }
+  .type { color: #5dd8ff; }
+  .str  { color: #fc6a5d; }
+  .num  { color: #d0bf69; }
+  .cm   { color: #7f8c98; }
+  .attr { color: #bf86c8; }
+  .markdown-body th { background: #2c2c2e; }
+  .markdown-body td, .markdown-body th { border-color: #444; }
+}
 </style>
 </head>
 <body class="markdown-body">
@@ -63,6 +82,61 @@ ul.toc li a{font-size:1.05em}
 <main>
 <h1>10.26. MVVM: Model View- View Model</h1>
 <p>notes: </p>
+
+<h2>Q6. Who owns the coordinator and the navigation controller? How does the view model talk to the coordinator?</h2>
+<p><strong>Say this:</strong> The parent owns the child coordinator. The child coordinator owns the navigation controller. The view controller owns the view model. The view model never imports UIKit. It reports a route. The coordinator turns that route into a push.</p>
+<p>What keeps the coordinator alive: the parent holds it strongly. A flow coordinator that nobody retains will deallocate and later pushes vanish. The other pattern is to let the root view controller retain the coordinator. I name that if they ask, and I still prefer an explicit parent, because the lifetime is visible in the composition root.</p>
+<p>Three ways to connect the view model and the coordinator:</p>
+<ol>
+  <li><strong>Weak delegate.</strong> The view model holds <code>weak var router: AccountRouting?</code>. The coordinator conforms. No cycle, as long as the protocol is <code>AnyObject</code> and the property is <code>weak</code>.</li>
+  <li><strong>Closures the coordinator assigns.</strong> <code>viewModel.onShowDetails = { [weak self] id in self?.showDetails(id) }</code>. Easy to read. The cycle appears when the closure captures the coordinator strongly and the coordinator owns the view model.</li>
+  <li><strong>A route stream.</strong> The view model exposes <code>AsyncStream&lt;Route&gt;</code> or a <code>PassthroughSubject</code>. It holds no coordinator at all. The coordinator subscribes. This is the answer to "notify without holding a reference".</li>
+</ol>
+<p>I would pick the route stream for a new feature, or a weak delegate if the file already uses delegates. Closures are fine for one or two events. I would not let the view model push a <code>UIViewController</code>.</p>
+<pre><code><span class="kw">enum</span> <span class="type">AccountRoute</span> { <span class="kw">case</span> details(<span class="type">Account</span>.ID) }
+
+<span class="attr">@MainActor</span>
+<span class="kw">final class</span> <span class="type">AccountsViewModel</span> {
+    <span class="kw">private let</span> routes: <span class="type">AsyncStream</span>&lt;<span class="type">AccountRoute</span>&gt;.Continuation
+    <span class="kw">let</span> routeStream: <span class="type">AsyncStream</span>&lt;<span class="type">AccountRoute</span>&gt;
+
+    <span class="kw">init</span>() {
+        <span class="kw">var</span> continuation: <span class="type">AsyncStream</span>&lt;<span class="type">AccountRoute</span>&gt;.Continuation!
+        routeStream = <span class="type">AsyncStream</span> { continuation = $0 }
+        routes = continuation
+    }
+
+    <span class="kw">func</span> accountTapped(_ id: <span class="type">Account</span>.ID) {
+        routes.yield(.details(id))
+    }
+}</code></pre>
+<blockquote><p>If you stall: "What keeps the coordinator alive?" Then: "How could the view model notify without holding a reference?"</p></blockquote>
+
+<h2>Q7. How do you unit test that tapping "Account details" opens the account details screen?</h2>
+<p><strong>Say this:</strong> I do not launch the app. I inject a router into the coordinator, trigger the view-model event, and assert the spy recorded the details screen.</p>
+<p>The seam is the navigation controller, or a small router protocol in front of it. The spy stores what was pushed. The test calls the same method the button calls (<code>accountTapped</code>), then reads the spy. A UI test is the wrong tool for this.</p>
+<pre><code><span class="kw">protocol</span> <span class="type">AccountRouting</span>: <span class="type">AnyObject</span> {
+    <span class="kw">func</span> pushDetails(_ id: <span class="type">Account</span>.ID)
+}
+
+<span class="kw">final class</span> <span class="type">RouterSpy</span>: <span class="type">AccountRouting</span> {
+    <span class="kw">private(set) var</span> details: [<span class="type">Account</span>.ID] = []
+    <span class="kw">func</span> pushDetails(_ id: <span class="type">Account</span>.ID) { details.append(id) }
+}
+
+<span class="attr">@Test</span> <span class="attr">@MainActor</span>
+<span class="kw">func</span> tapOpensDetails() {
+    <span class="kw">let</span> spy = <span class="type">RouterSpy</span>()
+    <span class="kw">let</span> vm = <span class="type">AccountsViewModel</span>()
+    <span class="kw">let</span> coordinator = <span class="type">AccountsCoordinator</span>(viewModel: vm, router: spy)
+
+    coordinator.start()
+    vm.accountTapped(<span class="str">"acc-1"</span>)
+
+    #expect(spy.details == [<span class="str">"acc-1"</span>])
+}</code></pre>
+<p>If the view model emits a route stream (Q6), the coordinator's <code>start()</code> subscribes and forwards to the spy. The test still does not build a <code>UINavigationController</code>. Injecting the real navigation controller and asserting <code>viewControllers.last is AccountDetailsViewController</code> also works, and it is heavier.</p>
+<blockquote><p>If you stall: "What would you inject into the coordinator?"</p></blockquote>
 </main>
 </body>
 </html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.1.6.3. Isolated SwiftUI feature inside UIKit navigation</title>
+<style>
+body.markdown-body{box-sizing:border-box;min-width:200px;max-width:980px;margin:0 auto;padding:32px 45px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;color:#1f2328;background:#fff;word-wrap:break-word}
+.markdown-body h1,.markdown-body h2,.markdown-body h3{margin-top:24px;margin-bottom:16px;font-weight:600;line-height:1.25}
+.markdown-body h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em}
+.markdown-body h3{font-size:1.25em}
+.markdown-body p,.markdown-body ul,.markdown-body ol,.markdown-body pre{margin-top:0;margin-bottom:16px}
+.markdown-body ul,.markdown-body ol{padding-left:2em}
+.markdown-body a{color:#0969da;text-decoration:none}
+.markdown-body code{padding:.2em .4em;font-size:85%;background-color:rgba(175,184,193,.2);border-radius:6px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.markdown-body blockquote{padding:0 1em;color:#656d76;border-left:.25em solid #d0d7de;margin:0 0 16px 0}
+nav.breadcrumbs{font-size:14px;color:#656d76;padding:8px 0 16px 0;border-bottom:1px solid #eaeef2;margin-bottom:24px}
+nav.breadcrumbs a{color:#0969da;text-decoration:none}
+.markdown-body pre{border-radius:8px;padding:1em;overflow-x:auto;font-size:.88em;line-height:1.55;background:#f7f8fa;color:#1d1d1f}
+.markdown-body pre code{background:none;padding:0;font-size:100%}
+.kw{color:#ad3da4;font-weight:bold}.type{color:#0b4f79}.str{color:#c41a16}.num{color:#1c00cf}
+.cm{color:#5d6c79;font-style:italic}.attr{color:#643820}
+@media (prefers-color-scheme: dark) {
+  body.markdown-body{background:#0d1117;color:#e6edf3}
+  .markdown-body h1,.markdown-body h2{border-color:#30363d}
+  .markdown-body a,nav.breadcrumbs a{color:#4493f8}
+  nav.breadcrumbs{border-color:#30363d;color:#8b949e}
+  .markdown-body blockquote{color:#8b949e;border-color:#30363d}
+  .markdown-body pre{background:#1c1c1e;color:#e8e8e8}
+  .kw{color:#fc5fa3}.type{color:#5dd8ff}.str{color:#fc6a5d}.num{color:#d0bf69}
+  .cm{color:#7f8c98}.attr{color:#bf86c8}
+}
+</style>
+</head>
+<body class="markdown-body">
+<nav class="breadcrumbs"><a href="../../index.html">⌂ Knowledge Base</a> › <a href="../index.html">2.1 SwiftUI</a> › <a href="index.html">2.1.6. UIKit integration</a></nav>
+<main>
+<h1>2.1.6.3. Isolated SwiftUI feature inside UIKit navigation</h1>
+<p>The app is UIKit with a <code>UINavigationController</code>. A new feature is six SwiftUI screens, opened from one UIKit screen. How do you organise navigation inside the feature, and why?</p>
+<p><strong>Say this:</strong> One owner of the stack. I push a <code>UIHostingController</code> per screen from a coordinator that drives the existing navigation controller. I do not put a second <code>NavigationStack</code> inside the host unless I am ready to name what breaks.</p>
+<p>Why this fits a UIKit app:</p>
+<ul>
+  <li>The system back button, the interactive pop, and deep links stay on the navigation controller the rest of the app already uses.</li>
+  <li>Each screen is still SwiftUI. The host is the bridge. Hide SwiftUI's own bar so you do not get two bars. That double-bar case is already written in <a href="../2.1.10.%20Navigation/2.1.10.4.%20What%20are%20the%20challenges%20with%20navigation%20in%20SwiftUI%20when%20mixing%20with%20UIKit.html">2.1.10.4</a>.</li>
+  <li>The view model emits a route. The coordinator creates the next host and pushes it. The view model does not import UIKit. Ownership and the route stream are in <a href="../../10.%20Architecture%20&amp;%20Design%20(High-level)/1%20Topics/10.26.%20MVVM%20Model%20View-%20View%20Model.html">10.26</a>.</li>
+</ul>
+<pre><code><span class="kw">func</span> showDetails(_ id: <span class="type">Account</span>.ID) {
+    <span class="kw">let</span> view = <span class="type">AccountDetailsView</span>(viewModel: detailsModel(id))
+        .toolbar(.hidden, for: .navigationBar)
+    <span class="kw">let</span> host = <span class="type">UIHostingController</span>(rootView: view)
+    navigationController.pushViewController(host, animated: <span class="kw">true</span>)
+}</code></pre>
+<p><strong>The other design, and the trade-offs.</strong> One <code>UIHostingController</code> whose root view is a <code>NavigationStack</code> of all six screens. Acceptable when the feature must not touch the legacy stack. Say these costs out loud:</p>
+<ul>
+  <li>Back gesture and the back button belong to SwiftUI. The outer navigation controller only sees one screen, so a deep link into screen 4 has to be turned into a <code>NavigationPath</code> the UIKit stack does not know about.</li>
+  <li>UIKit appearance (large titles, the existing bar) stops at the host.</li>
+  <li>A unit test has to read SwiftUI path state, unless you still inject a router. The coordinator-plus-spy test is easier. The spy itself is Q7 on the <a href="../../10.%20Architecture%20&amp;%20Design%20(High-level)/1%20Topics/10.26.%20MVVM%20Model%20View-%20View%20Model.html">MVVM page</a>.</li>
+</ul>
+<blockquote><p>If you stall: "Who owns the navigation stack?" Then: "How would you test this navigation?"</p></blockquote>
+</main>
+</body>
+</html>
