@@ -120,10 +120,20 @@ b = <span class="kw">nil</span>                             <span class="cm">// 
 <tr><td><code>unowned(unsafe)</code></td><td>Undefined behaviour (dangling pointer)</td><td>Rare C interop where even the check is too slow</td></tr>
 </table>
 
+<h3>unowned(safe) vs unowned(unsafe)</h3>
+<p><strong><code>unowned(safe)</code></strong> is plain <code>unowned</code>. The runtime keeps a small <em>unowned count</em> on the object. On every access it checks that the object is still alive. If it is dead, the app traps with a clear error ("Attempted to read an unowned reference but object was already deallocated"). You get a crash, but a predictable one. The object's memory block stays allocated until the unowned count is 0, so the check is always valid.</p>
+<p><strong><code>unowned(unsafe)</code></strong> is the same idea as Objective-C <code>unsafe_unretained</code>. It is just a raw pointer. There is no count and no check. If the object is dead, you read freed memory: random crash, wrong data, or a security bug. It is a bit faster, because it skips the check.</p>
+<pre><code><span class="kw">class</span> <span class="type">Engine</span> {
+    <span class="kw">unowned</span> <span class="kw">let</span> car: <span class="type">Car</span>                 <span class="cm">// = unowned(safe): checked, traps if dead</span>
+    <span class="kw">unowned</span>(<span class="kw">unsafe</span>) <span class="kw">let</span> fastCar: <span class="type">Car</span>    <span class="cm">// no check: dangling pointer if Car is gone</span>
+    <span class="kw">init</span>(car: <span class="type">Car</span>) { <span class="kw">self</span>.car = car; <span class="kw">self</span>.fastCar = car }
+}</code></pre>
+<p>Use <code>unowned(safe)</code> by default. Use <code>unowned(unsafe)</code> only when profiling shows the check is a bottleneck, or in C interop, and only when the lifetime is proven. For normal app code you will almost never need it.</p>
+
 <h2>Closure capture lists</h2>
 <p>Closures capture <code>self</code> strongly by default. Use a capture list to choose the reference type.</p>
 <pre><code><span class="kw">class</span> <span class="type">ViewModel</span> {
-    <span class="kw">var</span> onUpdate: (() -&gt; <span class="type">Void</span>)?
+    <span class="kw">private var</span> onUpdate: (() -&gt; <span class="type">Void</span>)?
 
     <span class="kw">func</span> setup() {
         onUpdate = { <span class="kw">self</span>.refresh() }            <span class="cm">// ❌ cycle: self → closure → self</span>
@@ -149,6 +159,57 @@ b = <span class="kw">nil</span>                             <span class="cm">// 
 <tr><td>Child → parent with the same lifetime (card → customer)</td><td>unowned</td><td>The child never outlives the parent</td></tr>
 <tr><td><code>lazy var</code> that uses <code>self</code></td><td>unowned self</td><td>It runs while <code>self</code> is alive</td></tr>
 </table>
+<pre><code><span class="cm">// 1. View → ViewModel, parent → child: strong</span>
+<span class="kw">class</span> <span class="type">ProfileViewController</span>: <span class="type">UIViewController</span> {
+    <span class="kw">let</span> viewModel = <span class="type">ProfileViewModel</span>()   <span class="cm">// the screen owns its ViewModel</span>
+}
+
+<span class="cm">// 2. Delegate, ViewModel → View callback: weak</span>
+<span class="kw">protocol</span> <span class="type">ProfileViewModelDelegate</span>: <span class="type">AnyObject</span> { <span class="kw">func</span> didUpdate() }
+
+<span class="kw">class</span> <span class="type">ProfileViewModel</span> {
+    <span class="kw">weak var</span> delegate: (<span class="kw">any</span> <span class="type">ProfileViewModelDelegate</span>)?   <span class="cm">// VC already owns VM, so VM must not own VC</span>
+    <span class="kw">var</span> onChange: (() -&gt; <span class="type">Void</span>)?                          <span class="cm">// closure version: capture [weak self] in the VC</span>
+}
+
+<span class="kw">class</span> <span class="type">ProfileViewController</span>: <span class="type">UIViewController</span>, <span class="type">ProfileViewModelDelegate</span> {
+    <span class="kw">let</span> viewModel = <span class="type">ProfileViewModel</span>()       <span class="cm">// VC → VM: strong</span>
+
+    <span class="kw">override func</span> viewDidLoad() {
+        <span class="kw">super</span>.viewDidLoad()
+        viewModel.delegate = <span class="kw">self</span>              <span class="cm">// VM → VC: weak (delegate)</span>
+        viewModel.onChange = { [<span class="kw">weak self</span>] <span class="kw">in</span>    <span class="cm">// VM → VC: weak (closure)</span>
+            <span class="kw">self</span>?.<span class="type">reload</span>()
+        }
+    }
+
+    <span class="kw">func</span> didUpdate() { <span class="type">reload</span>() }
+}
+
+<span class="cm">// 3. Timer or URLSession completion capturing self: weak self</span>
+<span class="type">URLSession</span>.shared.<span class="type">dataTask</span>(with: url) { [<span class="kw">weak self</span>] data, _, _ <span class="kw">in</span>
+    <span class="kw">self</span>?.<span class="type">show</span>(data)                          <span class="cm">// screen may be gone by now</span>
+}.<span class="type">resume</span>()
+
+<span class="cm">// 4. Child → parent with the same lifetime: unowned</span>
+<span class="kw">class</span> <span class="type">CreditCard</span> {
+    <span class="kw">unowned let</span> owner: <span class="type">Customer</span>             <span class="cm">// a card never outlives its customer</span>
+    <span class="kw">init</span>(owner: <span class="type">Customer</span>) { <span class="kw">self</span>.owner = owner }
+}
+
+<span class="cm">// 5. lazy var that uses self: unowned self</span>
+<span class="kw">class</span> <span class="type">PriceViewModel</span> {
+    <span class="kw">let</span> currency = <span class="str">"€"</span>
+
+    <span class="cm">// The closure is stored in self, and it uses self: self → closure → self.</span>
+    <span class="cm">// [unowned self] breaks the cycle. It is safe: the closure lives only as long as self.</span>
+    <span class="kw">lazy var</span> format: (<span class="type">Double</span>) -&gt; <span class="type">String</span> = { [<span class="kw">unowned self</span>] price <span class="kw">in</span>
+        <span class="str">"\(</span><span class="kw">self</span>.currency<span class="str">)\(price)"</span>
+    }
+
+    <span class="cm">// Immediately-called closure: runs once, is not stored, no cycle, no capture list needed.</span>
+    <span class="kw">lazy var</span> title: <span class="type">String</span> = { <span class="kw">self</span>.<span class="type">makeTitle</span>() }()
+}</code></pre>
 <p>Why weak and unowned exist: <a href="3.4.%20Retain%20cycles%20and%20leaks.html">3.4 Retain cycles and leaks</a>.</p>
 
 </main>

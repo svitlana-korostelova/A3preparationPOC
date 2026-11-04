@@ -82,7 +82,8 @@ ul.toc li a{font-size:1.05em}
 <h2>deinit rules</h2>
 <ul>
   <li>Runs <strong>exactly once</strong>. You cannot call it yourself.</li>
-  <li>Runs on <strong>whatever thread</strong> released the last reference. Touch UI only after hopping to the main thread.</li>
+  <li>Runs on <strong>whatever thread</strong> released the last reference. Touch UI only after hopping to the main thread.
+    If <code>deinit</code> needs UI cleanup, switch to the main thread with <code>DispatchQueue.main.async</code>. Do not capture <code>self</code> there; copy the values you need first.</li>
   <li>Subclass <code>deinit</code> runs first, then the superclass <code>deinit</code> automatically.</li>
   <li>Releasing stored properties can trigger more <code>deinit</code> calls (a chain).</li>
   <li>Only classes and actors have <code>deinit</code>. Structs do not.</li>
@@ -118,11 +119,37 @@ d = <span class="kw">nil</span>   <span class="cm">// "Dog deinit", then "Animal
 }</code></pre>
 
 <h2>withExtendedLifetime</h2>
-<p>The optimizer may release an object right after its <em>last use</em>, not at the end of the scope. This matters when you pass an unretained pointer to a C API. <code>withExtendedLifetime</code> keeps the object alive for the whole block.</p>
-<pre><code><span class="kw">func</span> callC(with obj: <span class="type">MyClass</span>) {
-    <span class="type">withExtendedLifetime</span>(obj) {
-        <span class="type">cFunction</span>(<span class="type">Unmanaged</span>.<span class="type">passUnretained</span>(obj).<span class="type">toOpaque</span>())
-    }   <span class="cm">// obj is guaranteed alive until here</span>
+<p><strong>What:</strong> keeps an object alive until the end of a block.</p>
+<p><strong>Why:</strong> Swift does not keep an object until the end of the scope. The optimizer can release it right after its <em>last use</em>. If you pass a raw pointer (<code>Unmanaged.passUnretained</code>, <code>UnsafePointer</code>), the pointer is not a reference. The object can die while C code is still using the pointer. That means a dangling pointer and a crash.</p>
+<p><strong>Where it is used:</strong></p>
+<ul>
+  <li>Calling C APIs with <code>passUnretained</code> or <code>toOpaque()</code> (C callbacks, Core Foundation).</li>
+  <li>Using an object's unsafe pointers (<code>withUnsafePointer</code>, buffers) while C code works with them.</li>
+  <li>Tests: keep an object alive while you check that a <code>weak</code> reference is still set.</li>
+</ul>
+<p><strong>Example: image filter in C.</strong> The class owns the pixel memory and frees it in <code>deinit</code>.</p>
+<pre><code><span class="kw">final class</span> <span class="type">PixelBuffer</span> {
+    <span class="kw">let</span> pixels: <span class="type">UnsafeMutablePointer</span>&lt;<span class="type">UInt8</span>&gt;
+    <span class="kw">let</span> count: <span class="type">Int</span>
+    <span class="kw">init</span>(count: <span class="type">Int</span>) {
+        <span class="kw">self</span>.count = count
+        pixels = .<span class="type">allocate</span>(capacity: count)
+    }
+    <span class="kw">deinit</span> { pixels.<span class="type">deallocate</span>() }      <span class="cm">// frees the image memory</span>
+}
+
+<span class="cm">// ❌ Bad: buffer is not used after the two reads, so it may be freed early</span>
+<span class="kw">func</span> blur(_ buffer: <span class="type">PixelBuffer</span>) {
+    <span class="kw">let</span> ptr = buffer.pixels
+    <span class="kw">let</span> n = buffer.count
+    c_blur(ptr, n)                         <span class="cm">// ptr may already point to freed memory</span>
+}
+
+<span class="cm">// ✅ Good: buffer stays alive until the block ends</span>
+<span class="kw">func</span> blur(_ buffer: <span class="type">PixelBuffer</span>) {
+    <span class="type">withExtendedLifetime</span>(buffer) {
+        c_blur(buffer.pixels, buffer.count)
+    }
 }</code></pre>
 
 <h2>Weak references after deinit</h2>
