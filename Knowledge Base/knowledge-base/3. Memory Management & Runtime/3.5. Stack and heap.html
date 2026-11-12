@@ -94,6 +94,25 @@ ul.toc li a{font-size:1.05em}
     }
 }</code></pre>
 
+<h3>Common real-life bug: a property that calls itself</h3>
+<pre><code><span class="cm">// ❌ getter calls itself → stack overflow</span>
+<span class="kw">var</span> name: <span class="type">String</span> {
+    <span class="kw">get</span> { <span class="kw">return</span> name }
+}</code></pre>
+<p>The compiler usually warns: <em>"Attempting to access 'name' within its own getter"</em>. Fix: store the value in a separate property.</p>
+<pre><code><span class="cm">// ✅ value lives in _name; name is just a front door</span>
+<span class="kw">private var</span> _name: <span class="type">String</span> = <span class="str">""</span>
+
+<span class="kw">var</span> name: <span class="type">String</span> {
+    <span class="kw">get</span> { <span class="kw">return</span> _name }
+    <span class="kw">set</span> { _name = newValue }
+}
+
+<span class="cm">// ✅ or, to react to changes, use didSet (reads the stored value, no recursion)</span>
+<span class="kw">var</span> title: <span class="type">String</span> = <span class="str">""</span> {
+    <span class="kw">didSet</span> { <span class="type">print</span>(<span class="str">"title changed to \(title)"</span>) }
+}</code></pre>
+
 <h2>Heap details</h2>
 <ol>
   <li>A class <code>init</code> calls <code>swift_allocObject</code>, which calls <code>malloc</code>.</li>
@@ -110,21 +129,48 @@ ul.toc li a{font-size:1.05em}
 
 <h2>Why it matters for speed</h2>
 <p>A heap allocation costs the allocation itself, ARC traffic and cache misses. In a hot path (60 fps rendering, large parsing), replacing small classes with structs can remove thousands of allocations per frame.</p>
-<pre><code><span class="kw">class</span> <span class="type">FrameClass</span> { <span class="kw">var</span> x, y, w, h: <span class="type">Double</span> = <span class="num">0</span> }   <span class="cm">// heap + ARC per instance</span>
-<span class="kw">struct</span> <span class="type">FrameStruct</span> { <span class="kw">var</span> x, y, w, h: <span class="type">Double</span> }     <span class="cm">// inline, no ARC</span></code></pre>
+<h3>Example 1: drawing a chart every frame</h3>
+<pre><code><span class="cm">// ❌ class: 1,000 heap allocations + ARC on every redraw</span>
+<span class="kw">final class</span> <span class="type">ChartPointRef</span> {
+    <span class="kw">var</span> x: <span class="type">CGFloat</span>; <span class="kw">var</span> y: <span class="type">CGFloat</span>
+    <span class="kw">init</span>(x: <span class="type">CGFloat</span>, y: <span class="type">CGFloat</span>) { <span class="kw">self</span>.x = x; <span class="kw">self</span>.y = y }
+}
+
+<span class="cm">// ✅ struct: stored inline in one array buffer, no ARC</span>
+<span class="kw">struct</span> <span class="type">ChartPoint</span> { <span class="kw">var</span> x: <span class="type">CGFloat</span>; <span class="kw">var</span> y: <span class="type">CGFloat</span> }
+
+<span class="kw">override func</span> <span class="type">draw</span>(<span class="kw">_</span> rect: <span class="type">CGRect</span>) {
+    <span class="kw">let</span> points = prices.<span class="type">enumerated</span>().<span class="type">map</span> { i, price <span class="kw">in</span>
+        <span class="type">ChartPoint</span>(x: <span class="type">CGFloat</span>(i) * step, y: rect.height - <span class="type">CGFloat</span>(price) * scale)
+    }
+    <span class="cm">// build a UIBezierPath from points…</span>
+}</code></pre>
+<p><code>draw(_:)</code> can run 60 times a second. With a class, every point is a separate heap object tracked by ARC. With a struct, all points sit side by side in one array buffer: one allocation, cache-friendly.</p>
+
+<h3>Example 2: parsing a large JSON response</h3>
+<pre><code><span class="kw">struct</span> <span class="type">Transaction</span>: <span class="type">Decodable</span> {
+    <span class="kw">let</span> id: <span class="type">String</span>       <span class="cm">// short strings fit inline; long ones use a heap buffer</span>
+    <span class="kw">let</span> amount: <span class="type">Decimal</span>
+    <span class="kw">let</span> date: <span class="type">Date</span>
+}
+
+<span class="kw">let</span> items = <span class="kw">try</span> <span class="type">JSONDecoder</span>().<span class="type">decode</span>([<span class="type">Transaction</span>].<span class="kw">self</span>, from: data)
+<span class="cm">// struct: 10,000 transactions = 1 array buffer</span>
+<span class="cm">// class:  10,000 extra heap objects + retain/release on every filter / sort / map</span></code></pre>
+<p>Typical bank-transactions screen: filtering and sorting copy references many times. Classes pay ARC on each copy; structs do not.</p>
 <p>Measure with <strong>Instruments → Allocations</strong> before you optimize.</p>
 
 <h2>When a value type ends up on the heap</h2>
 <p>"Struct = stack" is a default, not a rule. A value is placed on the heap when it must outlive the current stack frame, or when its size is not known or too big.</p>
 <table>
-<tr><th>Situation</th><th>Where the value goes</th></tr>
-<tr><td>Local variable, not captured</td><td>Stack</td></tr>
-<tr><td>Captured and modified by an <code>@escaping</code> closure</td><td>Heap box shared with the closure</td></tr>
-<tr><td>Stored property of a class</td><td>Inside the class's heap block</td></tr>
-<tr><td>Protocol existential (<code>any P</code>) bigger than 3 words (24 bytes)</td><td>Heap buffer, pointer kept in the existential container</td></tr>
-<tr><td><code>indirect enum</code> case</td><td>Heap box for the payload</td></tr>
-<tr><td>Local used after an <code>await</code></td><td>Task's heap-allocated async frame</td></tr>
-<tr><td>Array, String, Dictionary contents</td><td>Heap buffer (the struct itself is only a pointer + metadata)</td></tr>
+<tr><th>Situation</th><th>Where the value goes</th><th>Example</th></tr>
+<tr><td>Local variable, not captured</td><td>Stack</td><td><code><span class="kw">let</span> p = <span class="type">CGPoint</span>(x: <span class="num">1</span>, y: <span class="num">2</span>)</code></td></tr>
+<tr><td>Captured and modified by an <code>@escaping</code> closure</td><td>Heap box shared with the closure</td><td><code><span class="kw">func</span> onTap(<span class="kw">_</span> action: <span class="attr">@escaping</span> () -&gt; <span class="type">Void</span>)<br><span class="kw">var</span> count = <span class="num">0</span>; <span class="type">onTap</span> { count += <span class="num">1</span> }  <span class="cm">// count boxed</span></code></td></tr>
+<tr><td>Stored property of a class</td><td>Inside the class's heap block</td><td><code><span class="kw">class</span> <span class="type">VM</span> { <span class="kw">var</span> origin = <span class="type">CGPoint</span>.zero }</code></td></tr>
+<tr><td>Protocol existential (<code>any P</code>) bigger than 3 words (24 bytes)</td><td>Heap buffer, pointer kept in the existential container</td><td><code><span class="kw">struct</span> <span class="type">Card</span>: <span class="type">Drawable</span> { <span class="kw">var</span> x, y, w, h: <span class="type">Double</span> }  <span class="cm">// 32 bytes</span><br><span class="kw">let</span> d: <span class="kw">any</span> <span class="type">Drawable</span> = <span class="type">Card</span>(x: <span class="num">0</span>, y: <span class="num">0</span>, w: <span class="num">10</span>, h: <span class="num">10</span>)  <span class="cm">// boxed</span></code></td></tr>
+<tr><td><code>indirect enum</code> case</td><td>Heap box for the payload</td><td><code><span class="kw">indirect enum</span> <span class="type">List</span> { <span class="kw">case</span> end, node(<span class="type">Int</span>, <span class="type">List</span>) }</code></td></tr>
+<tr><td>Local used after an <code>await</code></td><td>Task's heap-allocated async frame</td><td><code><span class="kw">let</span> id = user.id<br><span class="kw">let</span> data = <span class="kw">try await</span> api.<span class="type">load</span>(id)  <span class="cm">// id kept in async frame</span></code></td></tr>
+<tr><td>Array, String, Dictionary contents</td><td>Heap buffer (the struct itself is only a pointer + metadata)</td><td><code><span class="kw">let</span> ids = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]  <span class="cm">// elements live in a heap buffer</span></code></td></tr>
 </table>
 <pre><code><span class="kw">func</span> makeCounter() -&gt; () -&gt; <span class="type">Int</span> {
     <span class="kw">var</span> count = <span class="num">0</span>          <span class="cm">// Int, but boxed on the heap</span>

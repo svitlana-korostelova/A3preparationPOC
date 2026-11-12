@@ -100,10 +100,11 @@ d = <span class="kw">nil</span>   <span class="cm">// "Dog deinit", then "Animal
 
     <span class="kw">deinit</span> {
         <span class="type">NotificationCenter</span>.<span class="kw">default</span>.<span class="type">removeObserver</span>(<span class="kw">self</span>)  <span class="cm">// old-style observers</span>
-        timer?.<span class="type">invalidate</span>()                              <span class="cm">// stop timers</span>
+        timer?.<span class="type">invalidate</span>()                              <span class="cm">// stop timers (block API + [weak self] only)</span>
     }
 }</code></pre>
 <p>Use it for file handles, observers, timers and C resources. Do not start new work or store <code>self</code> anywhere in <code>deinit</code>.</p>
+<p>Stopping a timer in <code>deinit</code> works only if the timer does not hold <code>self</code> strongly (block API with <code>[weak self]</code>). A timer made with <code>target: self</code> keeps <code>self</code> alive, so <code>deinit</code> never runs. See <a href="3.4.%20Retain%20cycles%20and%20leaks.html">3.4</a>.</p>
 <p>If <code>deinit</code> never prints, the object is leaking. This is the quickest leak check. See <a href="3.4.%20Retain%20cycles%20and%20leaks.html">3.4</a>.</p>
 
 <h2>Closures can keep an object alive</h2>

@@ -103,22 +103,72 @@ john = <span class="kw">nil</span>; flat = <span class="kw">nil</span>   <span c
     }
     <span class="kw">func</span> reload() {}
 }</code></pre>
-<p>A closure only creates a cycle if <code>self</code> also holds the closure. A one-shot closure that is not stored (e.g. <code>DispatchQueue.main.async</code>) only extends the lifetime until it runs.</p>
+<p>A closure only creates a cycle if <code>self</code> also holds the closure. A closure that runs only once and isn't saved anywhere (for example, <code>DispatchQueue.main.async</code>) keeps <code>self</code> alive only until it finishes running. After that, it lets go.</p>
 
 <h2>Leaks that are not cycles</h2>
 <p>The object is kept alive by something outside your code.</p>
 <ul>
-  <li><strong><code>Timer</code> with <code>target: self</code></strong> — the run loop holds the timer and the timer holds <code>self</code>. Call <code>invalidate()</code> (not in <code>deinit</code>, because <code>deinit</code> never runs; use <code>viewWillDisappear</code> or the block API with <code>[weak self]</code>).</li>
-  <li><strong>Old <code>NotificationCenter</code> API</strong> — since iOS 9 selector-based observers are not retained, but block-based observers (<code>addObserver(forName:...)</code>) must be removed, and the block needs <code>[weak self]</code>.</li>
-  <li><strong>Combine <code>sink</code> / <code>assign(to:on:)</code></strong> — <code>assign(to:on: self)</code> retains <code>self</code>. Store the <code>AnyCancellable</code> and use <code>[weak self]</code> in <code>sink</code>.</li>
-  <li><strong>Long Swift <code>Task</code></strong> — a task that captures <code>self</code> keeps it alive until it ends. Cancel it or use <code>[weak self]</code>.</li>
-  <li><strong>Singletons and caches</strong> — anything they reference lives for the whole app.</li>
+  <li><strong><code>Timer</code> with <code>target: self</code></strong> — the run loop holds the timer and the timer holds <code>self</code>. So <code>deinit</code> never runs, and an <code>invalidate()</code> placed there is never called. Fix: call <code>invalidate()</code> earlier (e.g. <code>viewWillDisappear</code>), or use the block API with <code>[weak self]</code> — then <code>deinit</code> runs and calling <code>invalidate()</code> there is fine (see <a href="3.2.%20Object%20lifetime%20and%20deinit.html">3.2</a>).
+    <pre><code>timer?.<span class="type">invalidate</span>(); timer = <span class="kw">nil</span></code></pre></li>
+  <li><strong><code>CADisplayLink</code></strong> — same as <code>Timer</code>: the run loop holds the link and the link holds its <code>target</code> strongly.
+    <pre><code>displayLink?.<span class="type">invalidate</span>(); displayLink = <span class="kw">nil</span></code></pre></li>
+  <li><strong>Old <code>NotificationCenter</code> API</strong> — since iOS 9 selector-based observers are not retained, but block-based observers (<code>addObserver(forName:...)</code>) must be removed, and the block needs <code>[weak self]</code>.
+    <pre><code><span class="type">NotificationCenter</span>.<span class="kw">default</span>.<span class="type">removeObserver</span>(token)   <span class="cm">// token returned by addObserver(forName:...)</span></code></pre></li>
+  <li><strong>Combine <code>sink</code> / <code>assign(to:on:)</code></strong> — <code>assign(to:on: self)</code> retains <code>self</code>. Store the <code>AnyCancellable</code> and use <code>[weak self]</code> in <code>sink</code>.
+    <pre><code>cancellables.<span class="type">removeAll</span>()   <span class="cm">// each AnyCancellable cancels when released</span></code></pre></li>
+  <li><strong>Long Swift <code>Task</code></strong> — a task that captures <code>self</code> keeps it alive until it ends. Cancel it or use <code>[weak self]</code>.
+    <pre><code>task?.<span class="type">cancel</span>(); task = <span class="kw">nil</span></code></pre></li>
+  <li><strong>Singletons and caches</strong> — anything they reference lives for the whole app.
+    <pre><code><span class="type">ImageCache</span>.shared.<span class="type">removeObject</span>(forKey: id)   <span class="cm">// or keep only weak refs / use NSCache</span></code></pre></li>
 </ul>
-<pre><code><span class="cm">// Timer holds its target strongly until invalidated</span>
+<pre><code><span class="kw">import</span> <span class="type">UIKit</span>
+
+<span class="cm">// target: self — timer holds self strongly until invalidated</span>
+<span class="kw">class</span> <span class="type">MyViewController</span>: <span class="type">UIViewController</span> {
+
+    <span class="kw">private var</span> timer: <span class="type">Timer</span>?
+
+    <span class="kw">override func</span> <span class="type">viewWillAppear</span>(<span class="kw">_</span> animated: <span class="type">Bool</span>) {
+        <span class="kw">super</span>.<span class="type">viewWillAppear</span>(animated)
+        <span class="type">startTimer</span>()
+    }
+
+    <span class="kw">override func</span> <span class="type">viewWillDisappear</span>(<span class="kw">_</span> animated: <span class="type">Bool</span>) {
+        <span class="kw">super</span>.<span class="type">viewWillDisappear</span>(animated)
+        <span class="type">stopTimer</span>()   <span class="cm">// breaks run loop → timer → self; now deinit can run</span>
+    }
+
+    <span class="kw">func</span> <span class="type">startTimer</span>() {
+        timer = <span class="type">Timer</span>.<span class="type">scheduledTimer</span>(
+            timeInterval: <span class="num">1.0</span>,
+            target: <span class="kw">self</span>,
+            selector: <span class="kw">#selector</span>(timerFired),
+            userInfo: <span class="kw">nil</span>,
+            repeats: <span class="kw">true</span>
+        )
+    }
+
+    <span class="attr">@objc</span> <span class="kw">private func</span> <span class="type">timerFired</span>() {
+        <span class="type">print</span>(<span class="str">"Timer fired"</span>)
+    }
+
+    <span class="cm">// called from viewWillDisappear above</span>
+    <span class="kw">func</span> <span class="type">stopTimer</span>() {
+        timer?.<span class="type">invalidate</span>()
+        timer = <span class="kw">nil</span>
+    }
+
+    <span class="kw">deinit</span> {
+        <span class="cm">// never printed if stopTimer() was not called</span>
+        <span class="type">print</span>(<span class="str">"MyViewController deallocated"</span>)
+    }
+}</code></pre>
+<pre><code><span class="cm">// Block API + [weak self]: timer does not keep self alive</span>
 timer = <span class="type">Timer</span>.<span class="type">scheduledTimer</span>(withTimeInterval: <span class="num">1</span>, repeats: <span class="kw">true</span>) { [<span class="kw">weak self</span>] _ <span class="kw">in</span>
     <span class="kw">self</span>?.tick()
 }
-<span class="cm">// still call timer?.invalidate() when the screen goes away</span></code></pre>
+<span class="cm">// still call timer?.invalidate() (in deinit or when the screen goes away),</span>
+<span class="cm">// otherwise the run loop keeps the timer firing forever</span></code></pre>
 
 <h2>How to prevent them</h2>
 <table>
