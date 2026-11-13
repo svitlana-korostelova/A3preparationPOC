@@ -149,7 +149,7 @@ ul.toc li a{font-size:1.05em}
 
 <h3>Example 2: parsing a large JSON response</h3>
 <pre><code><span class="kw">struct</span> <span class="type">Transaction</span>: <span class="type">Decodable</span> {
-    <span class="kw">let</span> id: <span class="type">String</span>       <span class="cm">// short strings fit inline; long ones use a heap buffer</span>
+    <span class="kw">let</span> id: <span class="type">String</span>       <span class="cm">// short strings fit inline; long ones use heap storage</span>
     <span class="kw">let</span> amount: <span class="type">Decimal</span>
     <span class="kw">let</span> date: <span class="type">Date</span>
 }
@@ -167,10 +167,10 @@ ul.toc li a{font-size:1.05em}
 <tr><td>Local variable, not captured</td><td>Stack</td><td><code><span class="kw">let</span> p = <span class="type">CGPoint</span>(x: <span class="num">1</span>, y: <span class="num">2</span>)</code></td></tr>
 <tr><td>Captured and modified by an <code>@escaping</code> closure</td><td>Heap box shared with the closure</td><td><code><span class="kw">func</span> onTap(<span class="kw">_</span> action: <span class="attr">@escaping</span> () -&gt; <span class="type">Void</span>)<br><span class="kw">var</span> count = <span class="num">0</span>; <span class="type">onTap</span> { count += <span class="num">1</span> }  <span class="cm">// count boxed</span></code></td></tr>
 <tr><td>Stored property of a class</td><td>Inside the class's heap block</td><td><code><span class="kw">class</span> <span class="type">VM</span> { <span class="kw">var</span> origin = <span class="type">CGPoint</span>.zero }</code></td></tr>
-<tr><td>Protocol existential (<code>any P</code>) bigger than 3 words (24 bytes)</td><td>Heap buffer, pointer kept in the existential container</td><td><code><span class="kw">struct</span> <span class="type">Card</span>: <span class="type">Drawable</span> { <span class="kw">var</span> x, y, w, h: <span class="type">Double</span> }  <span class="cm">// 32 bytes</span><br><span class="kw">let</span> d: <span class="kw">any</span> <span class="type">Drawable</span> = <span class="type">Card</span>(x: <span class="num">0</span>, y: <span class="num">0</span>, w: <span class="num">10</span>, h: <span class="num">10</span>)  <span class="cm">// boxed</span></code></td></tr>
+<tr><td>Protocol existential (<code>any P</code>) bigger than 3 words (24 bytes)</td><td>Heap box, pointer kept in the existential's inline value buffer</td><td><code><span class="kw">struct</span> <span class="type">Card</span>: <span class="type">Drawable</span> { <span class="kw">var</span> x, y, w, h: <span class="type">Double</span> }  <span class="cm">// 32 bytes</span><br><span class="kw">let</span> d: <span class="kw">any</span> <span class="type">Drawable</span> = <span class="type">Card</span>(x: <span class="num">0</span>, y: <span class="num">0</span>, w: <span class="num">10</span>, h: <span class="num">10</span>)  <span class="cm">// boxed</span></code></td></tr>
 <tr><td><code>indirect enum</code> case</td><td>Heap box for the payload</td><td><code><span class="kw">indirect enum</span> <span class="type">List</span> { <span class="kw">case</span> end, node(<span class="type">Int</span>, <span class="type">List</span>) }</code></td></tr>
 <tr><td>Local used after an <code>await</code></td><td>Task's heap-allocated async frame</td><td><code><span class="kw">let</span> id = user.id<br><span class="kw">let</span> data = <span class="kw">try await</span> api.<span class="type">load</span>(id)  <span class="cm">// id kept in async frame</span></code></td></tr>
-<tr><td>Array, String, Dictionary contents</td><td>Heap buffer (the struct itself is only a pointer + metadata)</td><td><code><span class="kw">let</span> ids = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]  <span class="cm">// elements live in a heap buffer</span></code></td></tr>
+<tr><td>Array, String, Dictionary contents</td><td>Heap storage object (the struct itself is only a reference + metadata)</td><td><code><span class="kw">let</span> ids = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]  <span class="cm">// elements live in a heap buffer</span></code></td></tr>
 </table>
 <pre><code><span class="kw">func</span> makeCounter() -&gt; () -&gt; <span class="type">Int</span> {
     <span class="kw">var</span> count = <span class="num">0</span>          <span class="cm">// Int, but boxed on the heap</span>
@@ -182,6 +182,21 @@ ul.toc li a{font-size:1.05em}
     <span class="kw">case</span> node(<span class="type">Tree</span>, <span class="type">Tree</span>)   <span class="cm">// recursive, so each payload is boxed</span>
 }</code></pre>
 <p>The reverse also happens: when escape analysis proves a class instance never leaves its function, the optimizer may allocate it on the stack. Do not rely on it.</p>
+
+<h2>Heap objects: buffer (storage) vs box</h2>
+<ul>
+  <li>Swift has one heap. Each runtime-managed allocation on it is a <strong>heap object</strong>: a header (type metadata pointer + reference count) and a payload.</li>
+  <li><strong>Buffer (storage object)</strong>: a heap object whose payload is a header plus many elements stored one after another.</li>
+  <li>Used by <code>Array</code>, <code>String</code>, <code>Dictionary</code>, <code>Set</code>. The struct holds only a reference to it.</li>
+  <li><strong>Box</strong>: a heap object whose payload is one value. The compiler creates it (SIL <code>alloc_box</code>).</li>
+  <li>Used for a <code>var</code> captured by an <code>@escaping</code> closure, an <code>indirect enum</code> payload, and an <code>any Protocol</code> value larger than the 3-word inline value buffer.</li>
+  <li>"Buffer" and "box" are compiler and stdlib terms, not public language API.</li>
+  <li>Both cost a heap allocation and reference counting (ARC).</li>
+</ul>
+<pre><code><span class="kw">let</span> ids = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]   <span class="cm">// storage object: many elements</span>
+
+<span class="kw">var</span> count = <span class="num">0</span>
+<span class="kw">let</span> inc = { count += <span class="num">1</span> }  <span class="cm">// box: one Int shared with the closure</span></code></pre>
 
 <h2>Quick rule</h2>
 <ul>
