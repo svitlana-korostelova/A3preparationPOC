@@ -82,13 +82,26 @@ ul.toc li a{font-size:1.05em}
 <tr><td>Thread safety</td><td>Each thread has its own copy, so no data race</td><td>Shared, so you must synchronize (queue, lock, actor)</td></tr>
 <tr><td>Mutation</td><td>Needs <code>var</code> or <code>mutating</code></td><td>Properties mutable through <code>let</code> reference</td></tr>
 </table>
+<p><em>Limited bridging</em> means only some standard-library structs convert to Obj-C classes automatically (<code>String</code> ↔ <code>NSString</code>, <code>Array</code> ↔ <code>NSArray</code>); your own structs can't be <code>@objc</code>, so Obj-C code can't see them.</p>
+<p>Example: <code>String</code> bridges automatically, but the Swift struct <code>AttributedString</code> (iOS 15+) does not, so you convert it to <code>NSAttributedString</code> yourself:</p>
+<pre><code><span class="kw">let</span> label = <span class="type">UILabel</span>()
+label.text = <span class="str">"Hello"</span>                       <span class="cm">// String → NSString, automatic</span>
+
+<span class="kw">var</span> styled = <span class="type">AttributedString</span>(<span class="str">"Hello"</span>)   <span class="cm">// Swift struct</span>
+styled.uiKit.foregroundColor = .red
+label.attributedText = <span class="type">NSAttributedString</span>(styled)   <span class="cm">// manual conversion to the Obj-C class</span></code></pre>
 
 <h2>Use a value type when…</h2>
 <ul>
   <li><strong>Equality is by content.</strong> Two coordinates with the same numbers are the same value.</li>
   <li><strong>Copies must be independent.</strong> No surprise changes through another variable (no aliasing).</li>
   <li><strong>You pass data across threads.</strong> Copies cannot race. Conform to <code>Sendable</code>.</li>
-  <li><strong>Data flows through pure functions</strong>, e.g. reducers (<code>(State, Action) -&gt; State</code>), parsing, mapping.</li>
+  <li><strong>Data flows through pure functions</strong>, e.g. reducers (<code>(State, Action) -&gt; State</code>), parsing, mapping.
+<pre><code><span class="kw">struct</span> <span class="type">CartItem</span> { <span class="kw">let</span> price: <span class="type">Decimal</span>; <span class="kw">let</span> quantity: <span class="type">Int</span> }
+
+<span class="kw">let</span> items = [<span class="type">CartItem</span>(price: <span class="num">9.99</span>, quantity: <span class="num">2</span>), <span class="type">CartItem</span>(price: <span class="num">4.50</span>, quantity: <span class="num">1</span>)]
+<span class="kw">let</span> total = items.<span class="type">reduce</span>(<span class="num">0</span>) { sum, item <span class="kw">in</span> sum + item.price * <span class="type">Decimal</span>(item.quantity) }
+<span class="cm">// 24.48</span></code></pre></li>
   <li><strong>Performance matters.</strong> No heap, no ARC, and arrays of structs are contiguous in memory.</li>
   <li><strong>It is a SwiftUI <code>View</code>.</strong> Views are structs by design; SwiftUI diffs cheap value snapshots.</li>
   <li>Typical examples: models, API responses (<code>Codable</code>), geometry, configuration, app state.</li>
@@ -110,7 +123,8 @@ ul.toc li a{font-size:1.05em}
   <li><strong>You need <code>deinit</code></strong> to close a file, socket, database or C handle. A resource must have one owner and must not be copied.</li>
   <li><strong>Identity matters.</strong> Two sessions with equal data are still different sessions.</li>
   <li><strong>You need inheritance</strong> (e.g. a coordinator base class).</li>
-  <li><strong>The framework requires it:</strong> <code>UIView</code>, <code>UIViewController</code>, <code>NSObject</code> subclasses, <code>ObservableObject</code> (<code>@StateObject</code> / <code>@ObservedObject</code>).</li>
+  <li><strong>The framework requires it:</strong> <code>UIView</code>, <code>UIViewController</code>, <code>NSObject</code> subclasses, <code>ObservableObject</code> (<code>@StateObject</code> / <code>@ObservedObject</code>).<br>
+  <code>@Bindable</code> also needs a class: its value must be <code>AnyObject &amp; Observable</code>, and the <code>@Observable</code> macro works only on classes. For a struct, use <code>@State</code> + <code>@Binding</code>.</li>
   <li><strong>Callbacks must reach one instance:</strong> delegates and observers (<code>AnyObject</code> protocols).</li>
   <li><strong>The object is large</strong> and must never be copied, e.g. a big document model.</li>
 </ul>
@@ -124,6 +138,17 @@ ul.toc li a{font-size:1.05em}
     <span class="kw">private let</span> handle: <span class="type">OpaquePointer</span>
     <span class="kw">init</span>(path: <span class="type">String</span>) { handle = openDB(path) }
     <span class="kw">deinit</span> { closeDB(handle) }
+}</code></pre>
+<p><strong>Note: singletons.</strong> A struct singleton works only if its data never changes, like a read-only config. If the data changes (a cache, a session), use a class: every <code>var</code> made from a struct singleton is a separate copy, so changes are lost.</p>
+<pre><code><span class="kw">struct</span> <span class="type">AppConfig</span> {                        <span class="cm">// OK: read-only</span>
+    <span class="kw">static let</span> shared = <span class="type">AppConfig</span>()
+    <span class="kw">let</span> apiURL = <span class="type">URL</span>(string: <span class="str">"https://api.example.com"</span>)!
+}
+
+<span class="kw">final class</span> <span class="type">SharedImageCache</span> {             <span class="cm">// mutable, so it must be a class</span>
+    <span class="kw">static let</span> shared = <span class="type">SharedImageCache</span>()
+    <span class="kw">private init</span>() {}                       <span class="cm">// no second instance</span>
+    <span class="kw">private var</span> storage: [<span class="type">URL</span>: <span class="type">UIImage</span>] = [:]
 }</code></pre>
 <p>A class used from several threads needs protection. Prefer an <code>actor</code>, which is a reference type with built-in isolation.</p>
 
